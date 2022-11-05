@@ -1,67 +1,67 @@
-namespace Meanscript {
-
-public class MNode {
-internal int type;
-internal int numChildren;
-internal int lineNumber;
-internal int characterNumber;
-internal MSText data;
-internal long numeralValue;
-internal MNode next = null;
-internal MNode child = null;
-internal MNode parent = null;
-
-public MNode (int line, int ch, MNode _parent, int _type, MSText _data)
+namespace Meanscript
 {
-	data = _data;
-	lineNumber = line;
-	characterNumber = ch;
 
-	parent = _parent;
-	type = _type;
-	numChildren = 0;
-}
-public MNode (int line, int ch, MNode _parent, int _type, long _numeralValue)
-{
-	data = null;
-	numeralValue = _numeralValue;
-	lineNumber = line;
-	characterNumber = ch;
+	public class MNode
+	{
+		internal int type;
+		internal int numChildren;
+		internal int lineNumber;
+		internal int characterNumber;
+		internal MSText data;
+		internal long numeralValue;
+		internal MNode next = null;
+		internal MNode child = null;
+		internal MNode parent = null;
 
-	parent = _parent;
-	type = _type;
-	numChildren = 0;
-}
+		public MNode(int line, int ch, MNode _parent, int _type, MSText _data)
+		{
+			data = _data;
+			lineNumber = line;
+			characterNumber = ch;
 
-public int line ()
-{
-	return lineNumber;
-}
+			parent = _parent;
+			type = _type;
+			numChildren = 0;
+		}
+		public MNode(int line, int ch, MNode _parent, int _type, long _numeralValue)
+		{
+			data = null;
+			numeralValue = _numeralValue;
+			lineNumber = line;
+			characterNumber = ch;
 
-public void printTree (bool deep) 
-{
-	printTree(this, 0, deep);
-	if (!deep) MS.print("");
-}
+			parent = _parent;
+			type = _type;
+			numChildren = 0;
+		}
 
-public void printTree (MNode _node, int depth, bool deep) 
-{
-	MS.assertion(_node != null,MC.EC_INTERNAL, "<printTree: empty node>");
+		public int Line()
+		{
+			return lineNumber;
+		}
 
-	MNode node = _node;
+		public void PrintTree(bool deep)
+		{
+			PrintTree(this, 0, deep);
+			if (!deep) MS.Print("");
+		}
 
-	for (int i = 0; i < depth; i++) MS.printn("  ");
+		public void PrintTree(MNode _node, int depth, bool deep)
+		{
+			MS.Assertion(_node != null, MC.EC_INTERNAL, "<printTree: empty node>");
 
-	MS.printn("[" + node.data + "]");
+			MNode node = _node;
 
-	// if (node.numChildren > 0) { MS.verbose(" + " + node.numChildren); }
+			for (int i = 0; i < depth; i++) MS.Printn("  ");
 
-	if (deep) MS.print("");
+			MS.Printn("[" + node.data + "]");
 
-	if (node.child != null && deep) printTree(node.child, depth + 1, deep);
-	if (node.next != null) printTree(node.next, depth, deep);
-}
-//
+			// if (node.numChildren > 0) { MS.verbose(" + " + node.numChildren); }
 
-}
+			if (deep) MS.Print("");
+
+			if (node.child != null && deep) PrintTree(node.child, depth + 1, deep);
+			if (node.next != null) PrintTree(node.next, depth, deep);
+		}
+	}
 }

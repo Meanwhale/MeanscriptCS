@@ -15,11 +15,12 @@ namespace MeanscriptEditor
 
 			try
 			{
-				Meanscript.MeanscriptUnitTest.runAll();
+				Meanscript.MeanscriptUnitTest.RunAll();
 			}
 			catch (Exception e)
 			{
 				Status("unit test failed");
+				TextBoxOutput.Text = e.ToString();
 			}
 		}
 		public void Status(string s)

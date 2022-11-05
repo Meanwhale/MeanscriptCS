@@ -1,517 +1,522 @@
 using System.Linq;
-namespace Meanscript {
-
-public class Parser : MC {
-
-public const string letters =  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
-public const string numbers =  "1234567890";
-public const string hexNumbers =  "1234567890abcdefABCDEF";
-public const string whitespace =  " \t\n\r";
-public const string linebreak =  "\n\r";
-public const string expressionBreak =  ",;\n";
-public const string blockStart =  "([{";
-public const string blockEnd =  ")]}";
-public const string op =  "+*<>="; // '-' or '/' will be special cases
-
-private static byte space, name, reference, number, hex, minus, decimalNumber, slash, quote, comment, skipLineBreaks, escapeChar, hexByte, zero;
-
-
-private static byte [] tmp = new byte[4096];
-private static byte [] buffer = new byte[512];
-private static byte [] quoteBuffer = new byte[4096];
-
-private static ByteAutomata baPtr;
-private static bool goBackwards, running, assignment;
-private static int index, lastStart, lineNumber, characterNumber, quoteIndex;
-private static MNode root;
-private static MNode currentBlock;
-private static MNode currentExpr;
-private static MNode currentToken;
-private static TokenTree tokenTree;
-
-public static readonly string [] nodeTypeName = new string[] { "root","expr","sub-call","struct","block","token" };
-
-
-private static void next(byte state) 
+namespace Meanscript
 {
-	lastStart = index;
 
-	baPtr.next(state);
-}
-
-private static void nextCont(byte state) 
-{
-	// continue with same token,
-	// so don't reset the start index
-	baPtr.next(state);
-}
-
-private static void bwd() 
-{
-	MS.assertion(!goBackwards,MC.EC_INTERNAL, "can't go backwards twice");
-	goBackwards = true;
-}
-
-private static MSText getNewName() 
-{
-	int start = lastStart;
-	int length = index - start;
-	MS.assertion(length < MS.globalConfig.maxNameLength, EC_PARSE, "name is too long");
-	
-	int i = 0;
-	for (; i < length; i++)
+	public class Parser : MC
 	{
-		tmp[i] = buffer[start++ % 512];
-	}
-	return new MSText (tmp, 0, length);
-}
 
-private static MSText getQuoteText() 
-{
-	int start = 0;
-	int length = quoteIndex - start;
-	return new MSText (quoteBuffer, start, length);
-}
+		public const string letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
+		public const string numbers = "1234567890";
+		public const string hexNumbers = "1234567890abcdefABCDEF";
+		public const string whitespace = " \t\n\r";
+		public const string linebreak = "\n\r";
+		public const string expressionBreak = ",;\n";
+		public const string blockStart = "([{";
+		public const string blockEnd = ")]}";
+		public const string op = "+*<>="; // '-' or '/' will be special cases
 
-
-private static void addExpr() 
-{
-	MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NT_EXPR, new MSText ("<EXPR>"));
-	currentExpr.next = expr;
-	currentExpr = expr;
-	currentToken = null;
-}
+		private static byte space, name, reference, number, hex, minus, decimalNumber, slash, quote, comment, skipLineBreaks, escapeChar, hexByte, zero;
 
 
-private static void addToken(int tokenType) 
-{ 
-	if (tokenType == NT_REFERENCE_TOKEN) lastStart++; // skip '#'
-	
-	MNode token = null;
-	
-	if (tokenType == NT_TEXT)
-	{
-		MSText data = getQuoteText();
-		tokenTree.addText(data);
-		token = new MNode(lineNumber, characterNumber, currentExpr, NT_TEXT, data);
-	}
-	else
-	{
-		MSText data = getNewName();
-		{if (MS._debug) {MS.verbose("TOKEN: " + data);}};
-		token = new MNode(lineNumber, characterNumber, currentExpr, tokenType, data);
-	}
-	
-	if (currentToken == null) currentExpr.child = token;
-	else currentToken.next = token;
-	currentExpr.numChildren++;
-	currentToken = token;
-	lastStart = index;
-}
-private static void addOperator(int tokenType, MSText name)
-{ 
-	MNode token = new MNode(lineNumber, characterNumber, currentExpr, tokenType, name);
-	if (currentToken == null) currentExpr.child = token;
-	else currentToken.next = token;
-	currentExpr.numChildren++;
-	currentToken = token;
-	lastStart = index;
-}
+		private static readonly byte[] tmp = new byte[4096];
+		private static readonly byte[] buffer = new byte[512];
+		private static readonly byte[] quoteBuffer = new byte[4096];
 
-private static void endBlock(int blockType) 
-{
-	// check that block-end character is the right one
-	MS.assertion((currentBlock != null && currentBlock.type == blockType), EC_PARSE, "invalid block end");
+		private static ByteAutomata baPtr;
+		private static bool goBackwards, running, assignment;
+		private static int index, lastStart, lineNumber, characterNumber, quoteIndex;
+		private static MNode root;
+		private static MNode currentBlock;
+		private static MNode currentExpr;
+		private static MNode currentToken;
+		private static TokenTree tokenTree;
 
-	lastStart = -1;
-	currentToken = currentBlock;
-	currentExpr = currentToken.parent;
-	currentBlock = currentExpr.parent;
-}
+		public static readonly string[] nodeTypeName = new string[] { "root", "expr", "sub-call", "struct", "block", "token" };
 
-private static void exprBreak() 
-{
-	// check that comma is used properly
-	if (baPtr.currentInput == ',')	
-	{
-		MS.assertion(currentBlock != null &&  			(currentBlock.type == NT_ASSIGNMENT || 			currentBlock.type == NT_SQUARE_BRACKETS || 			currentBlock.type == NT_PARENTHESIS), EC_PARSE, "unexpected comma");
-	}
-	
-	if (currentBlock != null) currentBlock.numChildren ++;
-	
-	if (assignment)
-	{
-		if (baPtr.currentInput != ',')
+
+		private static void Next(byte state)
 		{
-			// end assignment block
-			// hack solution to allow assignment args without brackets
-			assignment = false;
-			endBlock(NT_ASSIGNMENT);	
-			addExpr();	
+			lastStart = index;
+
+			baPtr.Next(state);
 		}
-		else
+
+		private static void NextCont(byte state)
 		{
-			// allow line breaks after comma in assignment list
-			lastStart = -1;
-			addExpr();
-			next(skipLineBreaks);
+			// continue with same token,
+			// so don't reset the start index
+			baPtr.Next(state);
 		}
-	}
-	else
-	{
-		lastStart = -1;
-		addExpr();
-	}	
-}
 
-
-private static void addBlock(int blockType) 
-{
-
-	MSText blockTypeName = null;
-	
-	if (blockType == NT_PARENTHESIS) blockTypeName = new MSText("<PARENTHESIS>");
-	else if (blockType == NT_SQUARE_BRACKETS) blockTypeName = new MSText("<SQUARE_BRACKETS>");
-	else if (blockType == NT_ASSIGNMENT)
-	{
-		assignment = true;
-		blockTypeName = new MSText("<ASSIGNMENT>");
-	}
-	else if (blockType == NT_CODE_BLOCK) blockTypeName = new MSText("<CODE_BLOCK>");
-	else MS.assertion(false,MC.EC_INTERNAL, "invalid block type");
-	
-	{if (MS._debug) {MS.verbose("add block: " + blockType);}};
-	
-	lastStart = -1;
-
-	MS.assertion(blockTypeName != null,MC.EC_INTERNAL, "blockTypeName is null");
-
-	MNode block = new MNode(lineNumber, characterNumber, currentExpr, blockType, blockTypeName);
-	
-	if (currentToken == null)
-	{
-		// expression starts with a block, eg. "[1,2]" in "[[1,2],34,56]"
-		currentExpr.child = block;
-		currentToken = block;
-	}
-	else
-	{
-		currentToken.next = block;
-	}
-	currentExpr.numChildren++;
-	
-	currentBlock = block;
-
-	MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NT_EXPR, new MSText("<EXPR>"));
-	currentBlock.child = expr;
-	currentExpr = expr;
-	currentToken = null;
-}
-
-private static void parseError(string msg) 
-{
-	MS.printn("Parse error: ");
-	MS.print(msg);
-	baPtr.ok = false;
-	running = false;
-}
-
-private static void addQuoteByte(int i) 
-{
-	if (quoteIndex >= 4096)
-	{
-		parseError("text is too long");
-		return;
-	}
-	quoteBuffer[quoteIndex++] = (byte)i;
-}
-
-private static void addHexByte() 
-{
-	byte high = buffer[(lastStart + 1) % 512];
-	byte low = buffer [(lastStart + 2) % 512];
-	byte b = (byte)(((hexCharToByte(high)<<4) & 0xf0) | hexCharToByte(low));
-	addQuoteByte(b);
-}
-
-private static void defineTransitions() 
-{
-	ByteAutomata ba = baPtr;
-
-	space = ba.addState("space");
-	name = ba.addState("name");
-	//member = ba.addState("member");
-	reference = ba.addState("reference");
-	number = ba.addState("number");
-	hex = ba.addState("hex");
-	minus = ba.addState("minus");
-	decimalNumber = ba.addState("decimal number");
-	//expNumber = ba.addState("exp. number");
-	slash = ba.addState("slash");
-	quote = ba.addState("quote");
-	comment = ba.addState("comment");
-	skipLineBreaks = ba.addState("skip line breaks");
-	escapeChar = ba.addState("escape character");
-	hexByte = ba.addState("hex byte");
-	zero = ba.addState("zero");
-
-	ba.transition(space, whitespace, null);
-	ba.transition(space, letters, () => { next(name); });
-	ba.transition(space, "#", () => { next(reference); });
-	ba.transition(space, "-", () => { next(minus); });
-	ba.transition(space, "/", () => { next(slash); });
-	ba.transition(space, "\"", () => { next(quote); quoteIndex = 0; });
-	ba.transition(space, numbers, () => { next(number); });
-	ba.transition(space, "0", () => { next(zero); }); // start hex
-	ba.transition(space, expressionBreak, () => { exprBreak(); });
-	ba.transition(space, "(", () => { addBlock(NT_PARENTHESIS); next(skipLineBreaks); });
-	ba.transition(space, ")", () => { endBlock(NT_PARENTHESIS); });
-	ba.transition(space, "[", () => { addBlock(NT_SQUARE_BRACKETS); next(skipLineBreaks); });
-	ba.transition(space, "]", () => { endBlock(NT_SQUARE_BRACKETS); });
-	ba.transition(space, "{", () => { addBlock(NT_CODE_BLOCK); next(skipLineBreaks); });
-	ba.transition(space, "}", () => { endBlock(NT_CODE_BLOCK); });
-	ba.transition(space, ":", () => { addBlock(NT_ASSIGNMENT); next(skipLineBreaks); });
-	ba.transition(space, ".", () => { addOperator(NT_DOT,new MSText(".")); });
-
-	ba.transition(name, letters, null);
-	ba.transition(name, numbers, null);
-	ba.transition(name, whitespace, () => { addToken(NT_NAME_TOKEN); next(space); });
-	ba.transition(name, "#", () => { addToken(NT_REF_TYPE_TOKEN); next(space); });
-	ba.transition(name, expressionBreak, () => { addToken(NT_NAME_TOKEN); exprBreak(); next(space); });
-	ba.transition(name, blockStart, () => { addToken(NT_NAME_TOKEN); bwd(); next(space); });
-	ba.transition(name, blockEnd, () => { addToken(NT_NAME_TOKEN); bwd(); next(space); });
-	ba.transition(name, ":", () => { addToken(NT_NAME_TOKEN); addBlock(NT_ASSIGNMENT); next(skipLineBreaks); });
-	ba.transition(name, ".", () => { addToken(NT_NAME_TOKEN); addOperator(NT_DOT,new MSText(".")); next(space); });
-	
-	ba.transition(reference, letters, null);
-	ba.transition(reference, whitespace, () => { addToken(NT_REFERENCE_TOKEN); next(space); });
-	ba.transition(reference, expressionBreak, () => { addToken(NT_REFERENCE_TOKEN); exprBreak(); next(space); });
-	ba.transition(reference, blockStart, () => { addToken(NT_REFERENCE_TOKEN); bwd(); next(space); });
-	ba.transition(reference, blockEnd,   () => { addToken(NT_REFERENCE_TOKEN); bwd(); next(space); });
-
-	ba.transition(number, numbers, null);
-	ba.transition(number, whitespace,       () => { addToken(NT_NUMBER_TOKEN); next(space); });
-	ba.transition(number, expressionBreak,  () => { addToken(NT_NUMBER_TOKEN); exprBreak(); next(space); });
-	ba.transition(number, blockStart,       () => { addToken(NT_NUMBER_TOKEN); bwd(); next(space); });
-	ba.transition(number, blockEnd,         () => { addToken(NT_NUMBER_TOKEN); bwd(); next(space); });
-	ba.transition(number, ".", () => { nextCont(decimalNumber); });
-	
-	ba.transition(zero, numbers,          () => { nextCont(number); });
-	ba.transition(zero, "x",              () => { next(hex); lastStart++; });
-	ba.transition(zero, ".",              () => { next(decimalNumber); lastStart++; });
-	ba.transition(zero, whitespace,       () => { addToken(NT_NUMBER_TOKEN); next(space); });
-	ba.transition(zero, expressionBreak,  () => { addToken(NT_NUMBER_TOKEN); exprBreak(); next(space); });
-	ba.transition(zero, blockStart,       () => { addToken(NT_NUMBER_TOKEN); bwd(); next(space); });
-	ba.transition(zero, blockEnd,         () => { addToken(NT_NUMBER_TOKEN); bwd(); next(space); });
-	
-	ba.transition(hex, hexNumbers, null);
-	ba.transition(hex, whitespace,       () => { addToken(NT_HEX_TOKEN); next(space); });
-	ba.transition(hex, expressionBreak,  () => { addToken(NT_HEX_TOKEN); exprBreak(); next(space); });
-	ba.transition(hex, blockStart,       () => { addToken(NT_HEX_TOKEN); bwd(); next(space); });
-	ba.transition(hex, blockEnd,         () => { addToken(NT_HEX_TOKEN); bwd(); next(space); });
-
-	ba.transition(minus, whitespace, () => { addToken(NT_MINUS); next(space); });
-	ba.transition(minus, numbers, () => { nextCont(number); }); // change state without reseting starting index
-	ba.transition(minus, ".", () => { nextCont(decimalNumber); });
-
- 	ba.transition(decimalNumber, numbers, null);
-	ba.transition(decimalNumber, whitespace, () => { addToken(NT_NUMBER_TOKEN); next(space); });
-	ba.transition(decimalNumber, expressionBreak, () => { addToken(NT_NUMBER_TOKEN); exprBreak(); next(space); });
-	ba.transition(decimalNumber, blockStart, () => { addToken(NT_NUMBER_TOKEN); bwd(); next(space); });
-	ba.transition(decimalNumber, blockEnd,   () => { addToken(NT_NUMBER_TOKEN); bwd(); next(space); });
-	
- /* decimalNumber = ba.addState("decimal number");
-
-	expNumber = ba.addState("exp. number");*/
-	
-	ba.fillTransition(slash, () => { addToken(NT_DIV); bwd(); next(space); });
-	ba.transition(slash, "/", () => { next(comment); });
-
-	ba.fillTransition(quote, () => { addQuoteByte(baPtr.currentInput); });
-	ba.transition(quote, linebreak, () => { parseError("line break inside a quotation"); });
-	ba.transition(quote, "\"", () => { lastStart++; addToken(NT_TEXT); next(space); });
-	ba.transition(quote, "\\", () => { next(escapeChar); });
-	
-	ba.fillTransition(escapeChar, () => { parseError("invalid escape character in quotes"); });
-	
-	// standard escape character literals: https://en.cppreference.com/w/cpp/language/escape
-	
-	ba.transition(escapeChar, "'",  () => { addQuoteByte((byte)0x27); next(quote); });
-	ba.transition(escapeChar, "\"", () => { addQuoteByte((byte)0x22); next(quote); });
-	ba.transition(escapeChar, "?",  () => { addQuoteByte((byte)0x3f); next(quote); });
-	ba.transition(escapeChar, "\\", () => { addQuoteByte((byte)0x5c); next(quote); });
-	ba.transition(escapeChar, "a",  () => { addQuoteByte((byte)0x07); next(quote); });
-	ba.transition(escapeChar, "b",  () => { addQuoteByte((byte)0x08); next(quote); });
-	ba.transition(escapeChar, "f",  () => { addQuoteByte((byte)0x0c); next(quote); });
-	ba.transition(escapeChar, "n",  () => { addQuoteByte((byte)0x0a); next(quote); });
-	ba.transition(escapeChar, "r",  () => { addQuoteByte((byte)0x0d); next(quote); });
-	ba.transition(escapeChar, "t",  () => { addQuoteByte((byte)0x09); next(quote); });
-	ba.transition(escapeChar, "v",  () => { addQuoteByte((byte)0x0b); next(quote); });
-	
-	ba.transition(escapeChar, "x", () => { next(hexByte); });
-	
-	ba.fillTransition(hexByte, () => { parseError("invalid hexadecimal byte"); });
-	ba.transition(hexByte, hexNumbers, () => { if (index - lastStart >= 2) { addHexByte(); next(quote); } });
-	
-	ba.fillTransition(comment, null);
-	ba.transition(comment, linebreak, () => { exprBreak(); next(space); });
-	
-	ba.fillTransition(skipLineBreaks, () => { bwd(); next(space); });
-	ba.transition(skipLineBreaks, whitespace, null);
-	ba.transition(skipLineBreaks, linebreak, null);
-}
-
-private static bool [] validNameChars;
-private static bool [] validNumberChars;
-private static bool nameValidatorInitialized = false;
-
-public static bool  isValidName (MSText name) 
-{
-	// name validator
-	// initialize if needed
-	
-	int length, i;
-	
-	if (!nameValidatorInitialized) {
-		byte[] letterBytes = System.Text.Encoding.UTF8.GetBytes(letters);
-		byte[] numberBytes = System.Text.Encoding.UTF8.GetBytes(numbers);
-		//byte[] numberBytes = System.Text.Encoding.UTF8.GetBytes(numbers);
-		validNameChars = new  bool[ 256];
-		validNumberChars = new  bool[ 256];
-		string lettersString = letters;
-		length = lettersString.Length;
-		for (i=0; i<length; i++) {
-			validNameChars[letterBytes[i]] = true;
-		}
-		string numbersString = numbers;
-		length = numbersString.Length;
-		for (i=0; i<length; i++) {
-			validNumberChars[numberBytes[i]] = true;
-		}
-		
-		nameValidatorInitialized = true;
-	}
-	
-	length = name.numBytes();
-	
-	if (length < 1 || length > MS.globalConfig.maxNameLength) return false;
-	
-	// first character must be a letter or under-score
-	if (!validNameChars[name.byteAt(0)]) return false;
-	
-	for (i=1; i<length; i++) {
-		int b = name.byteAt(i);
-		if (!validNameChars[b] && !validNumberChars[b]) return false;
-	}
-
-	return true;
-}
-
-public static bool  isValidName (string name) 
-{
-	MSText t = new MSText (name);
-	return isValidName(t);
-}
-
-public static TokenTree  Parse (MSInputStream input) 
-{
-	MS.verbose("------------------------ START PARSING");
-
-	tokenTree = new TokenTree();
-
-	baPtr = new ByteAutomata();
-	ByteAutomata ba = baPtr;
-	
-	defineTransitions();
-
-	ba.next((byte)1);
-
-	root = new MNode(1, 1, null, NT_EXPR, new MSText("<ROOT>"));
-	currentExpr = root;
-	currentBlock = null;
-	currentToken = null;
-	
-	lastStart = 0;
-	running = true;
-	assignment = false;
-	goBackwards = false;
-
-	lineNumber = 1;
-	characterNumber = 1;
-	int inputByte = 0;
-	index = 0;
-
-	while ((!input.end() || goBackwards) && running && ba.ok)
-	{
-		if (!goBackwards)
+		private static void Bwd()
 		{
-			index ++;
-			inputByte = input.readByte();
-			buffer[index % 512] = (byte)inputByte;
-			if (inputByte == 10) // line break
+			MS.Assertion(!goBackwards, MC.EC_INTERNAL, "can't go backwards twice");
+			goBackwards = true;
+		}
+
+		private static MSText GetNewName()
+		{
+			int start = lastStart;
+			int length = index - start;
+			MS.Assertion(length < MS.globalConfig.maxNameLength, EC_PARSE, "name is too long");
+
+			int i = 0;
+			for (; i < length; i++)
 			{
-				lineNumber ++;
-				characterNumber = 1;
+				tmp[i] = buffer[start++ % 512];
+			}
+			return new MSText(tmp, 0, length);
+		}
+
+		private static MSText GetQuoteText()
+		{
+			int start = 0;
+			int length = quoteIndex - start;
+			return new MSText(quoteBuffer, start, length);
+		}
+
+
+		private static void AddExpr()
+		{
+			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NT_EXPR, new MSText("<EXPR>"));
+			currentExpr.next = expr;
+			currentExpr = expr;
+			currentToken = null;
+		}
+
+
+		private static void AddToken(int tokenType)
+		{
+			if (tokenType == NT_REFERENCE_TOKEN) lastStart++; // skip '#'
+			
+			MNode token;
+			if (tokenType == NT_TEXT)
+			{
+				MSText data = GetQuoteText();
+				tokenTree.AddText(data);
+				token = new MNode(lineNumber, characterNumber, currentExpr, NT_TEXT, data);
 			}
 			else
 			{
-				characterNumber ++;
+				MSText data = GetNewName();
+				{ if (MS._debug) { MS.Verbose("TOKEN: " + data); } };
+				token = new MNode(lineNumber, characterNumber, currentExpr, tokenType, data);
+			}
+
+			if (currentToken == null) currentExpr.child = token;
+			else currentToken.next = token;
+			currentExpr.numChildren++;
+			currentToken = token;
+			lastStart = index;
+		}
+		private static void AddOperator(int tokenType, MSText name)
+		{
+			MNode token = new MNode(lineNumber, characterNumber, currentExpr, tokenType, name);
+			if (currentToken == null) currentExpr.child = token;
+			else currentToken.next = token;
+			currentExpr.numChildren++;
+			currentToken = token;
+			lastStart = index;
+		}
+
+		private static void EndBlock(int blockType)
+		{
+			// check that block-end character is the right one
+			MS.Assertion((currentBlock != null && currentBlock.type == blockType), EC_PARSE, "invalid block end");
+
+			lastStart = -1;
+			currentToken = currentBlock;
+			currentExpr = currentToken.parent;
+			currentBlock = currentExpr.parent;
+		}
+
+		private static void ExprBreak()
+		{
+			// check that comma is used properly
+			if (baPtr.currentInput == ',')
+			{
+				MS.Assertion(currentBlock != null && (currentBlock.type == NT_ASSIGNMENT || currentBlock.type == NT_SQUARE_BRACKETS || currentBlock.type == NT_PARENTHESIS), EC_PARSE, "unexpected comma");
+			}
+
+			if (currentBlock != null) currentBlock.numChildren++;
+
+			if (assignment)
+			{
+				if (baPtr.currentInput != ',')
+				{
+					// end assignment block
+					// hack solution to allow assignment args without brackets
+					assignment = false;
+					EndBlock(NT_ASSIGNMENT);
+					AddExpr();
+				}
+				else
+				{
+					// allow line breaks after comma in assignment list
+					lastStart = -1;
+					AddExpr();
+					Next(skipLineBreaks);
+				}
+			}
+			else
+			{
+				lastStart = -1;
+				AddExpr();
 			}
 		}
-		else
+
+
+		private static void AddBlock(int blockType)
 		{
+
+			MSText blockTypeName = null;
+
+			if (blockType == NT_PARENTHESIS) blockTypeName = new MSText("<PARENTHESIS>");
+			else if (blockType == NT_SQUARE_BRACKETS) blockTypeName = new MSText("<SQUARE_BRACKETS>");
+			else if (blockType == NT_ASSIGNMENT)
+			{
+				assignment = true;
+				blockTypeName = new MSText("<ASSIGNMENT>");
+			}
+			else if (blockType == NT_CODE_BLOCK) blockTypeName = new MSText("<CODE_BLOCK>");
+			else MS.Assertion(false, MC.EC_INTERNAL, "invalid block type");
+
+			{ if (MS._debug) { MS.Verbose("add block: " + blockType); } };
+
+			lastStart = -1;
+
+			MS.Assertion(blockTypeName != null, MC.EC_INTERNAL, "blockTypeName is null");
+
+			MNode block = new MNode(lineNumber, characterNumber, currentExpr, blockType, blockTypeName);
+
+			if (currentToken == null)
+			{
+				// expression starts with a block, eg. "[1,2]" in "[[1,2],34,56]"
+				currentExpr.child = block;
+				currentToken = block;
+			}
+			else
+			{
+				currentToken.next = block;
+			}
+			currentExpr.numChildren++;
+
+			currentBlock = block;
+
+			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NT_EXPR, new MSText("<EXPR>"));
+			currentBlock.child = expr;
+			currentExpr = expr;
+			currentToken = null;
+		}
+
+		private static void ParseError(string msg)
+		{
+			MS.Printn("Parse error: ");
+			MS.Print(msg);
+			baPtr.ok = false;
+			running = false;
+		}
+
+		private static void AddQuoteByte(int i)
+		{
+			if (quoteIndex >= 4096)
+			{
+				ParseError("text is too long");
+				return;
+			}
+			quoteBuffer[quoteIndex++] = (byte)i;
+		}
+
+		private static void AddHexByte()
+		{
+			byte high = buffer[(lastStart + 1) % 512];
+			byte low = buffer[(lastStart + 2) % 512];
+			byte b = (byte)(((HexCharToByte(high) << 4) & 0xf0) | HexCharToByte(low));
+			AddQuoteByte(b);
+		}
+
+		private static void DefineTransitions()
+		{
+			ByteAutomata ba = baPtr;
+
+			space = ba.AddState("space");
+			name = ba.AddState("name");
+			//member = ba.addState("member");
+			reference = ba.AddState("reference");
+			number = ba.AddState("number");
+			hex = ba.AddState("hex");
+			minus = ba.AddState("minus");
+			decimalNumber = ba.AddState("decimal number");
+			//expNumber = ba.addState("exp. number");
+			slash = ba.AddState("slash");
+			quote = ba.AddState("quote");
+			comment = ba.AddState("comment");
+			skipLineBreaks = ba.AddState("skip line breaks");
+			escapeChar = ba.AddState("escape character");
+			hexByte = ba.AddState("hex byte");
+			zero = ba.AddState("zero");
+
+			ba.Transition(space, whitespace, null);
+			ba.Transition(space, letters, () => { Next(name); });
+			ba.Transition(space, "#", () => { Next(reference); });
+			ba.Transition(space, "-", () => { Next(minus); });
+			ba.Transition(space, "/", () => { Next(slash); });
+			ba.Transition(space, "\"", () => { Next(quote); quoteIndex = 0; });
+			ba.Transition(space, numbers, () => { Next(number); });
+			ba.Transition(space, "0", () => { Next(zero); }); // start hex
+			ba.Transition(space, expressionBreak, () => { ExprBreak(); });
+			ba.Transition(space, "(", () => { AddBlock(NT_PARENTHESIS); Next(skipLineBreaks); });
+			ba.Transition(space, ")", () => { EndBlock(NT_PARENTHESIS); });
+			ba.Transition(space, "[", () => { AddBlock(NT_SQUARE_BRACKETS); Next(skipLineBreaks); });
+			ba.Transition(space, "]", () => { EndBlock(NT_SQUARE_BRACKETS); });
+			ba.Transition(space, "{", () => { AddBlock(NT_CODE_BLOCK); Next(skipLineBreaks); });
+			ba.Transition(space, "}", () => { EndBlock(NT_CODE_BLOCK); });
+			ba.Transition(space, ":", () => { AddBlock(NT_ASSIGNMENT); Next(skipLineBreaks); });
+			ba.Transition(space, ".", () => { AddOperator(NT_DOT, new MSText(".")); });
+
+			ba.Transition(name, letters, null);
+			ba.Transition(name, numbers, null);
+			ba.Transition(name, whitespace, () => { AddToken(NT_NAME_TOKEN); Next(space); });
+			ba.Transition(name, "#", () => { AddToken(NT_REF_TYPE_TOKEN); Next(space); });
+			ba.Transition(name, expressionBreak, () => { AddToken(NT_NAME_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(name, blockStart, () => { AddToken(NT_NAME_TOKEN); Bwd(); Next(space); });
+			ba.Transition(name, blockEnd, () => { AddToken(NT_NAME_TOKEN); Bwd(); Next(space); });
+			ba.Transition(name, ":", () => { AddToken(NT_NAME_TOKEN); AddBlock(NT_ASSIGNMENT); Next(skipLineBreaks); });
+			ba.Transition(name, ".", () => { AddToken(NT_NAME_TOKEN); AddOperator(NT_DOT, new MSText(".")); Next(space); });
+
+			ba.Transition(reference, letters, null);
+			ba.Transition(reference, whitespace, () => { AddToken(NT_REFERENCE_TOKEN); Next(space); });
+			ba.Transition(reference, expressionBreak, () => { AddToken(NT_REFERENCE_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(reference, blockStart, () => { AddToken(NT_REFERENCE_TOKEN); Bwd(); Next(space); });
+			ba.Transition(reference, blockEnd, () => { AddToken(NT_REFERENCE_TOKEN); Bwd(); Next(space); });
+
+			ba.Transition(number, numbers, null);
+			ba.Transition(number, whitespace, () => { AddToken(NT_NUMBER_TOKEN); Next(space); });
+			ba.Transition(number, expressionBreak, () => { AddToken(NT_NUMBER_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(number, blockStart, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(number, blockEnd, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(number, ".", () => { NextCont(decimalNumber); });
+
+			ba.Transition(zero, numbers, () => { NextCont(number); });
+			ba.Transition(zero, "x", () => { Next(hex); lastStart++; });
+			ba.Transition(zero, ".", () => { Next(decimalNumber); lastStart++; });
+			ba.Transition(zero, whitespace, () => { AddToken(NT_NUMBER_TOKEN); Next(space); });
+			ba.Transition(zero, expressionBreak, () => { AddToken(NT_NUMBER_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(zero, blockStart, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(zero, blockEnd, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+
+			ba.Transition(hex, hexNumbers, null);
+			ba.Transition(hex, whitespace, () => { AddToken(NT_HEX_TOKEN); Next(space); });
+			ba.Transition(hex, expressionBreak, () => { AddToken(NT_HEX_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(hex, blockStart, () => { AddToken(NT_HEX_TOKEN); Bwd(); Next(space); });
+			ba.Transition(hex, blockEnd, () => { AddToken(NT_HEX_TOKEN); Bwd(); Next(space); });
+
+			ba.Transition(minus, whitespace, () => { AddToken(NT_MINUS); Next(space); });
+			ba.Transition(minus, numbers, () => { NextCont(number); }); // change state without reseting starting index
+			ba.Transition(minus, ".", () => { NextCont(decimalNumber); });
+
+			ba.Transition(decimalNumber, numbers, null);
+			ba.Transition(decimalNumber, whitespace, () => { AddToken(NT_NUMBER_TOKEN); Next(space); });
+			ba.Transition(decimalNumber, expressionBreak, () => { AddToken(NT_NUMBER_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(decimalNumber, blockStart, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(decimalNumber, blockEnd, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+
+			/* decimalNumber = ba.addState("decimal number");
+
+			   expNumber = ba.addState("exp. number");*/
+
+			ba.FillTransition(slash, () => { AddToken(NT_DIV); Bwd(); Next(space); });
+			ba.Transition(slash, "/", () => { Next(comment); });
+
+			ba.FillTransition(quote, () => { AddQuoteByte(baPtr.currentInput); });
+			ba.Transition(quote, linebreak, () => { ParseError("line break inside a quotation"); });
+			ba.Transition(quote, "\"", () => { lastStart++; AddToken(NT_TEXT); Next(space); });
+			ba.Transition(quote, "\\", () => { Next(escapeChar); });
+
+			ba.FillTransition(escapeChar, () => { ParseError("invalid escape character in quotes"); });
+
+			// standard escape character literals: https://en.cppreference.com/w/cpp/language/escape
+
+			ba.Transition(escapeChar, "'", () => { AddQuoteByte((byte)0x27); Next(quote); });
+			ba.Transition(escapeChar, "\"", () => { AddQuoteByte((byte)0x22); Next(quote); });
+			ba.Transition(escapeChar, "?", () => { AddQuoteByte((byte)0x3f); Next(quote); });
+			ba.Transition(escapeChar, "\\", () => { AddQuoteByte((byte)0x5c); Next(quote); });
+			ba.Transition(escapeChar, "a", () => { AddQuoteByte((byte)0x07); Next(quote); });
+			ba.Transition(escapeChar, "b", () => { AddQuoteByte((byte)0x08); Next(quote); });
+			ba.Transition(escapeChar, "f", () => { AddQuoteByte((byte)0x0c); Next(quote); });
+			ba.Transition(escapeChar, "n", () => { AddQuoteByte((byte)0x0a); Next(quote); });
+			ba.Transition(escapeChar, "r", () => { AddQuoteByte((byte)0x0d); Next(quote); });
+			ba.Transition(escapeChar, "t", () => { AddQuoteByte((byte)0x09); Next(quote); });
+			ba.Transition(escapeChar, "v", () => { AddQuoteByte((byte)0x0b); Next(quote); });
+
+			ba.Transition(escapeChar, "x", () => { Next(hexByte); });
+
+			ba.FillTransition(hexByte, () => { ParseError("invalid hexadecimal byte"); });
+			ba.Transition(hexByte, hexNumbers, () => { if (index - lastStart >= 2) { AddHexByte(); Next(quote); } });
+
+			ba.FillTransition(comment, null);
+			ba.Transition(comment, linebreak, () => { ExprBreak(); Next(space); });
+
+			ba.FillTransition(skipLineBreaks, () => { Bwd(); Next(space); });
+			ba.Transition(skipLineBreaks, whitespace, null);
+			ba.Transition(skipLineBreaks, linebreak, null);
+		}
+
+		private static bool[] validNameChars;
+		private static bool[] validNumberChars;
+		private static bool nameValidatorInitialized = false;
+
+		public static bool IsValidName(MSText name)
+		{
+			// name validator
+			// initialize if needed
+
+			int length, i;
+
+			if (!nameValidatorInitialized)
+			{
+				byte[] letterBytes = System.Text.Encoding.UTF8.GetBytes(letters);
+				byte[] numberBytes = System.Text.Encoding.UTF8.GetBytes(numbers);
+				//byte[] numberBytes = System.Text.Encoding.UTF8.GetBytes(numbers);
+				validNameChars = new bool[256];
+				validNumberChars = new bool[256];
+				string lettersString = letters;
+				length = lettersString.Length;
+				for (i = 0; i < length; i++)
+				{
+					validNameChars[letterBytes[i]] = true;
+				}
+				string numbersString = numbers;
+				length = numbersString.Length;
+				for (i = 0; i < length; i++)
+				{
+					validNumberChars[numberBytes[i]] = true;
+				}
+
+				nameValidatorInitialized = true;
+			}
+
+			length = name.NumBytes();
+
+			if (length < 1 || length > MS.globalConfig.maxNameLength) return false;
+
+			// first character must be a letter or under-score
+			if (!validNameChars[name.ByteAt(0)]) return false;
+
+			for (i = 1; i < length; i++)
+			{
+				int b = name.ByteAt(i);
+				if (!validNameChars[b] && !validNumberChars[b]) return false;
+			}
+
+			return true;
+		}
+
+		public static bool IsValidName(string name)
+		{
+			MSText t = new MSText(name);
+			return IsValidName(t);
+		}
+
+		public static TokenTree Parse(MSInputStream input)
+		{
+			MS.Verbose("------------------------ START PARSING");
+
+			tokenTree = new TokenTree();
+
+			baPtr = new ByteAutomata();
+			ByteAutomata ba = baPtr;
+
+			DefineTransitions();
+
+			ba.Next((byte)1);
+
+			root = new MNode(1, 1, null, NT_EXPR, new MSText("<ROOT>"));
+			currentExpr = root;
+			currentBlock = null;
+			currentToken = null;
+
+			lastStart = 0;
+			running = true;
+			assignment = false;
 			goBackwards = false;
+
+			lineNumber = 1;
+			characterNumber = 1;
+			int inputByte = 0;
+			index = 0;
+
+			while ((!input.End() || goBackwards) && running && ba.ok)
+			{
+				if (!goBackwards)
+				{
+					index++;
+					inputByte = input.ReadByte();
+					buffer[index % 512] = (byte)inputByte;
+					if (inputByte == 10) // line break
+					{
+						lineNumber++;
+						characterNumber = 1;
+					}
+					else
+					{
+						characterNumber++;
+					}
+				}
+				else
+				{
+					goBackwards = false;
+				}
+				if (MS._verboseOn)
+				{
+					MS.printOut.Print(" [").PrintCharSymbol(inputByte).Print("]\n");
+				}
+
+				running = ba.Step(inputByte);
+			}
+
+			if (!goBackwards) index++;
+			if (ba.ok) ba.Step((byte)'\n'); // ended cleanly: last command break
+			if (currentBlock != null)
+			{
+				if (assignment) MS.Print("unexpected end of file in assignment");
+				else MS.Print("unexpected end of file: closing parenthesis missing");
+				ba.ok = false;
+			}
+
+			if (!running || !(ba.ok))
+			{
+				MS.errorOut.Print("Parser state [" + ba.stateNames[(int)ba.currentState] + "]\n");
+				MS.errorOut.Print("Line " + lineNumber + ": \n        ");
+
+				// print nearby code
+				int start = index - 1;
+				while (start > 0 && index - start < 512 && (char)buffer[start % 512] != '\n')
+					start--;
+				while (++start < index)
+				{
+					MS.errorOut.Print("").PrintCharSymbol((((int)buffer[start % 512]) & 0xff));
+				}
+				MS.errorOut.Print("\n");
+
+				baPtr = null;
+				root = null;
+				tokenTree = null;
+				MS.Assertion(false, EC_PARSE, null);
+			}
+
+			if (MS._verboseOn)
+			{
+				MS.Print("------------------------ TOKEN TREE:");
+				root.PrintTree(true);
+				MS.Print("------------------------ END PARSING");
+			}
+			baPtr = null;
+
+			tokenTree.root = root;
+			return tokenTree;
 		}
-		if (MS._verboseOn)
-		{
-			MS.printOut.print(" [").printCharSymbol(inputByte).print("]\n");
-		}
 
-		running = ba.step(inputByte);
+
 	}
-
-	if (!goBackwards) index++;
-	if (ba.ok) ba.step((byte)'\n'); // ended cleanly: last command break
-	if (currentBlock != null)
-	{
-		if (assignment) MS.print("unexpected end of file in assignment");
-		else MS.print("unexpected end of file: closing parenthesis missing");
-		ba.ok = false;
-	}
-	
-	if (!running || !(ba.ok))
-	{
-		MS.errorOut.print("Parser state [" + ba.stateNames[ (int)ba.currentState] + "]\n");
-		MS.errorOut.print("Line " + lineNumber + ": \n        ");
-		
-		// print nearby code
-		int start = index-1;
-		while (start > 0 && index - start < 512 && (char)buffer[start % 512] != '\n')
-			start --;
-		while (++start < index)
-		{
-			MS.errorOut.print("").printCharSymbol((((int) buffer[start % 512]) & 0xff));
-		}
-		MS.errorOut.print("\n");
-		
-		baPtr = null;
-		root = null;
-		tokenTree = null;
-		MS.assertion(false, EC_PARSE, null);
-	}
-
-	if (MS._verboseOn)
-	{
-		MS.print("------------------------ TOKEN TREE:");
-		root.printTree(true);
-		MS.print("------------------------ END PARSING");
-	}	
-	baPtr = null;
-	
-	tokenTree.root = root;
-	return tokenTree;
-}
-
-
-}
 }

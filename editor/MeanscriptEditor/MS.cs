@@ -4,67 +4,68 @@ namespace Meanscript
 {
 	public class MException : System.Exception
 	{
-		private static string begin = "---------------- EXCEPTION ----------------\n";
-		private static string end = "\n-------------------------------------------";
 		public readonly MSError error;
-		private string info = "Meanscript exception";
-		public MException() { error = null; }
+		private readonly string info;
+		public MException() { error = null; info = "Meanscript exception"; }
 		public MException(MSError err, string s) { error = err; info = s; }
-		new public string ToString() { return begin + info + end; }
+		new public string ToString() {
+			return "---------------- EXCEPTION ----------------\n"
+			     + info
+				 + "\n-------------------------------------------"; }
 	}
 	public class Printer : MSOutputPrint
 	{
-		override public void writeByte(byte x) { System.Console.Write((char)x); }
-		override public MSOutputPrint print(String x) { System.Console.Write(x); return this; }
-		override public MSOutputPrint print(char x) { System.Console.Write(x); return this; }
+		override public void WriteByte(byte x) { System.Console.Write((char)x); }
+		override public MSOutputPrint Print(String x) { System.Console.Write(x); return this; }
+		override public MSOutputPrint Print(char x) { System.Console.Write(x); return this; }
 	}
 
-/*public class Printer
-{
-	// override to implement own printer
-	public virtual Printer print(object o)
+	/*public class Printer
 	{
-		Console.Write(o);
-		return this;
-	}
-	public Printer print(int i)
-	{
-		print("" + i);
-		return this;
-	}
-	public Printer print(char c)
-	{
-		print("" + c);
-		return this;
-	}
-	public static string[] hexs = new string[] {
-		"0","1","2","3",
-		"4","5","6","7",
-		"8","9","a","b",
-		"c","d","e","f",
-		};
-	public Printer printHex(int h)
-	{
-		print("0x");
-		for (int i = 28; i >= 0; i -= 4)
+		// override to implement own printer
+		public virtual Printer print(object o)
 		{
-			int index = (h >> i); // TODO: zero fill?
-			index &= 0x0000000f;
-			print(hexs[index]);
+			Console.Write(o);
+			return this;
 		}
-		return this;
+		public Printer print(int i)
+		{
+			print("" + i);
+			return this;
+		}
+		public Printer print(char c)
+		{
+			print("" + c);
+			return this;
+		}
+		public static string[] hexs = new string[] {
+			"0","1","2","3",
+			"4","5","6","7",
+			"8","9","a","b",
+			"c","d","e","f",
+			};
+		public Printer printHex(int h)
+		{
+			print("0x");
+			for (int i = 28; i >= 0; i -= 4)
+			{
+				int index = (h >> i); // TODO: zero fill?
+				index &= 0x0000000f;
+				print(hexs[index]);
+			}
+			return this;
+		}
 	}
-}
 
-public class NullPrinter : Printer
-{
-	override public Printer print(object o)
+	public class NullPrinter : Printer
 	{
-		return this;
-	}
-}*/
+		override public Printer print(object o)
+		{
+			return this;
+		}
+	}*/
 
-public class MSError
+	public class MSError
 	{
 		public readonly MSError type;
 		public readonly string title;
@@ -93,61 +94,61 @@ public class MSError
 
 		public class TextComparer : System.Collections.Generic.IEqualityComparer<MSText>
 		{
-			public bool Equals(MSText x, MSText y) {
-				return x.compare(y) == 0;
+			public bool Equals(MSText x, MSText y)
+			{
+				return x.Compare(y) == 0;
 			}
-			public int GetHashCode(MSText x) {
-				return x.hashCode();
+			public int GetHashCode(MSText x)
+			{
+				return x.HashCode();
 			}
 		}
-		
-		public static void print(string s)
+
+		public static void Print(string s)
 		{
-			printOut.print(s).endLine();
+			printOut.Print(s).EndLine();
 		}
-		public static void printn(string s)
+		public static void Printn(string s)
 		{
-			printOut.print(s);
+			printOut.Print(s);
 		}
-		public static void verbose(string s)
+		public static void Verbose(string s)
 		{
-			if(_verboseOn) printOut.print(s).endLine();
+			if (_verboseOn) printOut.Print(s).EndLine();
 		}
-		public static void verbosen(string s)
+		public static void Verbosen(string s)
 		{
-			if(_verboseOn) printOut.print(s);
+			if (_verboseOn) printOut.Print(s);
 		}
 
-		public static void assertion(bool b, string msg)
+		public static void Assertion(bool b, MSError err, string msg)
 		{
-			if (!b) { throw new MException(null, "assertion failed: " + msg); }
+			if (!b)
+			{
+				throw new MException(err, "assertion failed: " + msg);
+			}
 		}
 
-		public static void assertion(bool b, MSError err, string msg)
-		{
-			if (!b) { throw new MException(err, "assertion failed: " + msg); }
-		}
-
-		internal static void syntaxAssertion(bool b, NodeIterator it, string s)
+		internal static void SyntaxAssertion(bool b, NodeIterator it, string s)
 		{
 			// TODO: printtaa node. Javasta mallia.
-			assertion(b, s);
+			Assertion(b, null, s);
 		}
 
-		public static void nativeTest()
+		public static void NativeTest()
 		{
 			// TODO: testaa unicode
 
 			string s = "Toimii!";
 			byte[] bytes = System.Text.Encoding.ASCII.GetBytes(s);
-			IntArray ia = bytesToInts(bytes);
-			byte[] ba = intsToBytes(ia, 0, 7);
+			IntArray ia = BytesToInts(bytes);
+			byte[] ba = IntsToBytes(ia, 0, 7);
 			string ns = System.Text.Encoding.UTF8.GetString(ba);
 
-			printOut.print("Toimii? " + s.Equals(ns));
+			printOut.Print("Toimii? " + s.Equals(ns));
 		}
 
-		public static byte[] intsToBytes(IntArray ia, int iaOffset, int bytesLength)
+		public static byte[] IntsToBytes(IntArray ia, int iaOffset, int bytesLength)
 		{
 			byte[] bytes = new byte[bytesLength];
 
@@ -164,7 +165,7 @@ public class MSError
 			return bytes;
 		}
 
-		public static IntArray bytesToInts(byte[] ba)
+		public static IntArray BytesToInts(byte[] ba)
 		{
 			int bytesLength = ba.Length;
 			int intsLength = (bytesLength / 4) + 1;
@@ -183,31 +184,31 @@ public class MSError
 		}
 
 
-		public static int floatToIntFormat(float f)
+		public static int FloatToIntFormat(float f)
 		{
 			return BitConverter.ToInt32(BitConverter.GetBytes(f), 0);
 		}
-		public static long float64ToInt64Format(double f)
+		public static long Float64ToInt64Format(double f)
 		{
 			return BitConverter.ToInt64(BitConverter.GetBytes(f), 0);
 		}
-		public static float intFormatToFloat(int i)
+		public static float IntFormatToFloat(int i)
 		{
 			return BitConverter.ToSingle(BitConverter.GetBytes(i), 0);
 		}
-		public static double int64FormatToFloat64(long i)
+		public static double Int64FormatToFloat64(long i)
 		{
 			return BitConverter.ToDouble(BitConverter.GetBytes(i), 0);
 		}
-		public static int parseInt(string s)
+		public static int ParseInt(string s)
 		{
 			return System.Int32.Parse(s);
 		}
-		public static long parseInt64(string s)
+		public static long ParseInt64(string s)
 		{
 			return System.Int64.Parse(s);
 		}
-		public static float parseFloat32(string s)
+		public static float ParseFloat32(string s)
 		{
 			try
 			{
@@ -218,7 +219,7 @@ public class MSError
 				throw new MException(MC.EC_PARSE, "float parsing failed: " + s);
 			}
 		}
-		public static double parseFloat64(string s)
+		public static double ParseFloat64(string s)
 		{
 			try
 			{

@@ -1,35 +1,29 @@
-namespace Meanscript {
-
-public class MSOutputArray : MSOutputStream {
-internal byte []  buffer;
-internal int maxSize;
-internal int index;
-
-public MSOutputArray ()
+namespace Meanscript
 {
-	maxSize = MS.globalConfig.outputArraySize;
-	{ buffer = new byte[maxSize];  };
-	index = 0;
-}
 
-override
-public void close () 
-{
-	index = -1;
-}
+	public class MSOutputArray : MSOutputStream
+	{
+		internal byte[] buffer;
+		internal int maxSize;
+		internal int index;
 
-override
-public void  writeByte (byte b) 
-{
-	MS.assertion(index != -1, EC_DATA, "output closed");
-	MS.assertion(index < maxSize, EC_DATA, "output: buffer overflow");
-	buffer[index++] = b;
-}
+		public MSOutputArray()
+		{
+			maxSize = MS.globalConfig.outputArraySize;
+			{ buffer = new byte[maxSize]; };
+			index = 0;
+		}
 
-public void  print () 
-{
-	MS.print("TODO");
-}
-
-}
+		override public void Close()
+		{
+			index = -1;
+		}
+		
+		override public void WriteByte(byte b)
+		{
+			MS.Assertion(index != -1, EC_DATA, "output closed");
+			MS.Assertion(index < maxSize, EC_DATA, "output: buffer overflow");
+			buffer[index++] = b;
+		}
+	}
 }
