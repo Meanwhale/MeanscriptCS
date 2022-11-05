@@ -121,7 +121,7 @@ namespace Meanscript
 		{
 			while (true)
 			{
-				if (it.Type() == NT_EXPR)
+				if (it.Type() == NodeType.EXPR)
 				{
 					if (!it.HasChild())
 					{
@@ -152,7 +152,7 @@ namespace Meanscript
 			MS.Verbose("------------ read expr ------------");
 			if (MS._verboseOn) it.PrintTree(false);
 
-			if (it.Type() == NT_NAME_TOKEN)
+			if (it.Type() == NodeType.NAME_TOKEN)
 			{
 				Context context = sem.FindContext(it.Data());
 
@@ -173,7 +173,7 @@ namespace Meanscript
 					MS.Verbose("Initialize a variable");
 					it.ToNext();
 
-					if (it.Type() == NT_SQUARE_BRACKETS)
+					if (it.Type() == NodeType.SQUARE_BRACKETS)
 					{
 						// eg. "int [] numbers" or "person [5] team"
 						it.ToNext();
@@ -257,7 +257,7 @@ namespace Meanscript
 			VarGen target = ResolveMember(it);
 
 			it.ToNext();
-			MS.Assertion(it.Type() == NT_ASSIGNMENT, MC.EC_INTERNAL, "assignment struct expected");
+			MS.Assertion(it.Type() == NodeType.ASSIGNMENT, MC.EC_INTERNAL, "assignment struct expected");
 
 			if (target.IsArray())
 			{
@@ -344,7 +344,7 @@ namespace Meanscript
 
 			int argIndex = 0;
 			it.ToChild();
-			MS.Assertion(it.Type() == NT_EXPR, MC.EC_INTERNAL, "expression expected");
+			MS.Assertion(it.Type() == NodeType.EXPR, MC.EC_INTERNAL, "expression expected");
 			MS.Assertion(it.HasChild(), MC.EC_INTERNAL, "argument expected");
 
 			do
@@ -374,7 +374,7 @@ namespace Meanscript
 
 		public void CallArgumentPush(NodeIterator it, StructDef sd, int numArgs)
 		{
-			if ((it.Type() == NT_PARENTHESIS && !it.HasNext()))
+			if ((it.Type() == NodeType.PARENTHESIS && !it.HasNext()))
 			{
 				// F2 (a1, a2)
 
@@ -469,11 +469,11 @@ namespace Meanscript
 			{
 				MS.Verbose("RESOLVER size:" + size + " mtype:" + memberType + " addr:" + srcAddress + " arrC:" + arrayItemCount + " charCount:" + charCount + " ref:" + isReference);
 
-				if (it.HasNext() && it.NextType() == NT_DOT)
+				if (it.HasNext() && it.NextType() == NodeType.DOT)
 				{
 					// e.g. "age" in "group.person.age: 41"	
 					it.ToNext();
-					MS.SyntaxAssertion(it.HasNext() && it.NextType() == NT_NAME_TOKEN, it, "name expected after a dot");
+					MS.SyntaxAssertion(it.HasNext() && it.NextType() == NodeType.NAME_TOKEN, it, "name expected after a dot");
 					it.ToNext();
 
 					// StructDef memberType = sem.getType((int)(memberTag & VALUE_TYPE_MASK), it);
@@ -505,7 +505,7 @@ namespace Meanscript
 						charCount = currentStruct.GetCharCount(it.Data());
 					}
 				}
-				else if (it.HasNext() && it.NextType() == NT_SQUARE_BRACKETS)
+				else if (it.HasNext() && it.NextType() == NodeType.SQUARE_BRACKETS)
 				{
 					MS.Verbose("    SQ. BRACKETS");
 
@@ -526,7 +526,7 @@ namespace Meanscript
 					StructDef arrayItemType = sem.GetType(arrayItemTypeID, it);
 					int itemSize = arrayItemType.structSize;
 
-					if (it.Type() == NT_NUMBER_TOKEN)
+					if (it.Type() == NodeType.NUMBER_TOKEN)
 					{
 						MS.SyntaxAssertion(!it.HasNext(), it, "array index expected");
 
@@ -614,7 +614,7 @@ namespace Meanscript
 
 			MS.Assertion(targetType < MAX_TYPES, MC.EC_INTERNAL, "invalid type");
 
-			if (it.Type() == NT_EXPR)
+			if (it.Type() == NodeType.EXPR)
 			{
 				MS.SyntaxAssertion(!it.HasNext(), it, "argument syntax error");
 				it.ToChild();
@@ -624,7 +624,7 @@ namespace Meanscript
 				return;
 			}
 
-			if (it.Type() == NT_HEX_TOKEN)
+			if (it.Type() == NodeType.HEX_TOKEN)
 			{
 				if (targetType == MS_TYPE_INT)
 				{
@@ -645,7 +645,7 @@ namespace Meanscript
 					MS.SyntaxAssertion(false, it, "number error");
 				}
 			}
-			else if (it.Type() == NT_NUMBER_TOKEN)
+			else if (it.Type() == NodeType.NUMBER_TOKEN)
 			{
 				if (targetType == MS_TYPE_INT)
 				{
@@ -682,7 +682,7 @@ namespace Meanscript
 					MS.SyntaxAssertion(false, it, "number error");
 				}
 			}
-			else if (it.Type() == NT_TEXT)
+			else if (it.Type() == NodeType.TEXT)
 			{
 				int textID = tree.GetTextID(it.Data());
 				MS.Assertion(textID >= 0, MC.EC_INTERNAL, "text not found");
@@ -703,7 +703,7 @@ namespace Meanscript
 				}
 				return;
 			}
-			else if (it.Type() == NT_NAME_TOKEN)
+			else if (it.Type() == NodeType.NAME_TOKEN)
 			{
 				Context functionContext = sem.FindContext(it.Data());
 				if (functionContext != null)
@@ -752,7 +752,7 @@ namespace Meanscript
 					return;
 				}
 			}
-			else if (it.Type() == NT_PARENTHESIS)
+			else if (it.Type() == NodeType.PARENTHESIS)
 			{
 				it.ToChild();
 				NodeIterator cp = new NodeIterator(it);
@@ -760,7 +760,7 @@ namespace Meanscript
 				it.ToParent();
 				return;
 			}
-			else if (it.Type() == NT_REFERENCE_TOKEN)
+			else if (it.Type() == NodeType.REFERENCE_TOKEN)
 			{
 				// TODO: SYNTAX type
 				int memberTag = currentContext.variables.GetMemberTagByName(it.Data());
@@ -769,7 +769,7 @@ namespace Meanscript
 				bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, memberType, address);
 				return;
 			}
-			else if (it.Type() == NT_CODE_BLOCK)
+			else if (it.Type() == NodeType.CODE_BLOCK)
 			{
 				bc.AddInstructionWithData(OP_JUMP, 1, MS_TYPE_CODE_ADDRESS, -1); // -1 to be replaced after code block is done
 				int jumpAddressPosition = bc.codeTop - 1;
@@ -780,7 +780,7 @@ namespace Meanscript
 				// generate code block
 
 				it.ToChild();
-				MS.Assertion(it.Type() == NT_EXPR, MC.EC_INTERNAL, "expression expected");
+				MS.Assertion(it.Type() == NodeType.EXPR, MC.EC_INTERNAL, "expression expected");
 				MS.Verbose(" - - - - start generating code block");
 				GenerateCodeBlock(it);
 				bc.AddInstruction(OP_GO_BACK, 0, 0);
@@ -793,7 +793,7 @@ namespace Meanscript
 				bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, MS_TYPE_CODE_ADDRESS, blockAddress); // push the argument: block address
 				return;
 			}
-			else if (it.Type() == NT_SQUARE_BRACKETS)
+			else if (it.Type() == NodeType.SQUARE_BRACKETS)
 			{
 				if (targetType == MS_GEN_TYPE_ARRAY)
 				{

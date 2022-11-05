@@ -3,7 +3,7 @@ namespace Meanscript
 
 	public class MNode
 	{
-		internal int type;
+		internal NodeType type;
 		internal int numChildren;
 		internal int lineNumber;
 		internal int characterNumber;
@@ -13,7 +13,7 @@ namespace Meanscript
 		internal MNode child = null;
 		internal MNode parent = null;
 
-		public MNode(int line, int ch, MNode _parent, int _type, MSText _data)
+		public MNode(int line, int ch, MNode _parent, NodeType _type, MSText _data)
 		{
 			data = _data;
 			lineNumber = line;
@@ -23,7 +23,7 @@ namespace Meanscript
 			type = _type;
 			numChildren = 0;
 		}
-		public MNode(int line, int ch, MNode _parent, int _type, long _numeralValue)
+		public MNode(int line, int ch, MNode _parent, NodeType _type, long _numeralValue)
 		{
 			data = null;
 			numeralValue = _numeralValue;

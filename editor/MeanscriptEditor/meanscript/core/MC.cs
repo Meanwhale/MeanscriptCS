@@ -1,31 +1,32 @@
 namespace Meanscript
 {
+	public enum NodeType
+	{
+		ROOT,
+		EXPR,
+		PARENTHESIS,
+		ASSIGNMENT,
+		SQUARE_BRACKETS,
+		CODE_BLOCK,
+		NAME_TOKEN,
+		NUMBER_TOKEN,
+		REFERENCE_TOKEN,		// e.g. "#foo", as in "increase #foo"
+		REF_TYPE_TOKEN,		// e.g. "int#", as int "func void increase [int# value] { value += 1 }
+		DOT,
+		PLUS,
+		MINUS,
+		DIV,
+		MUL,
+		TEXT,
+		MEMBER,
+		COMMA,
+		HEX_TOKEN,
+	}
+
 	public class MC
 	{
-
-
-
 		// node types
 
-		public const int NT_ROOT = 0;
-		public const int NT_EXPR = 1;
-		public const int NT_PARENTHESIS = 2;
-		public const int NT_ASSIGNMENT = 3;
-		public const int NT_SQUARE_BRACKETS = 4;
-		public const int NT_CODE_BLOCK = 5;
-		public const int NT_NAME_TOKEN = 6;
-		public const int NT_NUMBER_TOKEN = 7;
-		public const int NT_REFERENCE_TOKEN = 8;    // e.g. "#foo", as in "increase #foo"
-		public const int NT_REF_TYPE_TOKEN = 9; // e.g. "int#", as int "func void increase [int# value] { value += 1 }
-		public const int NT_DOT = 10;
-		public const int NT_PLUS = 11;
-		public const int NT_MINUS = 12;
-		public const int NT_DIV = 13;
-		public const int NT_MUL = 14;
-		public const int NT_TEXT = 15;
-		public const int NT_MEMBER = 16;
-		public const int NT_COMMA = 17;
-		public const int NT_HEX_TOKEN = 18;
 
 		// bytecode types
 

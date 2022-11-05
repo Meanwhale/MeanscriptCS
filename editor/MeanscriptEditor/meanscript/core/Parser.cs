@@ -78,23 +78,23 @@ namespace Meanscript
 
 		private static void AddExpr()
 		{
-			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NT_EXPR, new MSText("<EXPR>"));
+			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR, new MSText("<EXPR>"));
 			currentExpr.next = expr;
 			currentExpr = expr;
 			currentToken = null;
 		}
 
 
-		private static void AddToken(int tokenType)
+		private static void AddToken(NodeType tokenType)
 		{
-			if (tokenType == NT_REFERENCE_TOKEN) lastStart++; // skip '#'
+			if (tokenType == NodeType.REFERENCE_TOKEN) lastStart++; // skip '#'
 			
 			MNode token;
-			if (tokenType == NT_TEXT)
+			if (tokenType == NodeType.TEXT)
 			{
 				MSText data = GetQuoteText();
 				tokenTree.AddText(data);
-				token = new MNode(lineNumber, characterNumber, currentExpr, NT_TEXT, data);
+				token = new MNode(lineNumber, characterNumber, currentExpr, NodeType.TEXT, data);
 			}
 			else
 			{
@@ -109,7 +109,7 @@ namespace Meanscript
 			currentToken = token;
 			lastStart = index;
 		}
-		private static void AddOperator(int tokenType, MSText name)
+		private static void AddOperator(NodeType tokenType, MSText name)
 		{
 			MNode token = new MNode(lineNumber, characterNumber, currentExpr, tokenType, name);
 			if (currentToken == null) currentExpr.child = token;
@@ -119,7 +119,7 @@ namespace Meanscript
 			lastStart = index;
 		}
 
-		private static void EndBlock(int blockType)
+		private static void EndBlock(NodeType blockType)
 		{
 			// check that block-end character is the right one
 			MS.Assertion((currentBlock != null && currentBlock.type == blockType), EC_PARSE, "invalid block end");
@@ -135,7 +135,7 @@ namespace Meanscript
 			// check that comma is used properly
 			if (baPtr.currentInput == ',')
 			{
-				MS.Assertion(currentBlock != null && (currentBlock.type == NT_ASSIGNMENT || currentBlock.type == NT_SQUARE_BRACKETS || currentBlock.type == NT_PARENTHESIS), EC_PARSE, "unexpected comma");
+				MS.Assertion(currentBlock != null && (currentBlock.type == NodeType.ASSIGNMENT || currentBlock.type == NodeType.SQUARE_BRACKETS || currentBlock.type == NodeType.PARENTHESIS), EC_PARSE, "unexpected comma");
 			}
 
 			if (currentBlock != null) currentBlock.numChildren++;
@@ -147,7 +147,7 @@ namespace Meanscript
 					// end assignment block
 					// hack solution to allow assignment args without brackets
 					assignment = false;
-					EndBlock(NT_ASSIGNMENT);
+					EndBlock(NodeType.ASSIGNMENT);
 					AddExpr();
 				}
 				else
@@ -166,19 +166,19 @@ namespace Meanscript
 		}
 
 
-		private static void AddBlock(int blockType)
+		private static void AddBlock(NodeType blockType)
 		{
 
 			MSText blockTypeName = null;
 
-			if (blockType == NT_PARENTHESIS) blockTypeName = new MSText("<PARENTHESIS>");
-			else if (blockType == NT_SQUARE_BRACKETS) blockTypeName = new MSText("<SQUARE_BRACKETS>");
-			else if (blockType == NT_ASSIGNMENT)
+			if (blockType == NodeType.PARENTHESIS) blockTypeName = new MSText("<PARENTHESIS>");
+			else if (blockType == NodeType.SQUARE_BRACKETS) blockTypeName = new MSText("<SQUARE_BRACKETS>");
+			else if (blockType == NodeType.ASSIGNMENT)
 			{
 				assignment = true;
 				blockTypeName = new MSText("<ASSIGNMENT>");
 			}
-			else if (blockType == NT_CODE_BLOCK) blockTypeName = new MSText("<CODE_BLOCK>");
+			else if (blockType == NodeType.CODE_BLOCK) blockTypeName = new MSText("<CODE_BLOCK>");
 			else MS.Assertion(false, MC.EC_INTERNAL, "invalid block type");
 
 			{ if (MS._debug) { MS.Verbose("add block: " + blockType); } };
@@ -203,7 +203,7 @@ namespace Meanscript
 
 			currentBlock = block;
 
-			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NT_EXPR, new MSText("<EXPR>"));
+			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR, new MSText("<EXPR>"));
 			currentBlock.child = expr;
 			currentExpr = expr;
 			currentToken = null;
@@ -265,72 +265,72 @@ namespace Meanscript
 			ba.Transition(space, numbers, () => { Next(number); });
 			ba.Transition(space, "0", () => { Next(zero); }); // start hex
 			ba.Transition(space, expressionBreak, () => { ExprBreak(); });
-			ba.Transition(space, "(", () => { AddBlock(NT_PARENTHESIS); Next(skipLineBreaks); });
-			ba.Transition(space, ")", () => { EndBlock(NT_PARENTHESIS); });
-			ba.Transition(space, "[", () => { AddBlock(NT_SQUARE_BRACKETS); Next(skipLineBreaks); });
-			ba.Transition(space, "]", () => { EndBlock(NT_SQUARE_BRACKETS); });
-			ba.Transition(space, "{", () => { AddBlock(NT_CODE_BLOCK); Next(skipLineBreaks); });
-			ba.Transition(space, "}", () => { EndBlock(NT_CODE_BLOCK); });
-			ba.Transition(space, ":", () => { AddBlock(NT_ASSIGNMENT); Next(skipLineBreaks); });
-			ba.Transition(space, ".", () => { AddOperator(NT_DOT, new MSText(".")); });
+			ba.Transition(space, "(", () => { AddBlock(NodeType.PARENTHESIS); Next(skipLineBreaks); });
+			ba.Transition(space, ")", () => { EndBlock(NodeType.PARENTHESIS); });
+			ba.Transition(space, "[", () => { AddBlock(NodeType.SQUARE_BRACKETS); Next(skipLineBreaks); });
+			ba.Transition(space, "]", () => { EndBlock(NodeType.SQUARE_BRACKETS); });
+			ba.Transition(space, "{", () => { AddBlock(NodeType.CODE_BLOCK); Next(skipLineBreaks); });
+			ba.Transition(space, "}", () => { EndBlock(NodeType.CODE_BLOCK); });
+			ba.Transition(space, ":", () => { AddBlock(NodeType.ASSIGNMENT); Next(skipLineBreaks); });
+			ba.Transition(space, ".", () => { AddOperator(NodeType.DOT, new MSText(".")); });
 
 			ba.Transition(name, letters, null);
 			ba.Transition(name, numbers, null);
-			ba.Transition(name, whitespace, () => { AddToken(NT_NAME_TOKEN); Next(space); });
-			ba.Transition(name, "#", () => { AddToken(NT_REF_TYPE_TOKEN); Next(space); });
-			ba.Transition(name, expressionBreak, () => { AddToken(NT_NAME_TOKEN); ExprBreak(); Next(space); });
-			ba.Transition(name, blockStart, () => { AddToken(NT_NAME_TOKEN); Bwd(); Next(space); });
-			ba.Transition(name, blockEnd, () => { AddToken(NT_NAME_TOKEN); Bwd(); Next(space); });
-			ba.Transition(name, ":", () => { AddToken(NT_NAME_TOKEN); AddBlock(NT_ASSIGNMENT); Next(skipLineBreaks); });
-			ba.Transition(name, ".", () => { AddToken(NT_NAME_TOKEN); AddOperator(NT_DOT, new MSText(".")); Next(space); });
+			ba.Transition(name, whitespace, () => { AddToken(NodeType.NAME_TOKEN); Next(space); });
+			ba.Transition(name, "#", () => { AddToken(NodeType.REF_TYPE_TOKEN); Next(space); });
+			ba.Transition(name, expressionBreak, () => { AddToken(NodeType.NAME_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(name, blockStart, () => { AddToken(NodeType.NAME_TOKEN); Bwd(); Next(space); });
+			ba.Transition(name, blockEnd, () => { AddToken(NodeType.NAME_TOKEN); Bwd(); Next(space); });
+			ba.Transition(name, ":", () => { AddToken(NodeType.NAME_TOKEN); AddBlock(NodeType.ASSIGNMENT); Next(skipLineBreaks); });
+			ba.Transition(name, ".", () => { AddToken(NodeType.NAME_TOKEN); AddOperator(NodeType.DOT, new MSText(".")); Next(space); });
 
 			ba.Transition(reference, letters, null);
-			ba.Transition(reference, whitespace, () => { AddToken(NT_REFERENCE_TOKEN); Next(space); });
-			ba.Transition(reference, expressionBreak, () => { AddToken(NT_REFERENCE_TOKEN); ExprBreak(); Next(space); });
-			ba.Transition(reference, blockStart, () => { AddToken(NT_REFERENCE_TOKEN); Bwd(); Next(space); });
-			ba.Transition(reference, blockEnd, () => { AddToken(NT_REFERENCE_TOKEN); Bwd(); Next(space); });
+			ba.Transition(reference, whitespace, () => { AddToken(NodeType.REFERENCE_TOKEN); Next(space); });
+			ba.Transition(reference, expressionBreak, () => { AddToken(NodeType.REFERENCE_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(reference, blockStart, () => { AddToken(NodeType.REFERENCE_TOKEN); Bwd(); Next(space); });
+			ba.Transition(reference, blockEnd, () => { AddToken(NodeType.REFERENCE_TOKEN); Bwd(); Next(space); });
 
 			ba.Transition(number, numbers, null);
-			ba.Transition(number, whitespace, () => { AddToken(NT_NUMBER_TOKEN); Next(space); });
-			ba.Transition(number, expressionBreak, () => { AddToken(NT_NUMBER_TOKEN); ExprBreak(); Next(space); });
-			ba.Transition(number, blockStart, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
-			ba.Transition(number, blockEnd, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(number, whitespace, () => { AddToken(NodeType.NUMBER_TOKEN); Next(space); });
+			ba.Transition(number, expressionBreak, () => { AddToken(NodeType.NUMBER_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(number, blockStart, () => { AddToken(NodeType.NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(number, blockEnd, () => { AddToken(NodeType.NUMBER_TOKEN); Bwd(); Next(space); });
 			ba.Transition(number, ".", () => { NextCont(decimalNumber); });
 
 			ba.Transition(zero, numbers, () => { NextCont(number); });
 			ba.Transition(zero, "x", () => { Next(hex); lastStart++; });
 			ba.Transition(zero, ".", () => { Next(decimalNumber); lastStart++; });
-			ba.Transition(zero, whitespace, () => { AddToken(NT_NUMBER_TOKEN); Next(space); });
-			ba.Transition(zero, expressionBreak, () => { AddToken(NT_NUMBER_TOKEN); ExprBreak(); Next(space); });
-			ba.Transition(zero, blockStart, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
-			ba.Transition(zero, blockEnd, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(zero, whitespace, () => { AddToken(NodeType.NUMBER_TOKEN); Next(space); });
+			ba.Transition(zero, expressionBreak, () => { AddToken(NodeType.NUMBER_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(zero, blockStart, () => { AddToken(NodeType.NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(zero, blockEnd, () => { AddToken(NodeType.NUMBER_TOKEN); Bwd(); Next(space); });
 
 			ba.Transition(hex, hexNumbers, null);
-			ba.Transition(hex, whitespace, () => { AddToken(NT_HEX_TOKEN); Next(space); });
-			ba.Transition(hex, expressionBreak, () => { AddToken(NT_HEX_TOKEN); ExprBreak(); Next(space); });
-			ba.Transition(hex, blockStart, () => { AddToken(NT_HEX_TOKEN); Bwd(); Next(space); });
-			ba.Transition(hex, blockEnd, () => { AddToken(NT_HEX_TOKEN); Bwd(); Next(space); });
+			ba.Transition(hex, whitespace, () => { AddToken(NodeType.HEX_TOKEN); Next(space); });
+			ba.Transition(hex, expressionBreak, () => { AddToken(NodeType.HEX_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(hex, blockStart, () => { AddToken(NodeType.HEX_TOKEN); Bwd(); Next(space); });
+			ba.Transition(hex, blockEnd, () => { AddToken(NodeType.HEX_TOKEN); Bwd(); Next(space); });
 
-			ba.Transition(minus, whitespace, () => { AddToken(NT_MINUS); Next(space); });
+			ba.Transition(minus, whitespace, () => { AddToken(NodeType.MINUS); Next(space); });
 			ba.Transition(minus, numbers, () => { NextCont(number); }); // change state without reseting starting index
 			ba.Transition(minus, ".", () => { NextCont(decimalNumber); });
 
 			ba.Transition(decimalNumber, numbers, null);
-			ba.Transition(decimalNumber, whitespace, () => { AddToken(NT_NUMBER_TOKEN); Next(space); });
-			ba.Transition(decimalNumber, expressionBreak, () => { AddToken(NT_NUMBER_TOKEN); ExprBreak(); Next(space); });
-			ba.Transition(decimalNumber, blockStart, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
-			ba.Transition(decimalNumber, blockEnd, () => { AddToken(NT_NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(decimalNumber, whitespace, () => { AddToken(NodeType.NUMBER_TOKEN); Next(space); });
+			ba.Transition(decimalNumber, expressionBreak, () => { AddToken(NodeType.NUMBER_TOKEN); ExprBreak(); Next(space); });
+			ba.Transition(decimalNumber, blockStart, () => { AddToken(NodeType.NUMBER_TOKEN); Bwd(); Next(space); });
+			ba.Transition(decimalNumber, blockEnd, () => { AddToken(NodeType.NUMBER_TOKEN); Bwd(); Next(space); });
 
 			/* decimalNumber = ba.addState("decimal number");
 
 			   expNumber = ba.addState("exp. number");*/
 
-			ba.FillTransition(slash, () => { AddToken(NT_DIV); Bwd(); Next(space); });
+			ba.FillTransition(slash, () => { AddToken(NodeType.DIV); Bwd(); Next(space); });
 			ba.Transition(slash, "/", () => { Next(comment); });
 
 			ba.FillTransition(quote, () => { AddQuoteByte(baPtr.currentInput); });
 			ba.Transition(quote, linebreak, () => { ParseError("line break inside a quotation"); });
-			ba.Transition(quote, "\"", () => { lastStart++; AddToken(NT_TEXT); Next(space); });
+			ba.Transition(quote, "\"", () => { lastStart++; AddToken(NodeType.TEXT); Next(space); });
 			ba.Transition(quote, "\\", () => { Next(escapeChar); });
 
 			ba.FillTransition(escapeChar, () => { ParseError("invalid escape character in quotes"); });
@@ -431,7 +431,7 @@ namespace Meanscript
 
 			ba.Next((byte)1);
 
-			root = new MNode(1, 1, null, NT_EXPR, new MSText("<ROOT>"));
+			root = new MNode(1, 1, null, NodeType.EXPR, new MSText("<ROOT>"));
 			currentExpr = root;
 			currentBlock = null;
 			currentToken = null;

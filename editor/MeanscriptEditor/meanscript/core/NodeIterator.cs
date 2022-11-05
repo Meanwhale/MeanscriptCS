@@ -16,7 +16,7 @@ namespace Meanscript
 		{
 			return new NodeIterator(node);
 		}
-		public int Type()
+		public NodeType Type()
 		{
 			return node.type;
 		}
@@ -56,7 +56,7 @@ namespace Meanscript
 		{
 			return node.parent != null;
 		}
-		public int NextType()
+		public NodeType NextType()
 		{
 			MS.Assertion(HasNext(), MC.EC_INTERNAL, "nextType: no next");
 			return node.next.type;

@@ -225,7 +225,7 @@ namespace Meanscript
 
 			while (true)
 			{
-				if (it.Type() == NT_EXPR)
+				if (it.Type() == NodeType.EXPR)
 				{
 					if (!it.HasChild())
 					{
@@ -254,7 +254,7 @@ namespace Meanscript
 		{
 			if (MS._verboseOn) it.PrintTree(false);
 
-			if (it.Type() == NT_NAME_TOKEN)
+			if (it.Type() == NodeType.NAME_TOKEN)
 			{
 				Context context = FindContext(it.Data());
 
@@ -275,7 +275,7 @@ namespace Meanscript
 
 					MS.SyntaxAssertion(it.HasNext(), it, "function name expected");
 					it.ToNext();
-					MS.SyntaxAssertion(it.Type() == NT_NAME_TOKEN, it, "function name expected");
+					MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "function name expected");
 					MSText functionName = it.Data();
 
 					MS.SyntaxAssertion(IsNameValidAndAvailable(functionName), it, "variable name error");
@@ -299,7 +299,7 @@ namespace Meanscript
 
 					MS.SyntaxAssertion(it.HasNext(), it, "function body expected");
 					it.ToNext();
-					MS.SyntaxAssertion(it.Type() == NT_CODE_BLOCK, it, "code block expected");
+					MS.SyntaxAssertion(it.Type() == NodeType.CODE_BLOCK, it, "code block expected");
 
 					// save node to Context for Generator
 					funcContext.codeNode = it.node;
@@ -340,12 +340,12 @@ namespace Meanscript
 					if (type == MS_GEN_TYPE_CHARS)
 					{
 						// get number of chars, eg. "chars [12] name"
-						MS.SyntaxAssertion(it.Type() == NT_SQUARE_BRACKETS, it, "chars size expected");
+						MS.SyntaxAssertion(it.Type() == NodeType.SQUARE_BRACKETS, it, "chars size expected");
 						it.ToChild();
 						MS.SyntaxAssertion(!it.HasNext(), it, "only the chars size expected");
 						it.ToChild();
 						MS.SyntaxAssertion(!it.HasNext(), it, "only the chars size expected");
-						MS.SyntaxAssertion(it.Type() == NT_NUMBER_TOKEN, it, "chars size (number) expected");
+						MS.SyntaxAssertion(it.Type() == NodeType.NUMBER_TOKEN, it, "chars size (number) expected");
 
 						// parse size and calculate array size
 
@@ -355,12 +355,12 @@ namespace Meanscript
 						it.ToParent();
 
 						it.ToNext();
-						MS.SyntaxAssertion(it.Type() == NT_NAME_TOKEN, it, "name expected");
+						MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "name expected");
 						MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
 
 						currentContext.variables.AddChars(tree.AddText(it.Data()), charCount);
 					}
-					else if (it.Type() == NT_SQUARE_BRACKETS)
+					else if (it.Type() == NodeType.SQUARE_BRACKETS)
 					{
 						// eg. "person [5] players"
 
@@ -381,7 +381,7 @@ namespace Meanscript
 						{
 							it.ToChild();
 							MS.SyntaxAssertion(!it.HasNext(), it, "array size expected");
-							MS.SyntaxAssertion(it.Type() == NT_NUMBER_TOKEN, it, "array size (number) expected");
+							MS.SyntaxAssertion(it.Type() == NodeType.NUMBER_TOKEN, it, "array size (number) expected");
 							arraySize = MS.ParseInt(it.Data().GetString());
 							MS.SyntaxAssertion(arraySize > 0 && arraySize < MS.globalConfig.maxArraySize, it, "invalid array size");
 							it.ToParent();
@@ -390,14 +390,14 @@ namespace Meanscript
 
 						// array name
 						it.ToNext();
-						MS.SyntaxAssertion(it.Type() == NT_NAME_TOKEN, it, "name expected");
+						MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "name expected");
 						MSText varName = it.Data();
 						MS.SyntaxAssertion(IsNameValidAndAvailable(varName), it, "variable name error");
 
 						if (arraySize == -1)
 						{
 							it.ToNext();
-							MS.Assertion(it.Type() == NT_ASSIGNMENT, MC.EC_INTERNAL, "array assignment expected as the size is not defined");
+							MS.Assertion(it.Type() == NodeType.ASSIGNMENT, MC.EC_INTERNAL, "array assignment expected as the size is not defined");
 							arraySize = it.NumChildren();
 							MS.SyntaxAssertion(arraySize > 0 && arraySize < MS.globalConfig.maxArraySize, it, "invalid array size");
 						}
@@ -446,10 +446,10 @@ namespace Meanscript
 
 		public void CreateStructDef(StructDef sd, NodeIterator it)
 		{
-			MS.SyntaxAssertion(it.Type() == NT_SQUARE_BRACKETS, it, "struct definition expected");
+			MS.SyntaxAssertion(it.Type() == NodeType.SQUARE_BRACKETS, it, "struct definition expected");
 
 			it.ToChild();
-			MS.SyntaxAssertion(it.Type() == NT_EXPR, it, "exression expected");
+			MS.SyntaxAssertion(it.Type() == NodeType.EXPR, it, "exression expected");
 
 			do
 			{
@@ -462,12 +462,12 @@ namespace Meanscript
 				if (type == MS_GEN_TYPE_CHARS)
 				{
 					// get number of chars, eg. "chars [12] name"
-					MS.SyntaxAssertion(it.Type() == NT_SQUARE_BRACKETS, it, "chars size expected");
+					MS.SyntaxAssertion(it.Type() == NodeType.SQUARE_BRACKETS, it, "chars size expected");
 					it.ToChild();
 					MS.SyntaxAssertion(!it.HasNext(), it, "only the chars size expected");
 					it.ToChild();
 					MS.SyntaxAssertion(!it.HasNext(), it, "only the chars size expected");
-					MS.SyntaxAssertion(it.Type() == NT_NUMBER_TOKEN, it, "chars size (number) expected");
+					MS.SyntaxAssertion(it.Type() == NodeType.NUMBER_TOKEN, it, "chars size (number) expected");
 
 					// parse size and calculate array size
 
@@ -481,7 +481,7 @@ namespace Meanscript
 
 					sd.AddChars(tree.AddText(it.Data()), charCount);
 				}
-				else if (it.Type() == NT_SQUARE_BRACKETS)
+				else if (it.Type() == NodeType.SQUARE_BRACKETS)
 				{
 					// eg. "int [5] numbers"
 
@@ -492,7 +492,7 @@ namespace Meanscript
 					MS.SyntaxAssertion(!it.HasNext(), it, "array size expected");
 					it.ToChild();
 					MS.SyntaxAssertion(!it.HasNext(), it, "array size expected");
-					MS.SyntaxAssertion(it.Type() == NT_NUMBER_TOKEN, it, "array size (number) expected");
+					MS.SyntaxAssertion(it.Type() == NodeType.NUMBER_TOKEN, it, "array size (number) expected");
 					int arraySize = MS.ParseInt(it.Data().GetString());
 					it.ToParent();
 					it.ToParent();
@@ -505,7 +505,7 @@ namespace Meanscript
 				}
 				else
 				{
-					MS.SyntaxAssertion(it.Type() == NT_NAME_TOKEN, it, "member name expected");
+					MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "member name expected");
 					MS.SyntaxAssertion(sd.GetTagAddressByName((it.Data())) < 0, it, "duplicate name: " + it.Data());
 					MS.Verbose("Add struct member: " + it.Data());
 					sd.AddMember(tree.AddText(it.Data()), type);

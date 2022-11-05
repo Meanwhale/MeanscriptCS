@@ -35,7 +35,7 @@ namespace Meanscript
 		{
 			byteCode = bc;
 
-			// INT_ARRAY_RESETtexts;
+			// INodeType.ARRAY_RESETtexts;
 			types = new IntArray(MAX_TYPES);
 			registerType = -1;
 			byteCodeType = -1;

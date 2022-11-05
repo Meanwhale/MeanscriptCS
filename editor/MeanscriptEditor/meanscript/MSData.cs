@@ -454,7 +454,7 @@ namespace Meanscript
 
 
 
-							INT_STRING(indexText, n);
+							INodeType.STRING(indexText, n);
 
 							tmp += "[";
 
