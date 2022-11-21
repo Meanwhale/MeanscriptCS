@@ -17,7 +17,5 @@ namespace Meanscript
 			WriteByte((byte)((i >> 8) & 0xff));
 			WriteByte((byte)(i & 0xff));
 		}
-
-
 	}
 }

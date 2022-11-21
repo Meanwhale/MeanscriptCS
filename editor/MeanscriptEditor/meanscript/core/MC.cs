@@ -10,7 +10,7 @@ namespace Meanscript
 		CODE_BLOCK,
 		NAME_TOKEN,
 		NUMBER_TOKEN,
-		REFERENCE_TOKEN,		// e.g. "#foo", as in "increase #foo"
+		REFERENCE_TOKEN,	// e.g. "#foo", as in "increase #foo"
 		REF_TYPE_TOKEN,		// e.g. "int#", as int "func void increase [int# value] { value += 1 }
 		DOT,
 		PLUS,
@@ -73,19 +73,19 @@ namespace Meanscript
 		public const int NUM_OP = 0x30;
 
 		public static readonly string[] opName = new string[] {
-	"system",               "---OLD---",            "---OLD---",            "call",
-	"jump",                 "go back",              "go end",               "---OLD---",
-	"struct definition",    "struct member",        "save base",            "load base",
-	"no operation",         "---OLD---",            "---OLD---",            "---OLD---",
-	"text",                 "push immediate",       "---OLD---",            "push from reg.",
-	"function data",        "start init",           "end init",             "function call",
-	"push local",           "push global",          "pop to local",         "pop to global",
-	"pop to register",      "---OLD---",            "init globals",         "generic member",
-	"multiply array index", "pop to local ref.",    "pop to global ref.",   "push local ref.",
-	"push global ref.",     "push chars",           "---ERROR---",          "---ERROR---",
-	"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
-	"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
-	};
+			"system",               "---OLD---",            "---OLD---",            "call",
+			"jump",                 "go back",              "go end",               "---OLD---",
+			"struct definition",    "struct member",        "save base",            "load base",
+			"no operation",         "---OLD---",            "---OLD---",            "---OLD---",
+			"text",                 "push immediate",       "---OLD---",            "push from reg.",
+			"function data",        "start init",           "end init",             "function call",
+			"push local",           "push global",          "pop to local",         "pop to global",
+			"pop to register",      "---OLD---",            "init globals",         "generic member",
+			"multiply array index", "pop to local ref.",    "pop to global ref.",   "push local ref.",
+			"push global ref.",     "push chars",           "---ERROR---",          "---ERROR---",
+			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
+			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
+			};
 
 		public const int KEYWORD_FUNC_ID = 0;
 		public const int KEYWORD_STRUCT_ID = 1;
@@ -94,23 +94,23 @@ namespace Meanscript
 		public const int NUM_KEYWORDS = 4;
 
 		public static readonly string[] keywords = new string[] {
-	"func",
-	"struct",
-	"return",
-	"global"
-};
+			"func",
+			"struct",
+			"return",
+			"global"
+		};
 		public static readonly string[] primitiveNames = new string[] {
-	"",
-	"int",
-	"int64",
-	"float",
-	"float64",
-	"text",
-	"bool",
-	"",
-	"",
-	"chars",
-};
+			"",
+			"int",
+			"int64",
+			"float",
+			"float64",
+			"text",
+			"bool",
+			"",
+			"",
+			"chars",
+		};
 
 		public const string HORIZONTAL_LINE = "------------------------------------------";
 
@@ -136,9 +136,6 @@ namespace Meanscript
 		public const int MS_GEN_TYPE_CHARS = 9;
 		public const int MAX_MS_TYPES = 16;
 		public const int MAX_TYPES = 256;
-
-
-
 
 		// error classes
 

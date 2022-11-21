@@ -229,8 +229,10 @@ namespace Meanscript
 
 		private static void AddHexByte()
 		{
-			byte high = buffer[(lastStart + 1) % 512];
-			byte low = buffer[(lastStart + 2) % 512];
+			// eg. "\xF4"
+			//       ^lastStart
+			byte high = buffer[lastStart + 1];
+			byte low = buffer[lastStart + 2];
 			byte b = (byte)(((HexCharToByte(high) << 4) & 0xf0) | HexCharToByte(low));
 			AddQuoteByte(b);
 		}
