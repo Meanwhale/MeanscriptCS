@@ -85,9 +85,9 @@ namespace Meanscript
 		public delegate void MAction();
 		public delegate void MCallbackAction(MeanMachine mm, MArgs args);
 
-		public static Printer printOut = new Printer();
-		public static Printer errorOut = new Printer();
-		public static Printer userOut = new Printer();
+		public static MSOutputPrint printOut = new Printer();
+		public static MSOutputPrint errorOut = new Printer();
+		public static MSOutputPrint userOut = new Printer();
 		public static MSGlobal globalConfig = new MSGlobal();
 
 		public static System.Collections.Generic.IEqualityComparer<MSText> textComparer = new TextComparer();
