@@ -113,6 +113,7 @@
     <Compile Include="meanscript\MSOutputPrintArray.cs" />
     <Compile Include="meanscript\MSOutputStream.cs" />
     <Compile Include="meanscript\MSText.cs" />
+    <Compile Include="MList.cs" />
     <Compile Include="MS.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>

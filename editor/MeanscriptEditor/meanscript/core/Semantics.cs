@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Meanscript
 {
 
@@ -7,7 +9,7 @@ namespace Meanscript
 		public int typeIDCounter;
 		internal int maxContexts;
 		internal int numContexts;
-		internal System.Collections.Generic.Dictionary<MSText, int> types = new System.Collections.Generic.Dictionary<MSText, int>(MS.textComparer);
+		internal Dictionary<MSText, int> types = new Dictionary<MSText, int>(MS.textComparer);
 		internal StructDef[] typeStructDefs;
 		internal Context[] contexts;
 		public Context globalContext;
@@ -36,7 +38,13 @@ namespace Meanscript
 			}
 			numContexts = 1;
 		}
-		//;
+		internal void Info(MSOutputPrint o)
+		{
+			o.Print("Semantics info, contexts:\n");
+			foreach(var c in contexts)
+				if (c != null) c.Info(o);
+		}
+
 
 		public void AddElementaryType(int typeID, int size)
 		{
@@ -47,23 +55,9 @@ namespace Meanscript
 			typeStructDefs[typeID] = sd;
 		}
 
-		// public StructDef addCharsType (int numChars) 
-		// {
-		// // words:
-		// //		0:		size in characters (start stringToIntsWithSize() from here)
-		// //		1...n:	characters + zero at the end, e.g. "mean\0" --> 2 words = (numChars / 4) + 1
-
-		// int arraySize = (numChars / 4) + 2;
-		// MS.syntaxAssertion(arraySize > 0 && arraySize < MS.globalConfig.maxArraySize, null, "invalid array size");
-		// int typeID = typeIDCounter++;
-		// StructDef sd = new StructDef(this, -1, typeID, numChars, arraySize, OP_CHARS_DEF);
-		// typeStructDefs[typeID] = sd;
-		// return sd;
-		// }
-
 		public bool HasType(MSText name)
 		{
-			return (types.ContainsKey(name));
+			return types.ContainsKey(name);
 		}
 
 		public bool HasType(int id)
@@ -191,7 +185,7 @@ namespace Meanscript
 			return true;
 		}
 
-		public void Analyze(TokenTree tree)
+		public void Analyze()
 		{
 			MS.Verbose(HORIZONTAL_LINE);
 			MS.Verbose("SEMANTIC ANALYZE");
@@ -211,7 +205,7 @@ namespace Meanscript
 				if (contexts[i] != null)
 				{
 					MS.Verbose("-------- context ID: " + i);
-					contexts[i].variables.Print(this);
+					if (MS._verboseOn) contexts[i].variables.Info(MS.printOut);
 				}
 			}
 			MS.Verbose(HORIZONTAL_LINE);
@@ -264,6 +258,8 @@ namespace Meanscript
 				}
 				else if (it.Data().Match(keywords[KEYWORD_FUNC_ID]))
 				{
+					SetParentExpr(it, NodeType.EXPR_FUNCTION);
+
 					// get return type
 
 					MS.SyntaxAssertion(it.HasNext(), it, "function return type expected");
@@ -317,6 +313,7 @@ namespace Meanscript
 				else if (it.Data().Match(keywords[KEYWORD_STRUCT_ID]))
 				{
 					// e.g. "struct Vec [int x, INT y, INT z]"
+					SetParentExpr(it, NodeType.EXPR_STRUCT);
 
 					MS.SyntaxAssertion(it.HasNext(), it, "struct name expected");
 					it.ToNext();
@@ -331,9 +328,18 @@ namespace Meanscript
 				else if (HasType(it.Data()))
 				{
 					// expr. starts with a type name, eg. "int foo" OR "person [5] players"
-
+					
 					int type = types[it.Data()];
-					MS.Assertion(type == MS_TYPE_INT || type == MS_TYPE_INT64 || type == MS_TYPE_FLOAT || type == MS_TYPE_FLOAT64 || type == MS_TYPE_BOOL || type == MS_TYPE_TEXT || type == MS_GEN_TYPE_CHARS || type >= MAX_MS_TYPES, MC.EC_INTERNAL, "semantics: unknown type: " + type);
+					MS.Assertion( // TODO: clean up?
+						type == MS_TYPE_INT ||
+						type == MS_TYPE_INT64 ||
+						type == MS_TYPE_FLOAT ||
+						type == MS_TYPE_FLOAT64 ||
+						type == MS_TYPE_BOOL ||
+						type == MS_TYPE_TEXT ||
+						type == MS_GEN_TYPE_CHARS ||
+						type >= MAX_MS_TYPES,
+						MC.EC_INTERNAL, "semantics: unknown type: " + type);
 
 					it.ToNext();
 
@@ -413,12 +419,29 @@ namespace Meanscript
 						MS.Verbose("New variable: " + it.Data() + " <" + GetText(currentContext.variables.nameID) + ">");
 						currentContext.variables.AddMember(tree.AddText(it.Data()), type);
 					}
+
+					// check if there's an assignment or extra tokens
+					if (it.HasNext())
+					{
+						MS.SyntaxAssertion(it.NextType() == NodeType.ASSIGNMENT, it, "unexpected token");
+						SetParentExpr(it, NodeType.EXPR_INIT_AND_ASSIGN);
+					}
+					else
+					{
+						SetParentExpr(it, NodeType.EXPR_INIT);
+					}
 				}
 			}
 			else
 			{
 				MS.Assertion(false, EC_PARSE, "unexpected token");
 			}
+		}
+
+		private void SetParentExpr(NodeIterator it, NodeType nt)
+		{
+			MS.Assertion(it.GetParent().type == NodeType.EXPR);
+			it.GetParent().type = nt;
 		}
 
 		public void AddStructDef(MSText name, NodeIterator it)
@@ -432,7 +455,7 @@ namespace Meanscript
 			StructDef sd = new StructDef(this, nameID, typeID);
 			CreateStructDef(sd, it.Copy());
 
-			sd.Print(this);
+			sd.Info(MS.printOut);
 
 			AddStructDef(name, typeID, sd);
 		}

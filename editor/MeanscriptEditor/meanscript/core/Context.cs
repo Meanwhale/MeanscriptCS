@@ -1,3 +1,5 @@
+using System;
+
 namespace Meanscript
 {
 
@@ -22,6 +24,11 @@ namespace Meanscript
 			codeNode = null;
 			codeStartAddress = -1;
 			codeEndAddress = -1;
+		}
+
+		internal void Info(MSOutputPrint o)
+		{
+			variables.Info(o);
 		}
 	}
 }

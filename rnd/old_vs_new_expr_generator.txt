@@ -1,0 +1,81 @@
+
+GENERATOR
+ 1 init: text instructions
+ 2 init: struct defs
+ 3 init: functions
+ 4 global code: GenerateCodeBlock()
+ 5 function code: GenerateFunctionCode() -> GenerateCodeBlock()
+ 6 init: function addresses
+ 
+GenerateCodeBlock: iterate thru parser node tree
+
+GenerateExpression:
+get the first name token
+	a) if find context(name), generate a function call
+	b) callback name? callback call
+	c) member name? assignment
+	d) type name? initialization
+	e) return?
+	f) skip struct, function def.
+	g) otherwise error
+	
+NEW
+
+semantics
+
+	IDEA: merkkaa jo semanticsissa (AnalyzeExpr) minkä tyyppinen EXPR on, esim.
+	EXPR_STRUCT_DEF, EXPR_FUNC_DEF, EXPR_ASSIGNMENT jne.
+
+	DONE: uudet NodeTypet, aseta Semanticissa: EXPR_INIT EXPR_INIT_AND_ASSIGN EXPR_FUNCTION EXPR_STRUCT
+
+	OLD types:
+		dictionary Semantics.types<name,id> // elementary types
+		StructDef[] typeStructDefs // addStructDef, lisää molempiin
+		
+	NEW types:
+		voisiko (tuunattu) structdef olla uusi tyyppilista?!
+		StructDef on niin kömpelö käyttää että vaatii remonttia:
+				- käytä listoja yms.
+				- koodia varten en-/decode
+				- memberit
+					- semantics, typeID, nameID
+					- MList<TypeDef> members
+							- TypeDef: nameID, address, size, int[] args
+							  (jos haluaa kikkailla niin yksi int array riittää)
+				- StructDefille ja TypeDefille yhteinen yläluokka MSType (member: int id, entä size?),
+				  minimaalinen, jota voi käyttää esim. operaattoreiden tyypittämiseen
+		
+		allTypes<int,MSType>
+		tokenTypes<NodeType,MSType>
+		primitiveTypes<int,MSType>, missä int in esim. MC.MS_TYPE_INT
+		structTypes<name,StructDef>
+		callbackTypes<name,MSCallback> jne...
+		
+		
+
+	
+
+	AnalyzeNode (block) --> AnalyzeExpr
+
+		1. function call?
+		2. "func"?
+			2.1 CreateStructDef(args)
+			2.2 create function and context
+			2.3 set current context = function context
+			2.3 code block --> AnalyzeNode
+		3. "struct"
+			3.1 addstructdef
+		4. variable type
+			4.1 chars, eg. "chars [12] name"
+			4.2 square brackets, eg. "person [5] players"
+			4.3 other variable
+	
+
+generator
+	GenerateAssignment kuten ennenkin? 
+	for all args
+		addToTypeList(resolvemember(arg))
+	add a call to match typelist
+	
+	resolvemember
+		

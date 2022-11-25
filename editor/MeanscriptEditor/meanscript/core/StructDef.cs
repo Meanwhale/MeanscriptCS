@@ -1,10 +1,12 @@
+using System;
+
 namespace Meanscript
 {
 
 	public class StructDef : MC
 	{
 		Semantics semantics;
-		public int typeID;
+		public readonly int typeID;
 		internal IntArray code;
 		internal IntArray tagAddress; // tagAddress[n] = code (above) address of _n_th member
 		internal int nameID; // reference to Semantics' text
@@ -12,7 +14,6 @@ namespace Meanscript
 		internal int argsSize;
 		public int structSize;
 		internal int codeTop;
-		//internal System.Collections.Generic.Dictionary<MSText, int> memberNames = new System.Collections.Generic.Dictionary<MSText, int>(MS.textComparer);
 
 		public StructDef(Semantics _semantics, int _nameID, int _typeID)
 		{
@@ -286,20 +287,21 @@ namespace Meanscript
 			//int offset = nameOffset[index];
 			//return System.Text.Encoding.UTF8.GetString(MS.intsToBytes(code, offset + 2, code[offset + 1]));
 		}
-		public void Print(Semantics sem)
+		
+		internal void Info(MSOutputPrint o)
 		{
-			MS.Verbose(HORIZONTAL_LINE);
-			MS.Verbose("STRUCT CODE: " + sem.GetText(nameID));
-			MS.Verbose(HORIZONTAL_LINE);
+			o.PrintLine(HORIZONTAL_LINE);
+			o.PrintLine("STRUCT CODE: " + semantics.GetText(nameID));
+			o.PrintLine(HORIZONTAL_LINE);
 			if (numMembers == 0)
 			{
-				MS.Verbose("        empty");
+				o.PrintLine("        empty");
 			}
 			else
 			{
-				if (MS._verboseOn) PrintBytecode(code, codeTop, -1, true);
+				PrintBytecode(code, codeTop, -1, true);
 			}
-			MS.Verbose(HORIZONTAL_LINE);
+			o.PrintLine(HORIZONTAL_LINE);
 		}
 
 	}

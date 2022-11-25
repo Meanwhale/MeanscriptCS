@@ -4,14 +4,20 @@ namespace Meanscript
 	{
 		ROOT,
 		EXPR,
+		EXPR_ASSIGN,			// a:5
+		EXPR_INIT,				// int a
+		EXPR_INIT_AND_ASSIGN,	// int a:5
+		EXPR_FUNCTION,			// func int foo [int x] { return x }
+		EXPR_STRUCT,			// struct vec [int x, int y]
+		ARG,
 		PARENTHESIS,
 		ASSIGNMENT,
 		SQUARE_BRACKETS,
 		CODE_BLOCK,
 		NAME_TOKEN,
 		NUMBER_TOKEN,
-		REFERENCE_TOKEN,	// e.g. "#foo", as in "increase #foo"
-		REF_TYPE_TOKEN,		// e.g. "int#", as int "func void increase [int# value] { value += 1 }
+		REFERENCE_TOKEN,		// e.g. "#foo", as in "increase #foo"
+		REF_TYPE_TOKEN,			// e.g. "int#", as int "func void increase [int# value] { value += 1 }
 		DOT,
 		PLUS,
 		MINUS,

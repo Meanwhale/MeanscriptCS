@@ -30,7 +30,7 @@
                  FontFamily="Cascadia Code" FontSize="12" Background="#f8f8f8" IsReadOnly="True" ScrollViewer.CanContentScroll="True">
             Meanscript output
         </TextBox>-->
-        <ScrollViewer Grid.Column="2" Grid.Row="1" Name="TextBoxOutputScrollViewer">
+        <ScrollViewer Grid.Column="2" Grid.Row="1" Name="TextBoxOutputScrollViewer"  VerticalScrollBarVisibility="Visible"  HorizontalScrollBarVisibility="Visible">
             <TextBlock  Name="TextBoxOutput" FontFamily="Cascadia Code" FontSize="12" Background="#f8f8f8" />
         </ScrollViewer>
         <TextBox Grid.ColumnSpan="3" Grid.Row="2" Name="TextBoxStatus" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Hidden"

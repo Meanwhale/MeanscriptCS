@@ -1,6 +1,5 @@
 namespace Meanscript
 {
-
 	public class Generator : MC
 	{
 		Context currentContext;
@@ -20,7 +19,7 @@ namespace Meanscript
 
 		//
 
-		public bool InGlobal()
+		private bool InGlobal()
 		{
 			return currentContext == sem.contexts[0];
 		}
@@ -32,7 +31,7 @@ namespace Meanscript
 			return gen.bc;
 		}
 
-		public ByteCode Generate()
+		private ByteCode Generate()
 		{
 
 			MS.Verbose("------------------------ GENERATE GLOBAL CODE");
@@ -108,7 +107,7 @@ namespace Meanscript
 			return bc;
 		}
 
-		public void GenerateFunctionCode(NodeIterator it)
+		private void GenerateFunctionCode(NodeIterator it)
 		{
 			it.ToChild();
 			currentContext.codeStartAddress = bc.codeTop;
@@ -117,7 +116,7 @@ namespace Meanscript
 			bc.AddInstruction(OP_GO_BACK, 0, 0);
 		}
 
-		public void GenerateCodeBlock(NodeIterator it)
+		private void GenerateCodeBlock(NodeIterator it)
 		{
 			while (true)
 			{
@@ -147,7 +146,7 @@ namespace Meanscript
 		}
 
 
-		public void GenerateExpression(NodeIterator it)
+		private void GenerateExpression(NodeIterator it)
 		{
 			MS.Verbose("------------ read expr ------------");
 			if (MS._verboseOn) it.PrintTree(false);
@@ -216,7 +215,7 @@ namespace Meanscript
 			}
 		}
 
-		public void GenerateFunctionCall(NodeIterator it, Context funcContext)
+		private void GenerateFunctionCall(NodeIterator it, Context funcContext)
 		{
 			MS.Verbose("Generate a function call");
 
@@ -232,7 +231,7 @@ namespace Meanscript
 			bc.AddInstruction(OP_LOAD_BASE, 0, 0);
 		}
 
-		public MCallback GenerateCallbackCall(NodeIterator it)
+		private MCallback GenerateCallbackCall(NodeIterator it)
 		{
 			int callbackID = common.callbackIDs[it.Data()];
 			MCallback callback = common.callbacks[callbackID];
@@ -246,7 +245,7 @@ namespace Meanscript
 			return callback;
 		}
 
-		public void GenerateAssignment(NodeIterator it)
+		private void GenerateAssignment(NodeIterator it)
 		{
 			// e.g. "int a:5" or "a:6"
 
@@ -322,7 +321,7 @@ namespace Meanscript
 			bc.AddWord(target.address);
 		}
 
-		public int ArrayPush(NodeIterator it, int itemType, int arraySize)
+		private int ArrayPush(NodeIterator it, int itemType, int arraySize)
 		{
 			StructDef itemSD = sem.GetType(itemType);
 			int itemSize = itemSD.structSize;
@@ -338,7 +337,7 @@ namespace Meanscript
 			return arraySize * itemSize;
 		}
 
-		public void SquareBracketArgumentPush(NodeIterator it, StructDef sd, int numArgs)
+		private void SquareBracketArgumentPush(NodeIterator it, StructDef sd, int numArgs)
 		{
 			MS.Verbose("Assign struct values in square brackets");
 
@@ -372,7 +371,7 @@ namespace Meanscript
 			MS.SyntaxAssertion(!(it.HasNext()) && argIndex == numArgs, it, "wrong number of arguments");
 		}
 
-		public void CallArgumentPush(NodeIterator it, StructDef sd, int numArgs)
+		private void CallArgumentPush(NodeIterator it, StructDef sd, int numArgs)
 		{
 			if ((it.Type() == NodeType.PARENTHESIS && !it.HasNext()))
 			{
@@ -391,7 +390,7 @@ namespace Meanscript
 			}
 		}
 
-		public void ArgumentStructPush(NodeIterator it, StructDef sd, int numArgs, bool commaSeparated)
+		private void ArgumentStructPush(NodeIterator it, StructDef sd, int numArgs, bool commaSeparated)
 		{
 			MS.Verbose("Assign struct argument");
 
@@ -428,7 +427,7 @@ namespace Meanscript
 			MS.SyntaxAssertion(!(it.HasNext()) && argIndex == numArgs, it, "wrong number of arguments");
 		}
 
-		public bool IsFunctionOrCallback(MSText name)
+		private bool IsFunctionOrCallback(MSText name)
 		{
 			Context context = sem.FindContext(name);
 			if (context == null) return ((common.callbackIDs.ContainsKey(name)));
@@ -436,7 +435,7 @@ namespace Meanscript
 		}
 
 
-		public VarGen ResolveMember(NodeIterator it)
+		private VarGen ResolveMember(NodeIterator it)
 		{
 			// read a variable from a chain of nodes and return its address, type, etc.
 			// as a VarGen. For example "x", "arr[foo].bar", "arr[f(a)].bar".
@@ -608,7 +607,7 @@ namespace Meanscript
 			return new VarGen(size, memberType, srcAddress, arrayItemCount, charCount, isReference);
 		}
 
-		public void SingleArgumentPush(int targetType, NodeIterator it, int arrayItemCount)
+		private void SingleArgumentPush(int targetType, NodeIterator it, int arrayItemCount)
 		{
 			MS.Verbose("Assign an argument [" + it.Data() + "]");
 

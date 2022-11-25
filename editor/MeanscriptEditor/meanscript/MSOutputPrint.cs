@@ -9,8 +9,9 @@ namespace Meanscript
 		public abstract MSOutputPrint Print(char x);
 		public abstract MSOutputPrint Print(string x);
 
-		public MSOutputPrint()
+		public MSOutputPrint PrintLine(string x)
 		{
+			return Print(x).EndLine();
 		}
 
 		public override void Close()
@@ -104,7 +105,7 @@ namespace Meanscript
 			"[FS]",        // file separator
 			"[GS]",        // group separator
 			"[RS]",        // record separator
-			"[US]"        // unit separator
+			"[US]"         // unit separator
 		};
 
 
@@ -181,7 +182,7 @@ namespace Meanscript
 
 		public MSOutputPrint EndLine()
 		{
-			Print("\n");
+			Print('\n');
 			return this;
 		}
 	}

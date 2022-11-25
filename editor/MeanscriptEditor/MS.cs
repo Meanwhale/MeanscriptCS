@@ -121,6 +121,11 @@ namespace Meanscript
 			if (_verboseOn) printOut.Print(s);
 		}
 
+		public static void Assertion(bool b)
+		{
+			Assertion(b, null, "");
+		}
+
 		public static void Assertion(bool b, MSError err, string msg)
 		{
 			if (!b)
