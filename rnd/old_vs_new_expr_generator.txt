@@ -1,4 +1,35 @@
 
+
+callback as an argument:
+ - callnametype voi olla vain ensimmäisenä
+ - jos () eikä seuraavaa niin comma-separated args
+ - jos () ja seuraava niin ():ssa on yksi argseista
+ 
+
+	F
+	F2 (a1, a2)
+	F1 a1
+	F2 a1 a2
+	F2 (F3 x) a2
+	
+bool b : true
+
+ ______________
+ 
+ assign struct:
+ 
+ struct person [text name, int age]
+ 
+ person p: "Jarmo" 46
+ 
+ PushAssignValues
+	- if struct: iterate struct COMMA-SEPARATED members -> PushAssignValues
+	- if array: for each COMMA-SEPARATED item -> PushAssignValues
+	- else push single value etc.
+ 
+ ______________
+ 
+
 type conversion, eg.
 
 struct wec [int x, int64 y, int z]
@@ -12,9 +43,7 @@ push 4
 
 // stack /2/0/3/4 -> pop&copy to "w"
 
-
  ______________
- 
  
  array tms. generic
  

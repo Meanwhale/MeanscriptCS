@@ -208,7 +208,6 @@ namespace Meanscript
 			MS.Assertion(it.Type() == NodeType.ASSIGNMENT_BLOCK, MC.EC_INTERNAL, "assignment struct expected");
 			it.ToChild(); // expression that contains value(s) to assign, eg. "5"
 			MS.Assertion(it.Type() == NodeType.EXPR);
-			it.ToChild();
 			
 			// push values and make conversions if available
 			PushAssignValues(it, assignTarget);
@@ -220,53 +219,85 @@ namespace Meanscript
 			bc.AddInstruction(InGlobal() ? MC.OP_POP_STACK_TO_GLOBAL : MC.OP_POP_STACK_TO_LOCAL, 0, MC.MS_TYPE_VOID);
 		}
 
-		private void GenerateExpression(NodeIterator it)
+		private MList<ArgType> GenerateExpression(NodeIterator it)
 		{
 			MS.Assertion(it.Type() == NodeType.EXPR);
 			it.ToChild();
 			MS.Verbose("------------ GenerateExpression ------------");
 			if (MS._verboseOn) it.PrintTree(false);
 
-			if (it.Type() == NodeType.NAME_TOKEN)
+			// get list of arguments and find a call that match the list.
+
+			// TODO: check if it's "return"
+
+			var args = PushArgs(it);
+
+			// try to find a callback
+
+			var callback = common.FindCallback(args);
+			if (callback != null)
 			{
-				// get list of arguments and find a call that match the list.
-
-				// TODO: check if it's "return"
-
-				var args = PushArgs(it);
-
-				// try to find a callback
-
-				var callback = common.FindCallback(args);
-				if (callback != null)
+				MS.Verbose("callback found: ");
+				callback.Print(MS.printOut);
+				bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
+				if (callback.returnType.Def.SizeOf() > 0)
 				{
-					MS.Verbose("callback found: ");
-					callback.Print(MS.printOut);
-					bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
-					return;
+					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.MS_TYPE_VOID, callback.returnType.Def.SizeOf());
 				}
+				args = new MList<ArgType>();
+				args.Add(callback.returnType);
 			}
-			else
-			{
-				MS.SyntaxAssertion(false, it, "unexpected token");
-			}
+
+			return args;
 		}
 		
-		private void PushAssignValues(NodeIterator it, ArgType trg)
+		private void PushAssignValues(NodeIterator it, ArgType trg, int depth = 0)
 		{
-			// Assume "it" is on expression's first token, value to assign.
-			if (trg.Def is PrimitiveType)
+			MS.Assertion(depth < 1000);
+			//Assume "it" is on assign expression.
+			assignTarget = trg.Def;
+
+			if (trg.Def is StructDefType sdt)
 			{
-				ResolveAndPushArgument(it, trg.Def);
+				if (it.GetChild().type == NodeType.PARENTHESIS)
+				{
+					// eg. (1,2) in "person p: "Pete", (1,2), 23"
+					it.ToChild();
+					MS.SyntaxAssertion(!it.HasNext(), it, "stuct value syntax error");
+					it.ToChild();
+				}
+				int numArgs = 0;
+				foreach(var member in sdt.SD.members)
+				{
+					numArgs ++;
+					
+					PushAssignValues(it.Copy(), new ArgType(member.Ref, member.Type), depth + 1);
+					if (it.HasNext()) it.ToNext();
+				}
+				
+				MS.SyntaxAssertion(sdt.SD.NumMembers() == numArgs, it, "wrong number of arguments for struct: " + sdt.SD);
 			}
-			else if (trg.Def is GenericCharsType)
+			else if (trg.Def is GenericArrayType array)
 			{
-				// write size and chars
-				ResolveAndPushArgument(it, trg.Def);
+				// syntax eg. array[int,4] a: [1,2,3,4]
+				it.ToChild();
+				MS.SyntaxAssertion(it.Type() == NodeType.SQUARE_BRACKETS, it, "[] expected");
+				it.ToChild(); // to item value expression
+				int numArgs = 0;
+				while(true)
+				{
+					numArgs++;
+					PushAssignValues(it.Copy(), new ArgType(Arg.DATA, array.itemType), depth + 1);
+					if (it.HasNext()) it.ToNext();
+					else break;
+				}
+				
+				MS.SyntaxAssertion(array.itemCount == numArgs, it, "wrong number of arguments for array");
 			}
 			else
 			{
-				MS.Assertion(false);
+				var retVal = GenerateExpression(it);
+				MS.Assertion(retVal.Size() == 1 && retVal.First().Def == trg.Def && retVal.First().Ref == trg.Ref);
 			}
 		}
 
@@ -276,20 +307,22 @@ namespace Meanscript
 			// Assume "it" is on expression's first token.
 
 			var args = new MList<ArgType>();
+			bool first = true;
 			while (true)
 			{
-				var a = ResolveAndPushArgument(it);
+				var a = ResolveAndPushArgument(it, first);
 				if (a == null) break;
 				MS.Verbose("ARG type: " + a);
 				args.Add(a);
 
 				if (!it.HasNext()) break;
 				it.ToNext();
+				first = false;
 			}
 			return args;
 		}
 
-		private ArgType ResolveAndPushArgument(NodeIterator it, TypeDef trg = null)
+		private ArgType ResolveAndPushArgument(NodeIterator it, bool first)
 		{
 			// move the iterator forward inside the expression
 
@@ -300,6 +333,7 @@ namespace Meanscript
 				{
 					if (typeArg is CallNameType cn)
 					{
+						MS.SyntaxAssertion(first, it, "unexpected function name");
 						return ArgType.Void(cn);
 					}
 				}
@@ -310,7 +344,7 @@ namespace Meanscript
 			}
 			else
 			{
-				return SingleArgumentPush(it, trg);
+				return SinglePrimitivePush(it);
 			}
 			MS.SyntaxAssertion(false, it, "unexpected argument");
 			return null;
@@ -777,7 +811,9 @@ namespace Meanscript
 		//}
 		*/
 
-		private ArgType SingleArgumentPush(NodeIterator it, TypeDef trg = null)
+		private TypeDef assignTarget = null;
+
+		private ArgType SinglePrimitivePush(NodeIterator it)
 		{
 			MS.Verbose("Assign an argument [" + it.Data() + "]");
 
@@ -817,35 +853,35 @@ namespace Meanscript
 			}
 			else if (it.Type() == NodeType.NUMBER_TOKEN)
 			{
-				if (trg == null || trg.ID == MC.MS_TYPE_INT)
+				if (assignTarget == null || assignTarget.ID == MC.MS_TYPE_INT)
 				{
 					int number = MS.ParseInt((it.Data()).GetString());
 					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, number);
 					return ArgType.Data(common.IntType);
 				}
-				else if (trg.ID == MC.MS_TYPE_INT64)
+				else if (assignTarget.ID == MC.MS_TYPE_INT64)
 				{
 					long number = MS.ParseInt64(it.Data().GetString());
 					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.MS_TYPE_INT64);
 					bc.AddWord(MC.Int64highBits(number));
 					bc.AddWord(MC.Int64lowBits(number));
-					return ArgType.Data(trg);
+					return ArgType.Data(assignTarget);
 				}
-				else if (trg.ID == MC.MS_TYPE_FLOAT)
+				else if (assignTarget.ID == MC.MS_TYPE_FLOAT)
 				{
 					float f = MS.ParseFloat32(it.Data().GetString());
 					int floatToInt = MS.FloatToIntFormat(f);
 					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_FLOAT, floatToInt);
-					return ArgType.Data(trg);
+					return ArgType.Data(assignTarget);
 				}
-				else if (trg.ID == MC.MS_TYPE_FLOAT64)
+				else if (assignTarget.ID == MC.MS_TYPE_FLOAT64)
 				{
 					double f = MS.ParseFloat64((it.Data()).GetString());
 					long number = MS.Float64ToInt64Format(f);
 					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.MS_TYPE_FLOAT64);
 					bc.AddWord(MC.Int64highBits(number));
 					bc.AddWord(MC.Int64lowBits(number));
-					return ArgType.Data(trg);
+					return ArgType.Data(assignTarget);
 				}
 				else
 				{
@@ -856,7 +892,7 @@ namespace Meanscript
 			{
 				int textID = tree.GetTextID(it.Data());
 				MS.Assertion(textID >= 0, MC.EC_INTERNAL, "text not found");
-				if (trg is GenericCharsType chars)
+				if (assignTarget is GenericCharsType chars)
 				{
 					//OP_PUSH_CHARS:
 					//	int textID = bc.code[instructionPointer + 1];
@@ -868,7 +904,7 @@ namespace Meanscript
 					bc.AddInstructionWithData(MC.OP_PUSH_CHARS, 3, MC.MS_TYPE_TEXT, textID);
 					bc.AddWord(chars.maxChars);
 					bc.AddWord(chars.SizeOf()); // sizeOf in ints. characters + size.
-					return ArgType.Data(trg);
+					return ArgType.Data(assignTarget);
 				}
 				else
 				{
@@ -876,127 +912,12 @@ namespace Meanscript
 					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_TEXT, textID);
 					return ArgType.Data(common.TextType);
 				}
-				//else
-				//{
-				//}
-				//return;
 			}
 			else if (it.Type() == NodeType.NAME_TOKEN)
 			{
 				MS.Assertion(false);
-				/*Context functionContext = sem.FindContext(it.Data());
-				if (functionContext != null)
-				{
-					// PUSH A FUNCTION ARGUMENT
-
-					GenerateFunctionCall(it.Copy(), functionContext);
-					StructDef returnData = sem.GetStructDefType(functionContext.returnType, it);
-					MS.SyntaxAssertion(targetType == returnData.typeID, it, "type mismatch");
-					bc.AddInstructionWithData(OP_PUSH_REG_TO_STACK, 1, MS_TYPE_VOID, returnData.StructSize());
-					return;
-				}
-				else if ((common.callbackIDs.ContainsKey(it.Data())))
-				{
-
-					// PUSH A CALLBACK ARGUMENT
-
-					MCallback callback = GenerateCallbackCall(it.Copy());
-					StructDef returnData = sem.GetStructDefType(callback.returnType, it);
-					MS.SyntaxAssertion(targetType == returnData.typeID, it, "type mismatch");
-					bc.AddInstructionWithData(OP_PUSH_REG_TO_STACK, 1, MS_TYPE_VOID, returnData.StructSize());
-					return;
-				}
-				else
-				{
-					// PUSH A VARIABLE ARGUMENT
-
-					VarGen vg = ResolveMember(it);
-
-					// write the address or its reference from where to push
-
-					if (vg.isReference)
-					{
-						bc.AddInstruction(InGlobal() ? OP_PUSH_GLOBAL_REF : OP_PUSH_LOCAL_REF, 2, MS_TYPE_INT);
-					}
-					else
-					{
-						bc.AddInstruction(InGlobal() ? OP_PUSH_GLOBAL : OP_PUSH_LOCAL, 2, MS_TYPE_INT);
-					}
-
-					bc.AddWord(vg.address);
-					bc.AddWord(vg.size);
-
-					MS.SyntaxAssertion(targetType == vg.type, it, "type mismatch");
-
-					return;
-				}*/
 			}
 
-			// HANDLE THE REST IN UPPER LEVEL
-			/*
-			else if (it.Type() == NodeType.PARENTHESIS)
-			{
-				MS.Assertion(false);
-				//it.ToChild();
-				//NodeIterator cp = new NodeIterator(it);
-				//SingleArgumentPush(targetType, cp, arrayItemCount);
-				//it.ToParent();
-				//return;
-			}
-			else if (it.Type() == NodeType.REFERENCE_TOKEN)
-			{
-				// TODO: SYNTAX type
-				var member = currentContext.variables.GetMember(it.Data());
-				int address = member.Address;
-				int memberType = member.Type.ID;
-				bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, memberType, address);
-				return;
-			}
-			else if (it.Type() == NodeType.CODE_BLOCK)
-			{
-				bc.AddInstructionWithData(OP_JUMP, 1, MS_TYPE_CODE_ADDRESS, -1); // -1 to be replaced after code block is done
-				int jumpAddressPosition = bc.codeTop - 1;
-				int blockAddress = bc.codeTop;
-
-				bc.AddInstruction(OP_NOOP, 0, 0); // no-op in case that the block is empty
-
-				// generate code block
-
-				it.ToChild();
-				MS.Assertion(it.Type() == NodeType.EXPR, MC.EC_INTERNAL, "expression expected");
-				MS.Verbose(" - - - - start generating code block");
-				GenerateCodeBlock(it);
-				bc.AddInstruction(OP_GO_BACK, 0, 0);
-				MS.Verbose(" - - - - end generating code block");
-				it.ToParent();
-
-				bc.code[jumpAddressPosition] = bc.codeTop;
-				bc.AddInstruction(OP_NOOP, 0, 0);
-
-				bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, MS_TYPE_CODE_ADDRESS, blockAddress); // push the argument: block address
-				return;
-			}
-			else if (it.Type() == NodeType.SQUARE_BRACKETS)
-			{
-				if (targetType == MS_GEN_TYPE_ARRAY)
-				{
-					// push a list of array values
-
-					it.ToChild();
-					ArrayPush(it.Copy(), targetType, arrayItemCount);
-					it.ToParent();
-					return;
-				}
-				else
-				{
-					// push array values
-
-					StructDef sd = sem.GetStructDefType(targetType);
-					MS.SyntaxAssertion(sd != null, it, "generator: unknown type: " + targetType);
-					SquareBracketArgumentPush(it.Copy(), sd, sd.NumMembers());
-					return;
-				}
-			}*/
 			MS.SyntaxAssertion(false, it, "argument error");
 			return null;
 		}

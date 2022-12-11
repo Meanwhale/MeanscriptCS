@@ -9,7 +9,7 @@ namespace Meanscript
 		private Semantics semantics;
 		internal int nameID; // reference to Semantics' text
 
-		MList<Member> members = new MList<Member>();
+		internal MList<Member> members = new MList<Member>();
 
 		private int offset = 0;
 		public int ArgsSize = 0; // legacy? for functions

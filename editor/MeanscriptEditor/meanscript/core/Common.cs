@@ -179,11 +179,11 @@ namespace Meanscript
 
 			var trueNameType = new CallNameType(sem.GetNewTypeID(), new MSText("true"));
 			sem.AddTypeDef(trueNameType);
-			CreateCallback(sem, ArgType.Void(BoolType), new ArgType []{ ArgType.Void(trueNameType) }, (MeanMachine mm, MArgs a) => { BoolValueCallback(mm, a, true); });
+			CreateCallback(sem, ArgType.Data(BoolType), new ArgType []{ ArgType.Void(trueNameType) }, (MeanMachine mm, MArgs a) => { BoolValueCallback(mm, a, true); });
 			
 			var falseNameType = new CallNameType(sem.GetNewTypeID(), new MSText("false"));
 			sem.AddTypeDef(falseNameType);
-			CreateCallback(sem, ArgType.Void(BoolType), new ArgType []{ ArgType.Void(falseNameType) }, (MeanMachine mm, MArgs a) => { BoolValueCallback(mm, a, false); });
+			CreateCallback(sem, ArgType.Data(BoolType), new ArgType []{ ArgType.Void(falseNameType) }, (MeanMachine mm, MArgs a) => { BoolValueCallback(mm, a, false); });
 
 			//CreateCallback(sem, sumNameID, , MS_TYPE_INT, sd);
 			/*

@@ -62,7 +62,7 @@ namespace Meanscript
 		}
 		public override string ToString()
 		{
-			return "{" + Name.ToString() + "}";
+			return Name.ToString();
 		}
 	}
 	public class CallbackType : TypeDef
@@ -89,7 +89,7 @@ namespace Meanscript
 		}
 		public override string ToString()
 		{
-			return "@callback: " + argStruct + ", returns " + returnType.Def;
+			return "// callback: " + argStruct + ", returns " + returnType.Def;
 		}
 	}
 	public abstract class DataTypeDef : TypeDef
@@ -141,7 +141,7 @@ namespace Meanscript
 		}
 		public override string ToString()
 		{
-			return "@struct " + Name + ": " + SD.ToString();
+			return "struct " + Name + ": " + SD.ToString();
 		}
 	}
 	public abstract class GenericType : DataTypeDef
@@ -219,7 +219,7 @@ namespace Meanscript
 		}
 		public override string ToString()
 		{
-			return "@array [" + itemType + ", " + itemCount + "]";
+			return "array [" + itemType + ", " + itemCount + "]";
 		}
 	}
 	public class GenericCharsType : GenericType
@@ -256,7 +256,7 @@ namespace Meanscript
 		}
 		public override string ToString()
 		{
-			return "@chars [" + maxChars + "]";
+			return "chars [" + maxChars + "]";
 		}
 	}
 }

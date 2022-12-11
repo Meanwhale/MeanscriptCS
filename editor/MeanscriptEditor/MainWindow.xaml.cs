@@ -89,7 +89,8 @@ namespace MeanscriptEditor
 			}
 			if (e.Key == Key.F9)
 			{
-				TextBoxCode.Text = MeanscriptUnitTest.quiteComplexStructs;
+				TextBoxCode.Text = MeanscriptUnitTest.structAssign;
+				//TextBoxCode.Text = MeanscriptUnitTest.quiteComplexStructs;
 				//MeanscriptUnitTest.SimpleVariable();
 			}
 		}
