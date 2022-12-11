@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Meanscript
@@ -6,26 +7,21 @@ namespace Meanscript
 	public class Semantics : MC
 	{
 		internal TokenTree tree;
-		public int typeIDCounter;
+		private int typeIDCounter;
 		internal int maxContexts;
 		internal int numContexts;
-		internal Dictionary<MSText, int> types = new Dictionary<MSText, int>(MS.textComparer);
-		internal StructDef[] typeStructDefs;
+		//internal Dictionary<MSText, int> types = new Dictionary<MSText, int>(MS.textComparer);
+		//internal StructDef[] typeStructDefs;
+		internal Dictionary<int, TypeDef> types = new Dictionary<int, TypeDef>();
 		internal Context[] contexts;
 		public Context globalContext;
 		internal Context currentContext;
+		private Common common;
 
 		public Semantics(TokenTree _tree)
 		{
 			tree = _tree;
 			typeIDCounter = MAX_MS_TYPES;
-
-			typeStructDefs = new StructDef[MAX_TYPES];
-			for (int i = 0; i < MAX_TYPES; i++)
-			{
-				typeStructDefs[i] = null;
-			}
-
 			maxContexts = MS.globalConfig.maxFunctions;
 			contexts = new Context[maxContexts];
 
@@ -45,54 +41,67 @@ namespace Meanscript
 				if (c != null) c.Info(o);
 		}
 
-
-		public void AddElementaryType(int typeID, int size)
+		public int GetNewTypeID()
 		{
-			string name = primitiveNames[typeID];
-			MS.Verbose("Add elementary type [" + typeID + "] " + name);
-			types[new MSText(name)] = typeID;
-			StructDef sd = new StructDef(this, -1, typeID, size);
-			typeStructDefs[typeID] = sd;
+			return typeIDCounter++;
+		}
+		public TypeDef AddElementaryType(int typeID, int size)
+		{
+			return AddTypeDef(new PrimitiveType(typeID, size));
+		}
+		public TypeDef AddTypeDef(TypeDef newType)
+		{
+			MS.Assertion(!types.ContainsKey(newType.ID));
+			types[newType.ID] = newType;
+			return newType;
 		}
 
-		public bool HasType(MSText name)
+		public bool HasDataType(MSText name)
 		{
-			return types.ContainsKey(name);
+			return GetDataType(name) != null;
 		}
 
 		public bool HasType(int id)
 		{
-			return typeStructDefs[id] != null;
+			return types.ContainsKey(id);
 		}
 
-		public StructDef GetType(int id)
+		public TypeDef GetType(int id, NodeIterator itPtr = null)
 		{
-			StructDef userType = typeStructDefs[id];
-			MS.Assertion(userType != null, MC.EC_INTERNAL, "Data type error");
-			return userType;
+			if (types.ContainsKey(id)) return types[id];
+			return null;
 		}
-
-		public StructDef GetType(MSText name)
+		public TypeDef GetType(MSText name, NodeIterator itPtr = null)
 		{
-			int id = types[name];
-			StructDef userType = typeStructDefs[id];
-			MS.Assertion(userType != null, MC.EC_INTERNAL, "Data type error: " + name);
-			return userType;
+			foreach(var t in types.Values)
+			{
+				if (t is TypeDef d)
+				{
+					if (name.Equals(d.TypeName())) return d;
+				}
+			}
+			return null;
 		}
-
-		public StructDef GetType(int id, NodeIterator itPtr)
+		
+		public DataTypeDef GetDataType(int id, NodeIterator itPtr = null)
 		{
-			StructDef userType = typeStructDefs[id];
-			MS.SyntaxAssertion(userType != null, itPtr, "Data type error: #" + id);
-			return userType;
+			var t = GetType(id,itPtr);
+			if (t != null && t is DataTypeDef d) return d;
+			return null;
 		}
-
-		public StructDef GetType(MSText name, NodeIterator itPtr)
+		public DataTypeDef GetDataType(MSText name, NodeIterator itPtr = null)
 		{
-			int id = types[name];
-			StructDef userType = typeStructDefs[id];
-			MS.SyntaxAssertion(userType != null, itPtr, "Data type error: " + name);
-			return userType;
+			var t = GetType(name,itPtr);
+			if (t != null && t is DataTypeDef d) return d;
+			return null;
+		}
+		public StructDef GetStructDefType(int i, NodeIterator itPtr = null)
+		{
+			return null; // TODO
+		}
+		public StructDef GetStructDefType(MSText name, NodeIterator itPtr = null)
+		{
+			return null; // TODO
 		}
 
 		public bool InGlobal()
@@ -148,7 +157,7 @@ namespace Meanscript
 				MS.errorOut.Print("unexpected function name: " + name);
 				return false;
 			}
-			if ((types.ContainsKey(name)))
+			if (HasDataType(name))
 			{
 				MS.errorOut.Print("unexpected type name: " + name);
 				return false;
@@ -159,14 +168,14 @@ namespace Meanscript
 			{
 				// name is saved: check if it's used in contexts
 
-				if (globalContext.variables.GetTagAddressByNameID(nameID) >= 0)
+				if (globalContext.variables.HasMemberByNameID(nameID))
 				{
 					MS.errorOut.Print("duplicate variable name: " + name);
 					return false;
 				}
 				if (currentContext != globalContext)
 				{
-					if (currentContext.variables.GetTagAddressByNameID(nameID) >= 0)
+					if (currentContext.variables.HasMemberByNameID(nameID))
 					{
 						MS.errorOut.Print("duplicate variable name: " + name);
 						return false;
@@ -174,9 +183,9 @@ namespace Meanscript
 				}
 			}
 
-			for (int i = 0; i < NUM_KEYWORDS; i++)
+			foreach(var kw in MC.keywords)
 			{
-				if (name.Match(keywords[i]))
+				if (name.Match(kw.text))
 				{
 					MS.errorOut.Print("unexpected keyword: " + name);
 					return false;
@@ -185,8 +194,15 @@ namespace Meanscript
 			return true;
 		}
 
-		public void Analyze()
+		internal void AddCallback(TypeDef type, StructDef sd, MS.MCallbackAction act)
 		{
+			throw new NotImplementedException();
+		}
+
+		public void Analyze(Common com)
+		{
+			common = com;
+
 			MS.Verbose(HORIZONTAL_LINE);
 			MS.Verbose("SEMANTIC ANALYZE");
 			MS.Verbose(HORIZONTAL_LINE);
@@ -209,6 +225,16 @@ namespace Meanscript
 				}
 			}
 			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose("TYPEDEFS");
+			MS.Verbose(HORIZONTAL_LINE);
+			if (MS._verboseOn)
+			{
+				foreach(var t in types.Values)
+				{
+					MS.printOut.Print("ID: ").Print(t.ID).Print(" [").PrintHex(t.ID).Print("] ").Print(t.ToString()).EndLine();
+				}
+			}
+			MS.Verbose(HORIZONTAL_LINE);
 			MS.Verbose("END ANALYZING");
 			MS.Verbose(HORIZONTAL_LINE);
 		}
@@ -219,11 +245,11 @@ namespace Meanscript
 
 			while (true)
 			{
-				if (it.Type() == NodeType.EXPR)
+				if (it.Type() == NodeType.EXPR || it.Type() == NodeType.EXPR_ASSIGN)
 				{
 					if (!it.HasChild())
 					{
-						MS.Verbose("<EMPTY EXPR>");
+						MS.Verbose("---- EMPTY EXPR ----");
 					}
 					else
 					{
@@ -239,7 +265,7 @@ namespace Meanscript
 				}
 				else
 				{
-					throw new MException(MC.EC_INTERNAL, "expression expected");
+					MS.SyntaxAssertion(false, it, "expression expected");
 				}
 			}
 		}
@@ -256,7 +282,7 @@ namespace Meanscript
 				{
 					MS.Verbose("-------- function call!!!");
 				}
-				else if (it.Data().Match(keywords[KEYWORD_FUNC_ID]))
+				else if (it.Data().Match(MC.KEYWORD_FUNC.text))
 				{
 					SetParentExpr(it, NodeType.EXPR_FUNCTION);
 
@@ -264,8 +290,8 @@ namespace Meanscript
 
 					MS.SyntaxAssertion(it.HasNext(), it, "function return type expected");
 					it.ToNext();
-					MS.SyntaxAssertion(HasType(it.Data()), it, "unknown return type");
-					int returnType = types[it.Data()];
+					MS.SyntaxAssertion(HasDataType(it.Data()), it, "unknown return type");
+					int returnType = GetDataType(it.Data()).ID;
 
 					// function name
 
@@ -288,8 +314,8 @@ namespace Meanscript
 					MS.SyntaxAssertion(it.HasNext(), it, "argument definition expected");
 					it.ToNext();
 					CreateStructDef(funcContext.variables, it.Copy());
-					funcContext.variables.argsSize = funcContext.variables.structSize;
-					funcContext.numArgs = funcContext.variables.numMembers;
+					funcContext.variables.ArgsSize = funcContext.variables.StructSize();
+					funcContext.numArgs = funcContext.variables.NumMembers();
 
 					// parse function body
 
@@ -310,7 +336,7 @@ namespace Meanscript
 
 					MS.SyntaxAssertion(!it.HasNext(), it, "unexpected token after code block");
 				}
-				else if (it.Data().Match(keywords[KEYWORD_STRUCT_ID]))
+				else if (it.Data().Match(MC.KEYWORD_STRUCT.text))
 				{
 					// e.g. "struct Vec [int x, INT y, INT z]"
 					SetParentExpr(it, NodeType.EXPR_STRUCT);
@@ -325,105 +351,37 @@ namespace Meanscript
 					MS.Verbose("Create a new struct: " + structName);
 					AddStructDef(structName, it.Copy());
 				}
-				else if (HasType(it.Data()))
+				else if (HasGenericType(it.Data()))
+				{
+					AddGeneric(it, currentContext.variables);
+				}
+				else if (HasDataType(it.Data()))
 				{
 					// expr. starts with a type name, eg. "int foo" OR "person [5] players"
 					
-					int type = types[it.Data()];
+					var dataType = GetDataType(it.Data());
+					int typeID = dataType.ID;
 					MS.Assertion( // TODO: clean up?
-						type == MS_TYPE_INT ||
-						type == MS_TYPE_INT64 ||
-						type == MS_TYPE_FLOAT ||
-						type == MS_TYPE_FLOAT64 ||
-						type == MS_TYPE_BOOL ||
-						type == MS_TYPE_TEXT ||
-						type == MS_GEN_TYPE_CHARS ||
-						type >= MAX_MS_TYPES,
-						MC.EC_INTERNAL, "semantics: unknown type: " + type);
+						typeID == MS_TYPE_INT ||
+						typeID == MS_TYPE_INT64 ||
+						typeID == MS_TYPE_FLOAT ||
+						typeID == MS_TYPE_FLOAT64 ||
+						typeID == MS_TYPE_BOOL ||
+						typeID == MS_TYPE_TEXT ||
+						typeID >= MAX_MS_TYPES,
+						MC.EC_INTERNAL, "semantics: unknown type: " + typeID);
 
 					it.ToNext();
 
-					if (type == MS_GEN_TYPE_CHARS)
-					{
-						// get number of chars, eg. "chars [12] name"
-						MS.SyntaxAssertion(it.Type() == NodeType.SQUARE_BRACKETS, it, "chars size expected");
-						it.ToChild();
-						MS.SyntaxAssertion(!it.HasNext(), it, "only the chars size expected");
-						it.ToChild();
-						MS.SyntaxAssertion(!it.HasNext(), it, "only the chars size expected");
-						MS.SyntaxAssertion(it.Type() == NodeType.NUMBER_TOKEN, it, "chars size (number) expected");
-
-						// parse size and calculate array size
-
-						int charCount = MS.ParseInt(it.Data().GetString());
-
-						it.ToParent();
-						it.ToParent();
-
-						it.ToNext();
-						MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "name expected");
-						MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
-
-						currentContext.variables.AddChars(tree.AddText(it.Data()), charCount);
-					}
-					else if (it.Type() == NodeType.SQUARE_BRACKETS)
-					{
-						// eg. "person [5] players"
-
-						MS.SyntaxAssertion(InGlobal(), it, "no arrays in functions");
-
-						// array size
-						it.ToChild();
-						MS.SyntaxAssertion(!it.HasNext(), it, "only the array size expected");
-
-						int arraySize = -1;
-
-						if (!it.HasChild())
-						{
-							// array size is not specified, so argument count decide it
-							// eg. if "int [] numbers: 1, 2, 3" then size is 3
-						}
-						else
-						{
-							it.ToChild();
-							MS.SyntaxAssertion(!it.HasNext(), it, "array size expected");
-							MS.SyntaxAssertion(it.Type() == NodeType.NUMBER_TOKEN, it, "array size (number) expected");
-							arraySize = MS.ParseInt(it.Data().GetString());
-							MS.SyntaxAssertion(arraySize > 0 && arraySize < MS.globalConfig.maxArraySize, it, "invalid array size");
-							it.ToParent();
-						}
-						it.ToParent();
-
-						// array name
-						it.ToNext();
-						MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "name expected");
-						MSText varName = it.Data();
-						MS.SyntaxAssertion(IsNameValidAndAvailable(varName), it, "variable name error");
-
-						if (arraySize == -1)
-						{
-							it.ToNext();
-							MS.Assertion(it.Type() == NodeType.ASSIGNMENT, MC.EC_INTERNAL, "array assignment expected as the size is not defined");
-							arraySize = it.NumChildren();
-							MS.SyntaxAssertion(arraySize > 0 && arraySize < MS.globalConfig.maxArraySize, it, "invalid array size");
-						}
-
-						MS.Verbose("New array: " + varName + ", size " + arraySize);
-
-						currentContext.variables.AddArray(tree.AddText(varName), type, arraySize);
-					}
-					else
-					{
-						// variable name
-						MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
-						MS.Verbose("New variable: " + it.Data() + " <" + GetText(currentContext.variables.nameID) + ">");
-						currentContext.variables.AddMember(tree.AddText(it.Data()), type);
-					}
+					// variable name
+					MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
+					MS.Verbose("New variable: " + it.Data() + " <" + GetText(currentContext.variables.nameID) + ">");
+					currentContext.variables.AddMember(tree.AddText(it.Data()), dataType, Arg.DATA);
 
 					// check if there's an assignment or extra tokens
 					if (it.HasNext())
 					{
-						MS.SyntaxAssertion(it.NextType() == NodeType.ASSIGNMENT, it, "unexpected token");
+						MS.SyntaxAssertion(it.NextType() == NodeType.ASSIGNMENT_BLOCK, it, "unexpected token");
 						SetParentExpr(it, NodeType.EXPR_INIT_AND_ASSIGN);
 					}
 					else
@@ -438,9 +396,67 @@ namespace Meanscript
 			}
 		}
 
+		private void AddGeneric(NodeIterator it, StructDef sd)
+		{
+			var genTypeName = it.Data();
+			// "array [int,5] a" --> 
+			//[<EXPR>]
+			//  [array]
+			//  [<SQUARE_BRACKETS>]
+			//		[<EXPR>]
+			//		  [int]
+			//		[<EXPR>]
+			//		  [5]
+			//	[a]
+			it.ToNext(NodeType.SQUARE_BRACKETS);
+			it.ToChild();
+			MS.Assertion(it.NumChildren() == 1, MC.EC_SYNTAX, "arguments expected");
+			var genArgs = new MList<MNode>();
+			while(true)
+			{
+				// read argument nodes
+				it.ToChild();
+				genArgs.AddLast(it.node);
+				it.ToParent();
+				if (!it.HasNext()) break;
+				it.ToNext();
+			}
+			it.ToParent();
+			it.ToNext(NodeType.NAME_TOKEN);
+					
+			MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
+			MS.Verbose("New variable: " + it.Data() + " <" + GetText(currentContext.variables.nameID) + ">");
+			var genType = CreateGenericVariable(genTypeName, genArgs, it);
+			sd.AddMember(tree.AddText(it.Data()), genType, Arg.DATA);
+			
+			if (it.HasNext())
+			{
+				MS.Assertion(it.GetNext().type == NodeType.ASSIGNMENT_BLOCK, MC.EC_SYNTAX, "generic type: extra tokens after name");
+				SetParentExpr(it, NodeType.EXPR_INIT_AND_ASSIGN);
+			}
+			else
+			{
+				SetParentExpr(it, NodeType.EXPR_INIT);
+			}
+		}
+
+		private GenericType CreateGenericVariable(MSText genTypeName, MList<MNode> genArgs, NodeIterator it)
+		{
+			MS.Assertion(HasGenericType(genTypeName));
+			if (genTypeName.Equals("array")) return new GenericArrayType(GetNewTypeID(), genArgs, this, common, it);
+			if (genTypeName.Equals("chars")) return new GenericCharsType(GetNewTypeID(), genArgs, this, common, it);
+			return null;
+		}
+
+		private bool HasGenericType(MSText name)
+		{
+			// TODO: add more types
+			return name.Equals("array") || name.Equals("chars");
+		}
+
 		private void SetParentExpr(NodeIterator it, NodeType nt)
 		{
-			MS.Assertion(it.GetParent().type == NodeType.EXPR);
+			MS.Assertion(it.GetParent().type == NodeType.EXPR || it.GetParent().type == NodeType.EXPR_ASSIGN);
 			it.GetParent().type = nt;
 		}
 
@@ -450,21 +466,17 @@ namespace Meanscript
 
 			int nameID = tree.AddText(name);
 
-			int typeID = typeIDCounter++;
-
-			StructDef sd = new StructDef(this, nameID, typeID);
+			StructDef sd = new StructDef(this, nameID);
 			CreateStructDef(sd, it.Copy());
 
 			sd.Info(MS.printOut);
 
-			AddStructDef(name, typeID, sd);
+			AddStructDef(name, sd);
 		}
 
-		public void AddStructDef(MSText name, int id, StructDef sd)
+		public void AddStructDef(MSText name, StructDef sd)
 		{
-			MS.Assertion(!(types.ContainsKey(name)) && typeStructDefs[sd.typeID] == null, MC.EC_INTERNAL, "addStructDef: type ID reserved");
-			types[new MSText(name)] = (int)(id & VALUE_TYPE_MASK);
-			typeStructDefs[sd.typeID] = sd;
+			AddTypeDef(new StructDefType(GetNewTypeID(), name, sd));
 		}
 
 		public void CreateStructDef(StructDef sd, NodeIterator it)
@@ -478,63 +490,24 @@ namespace Meanscript
 			{
 				if (!it.HasChild()) continue; // skip an empty expression
 				it.ToChild();
-				MS.SyntaxAssertion((types.ContainsKey((it.Data()))), it, "createStructDef: unknown type: " + it.Data());
-				int type = types[(it.Data())];
-				it.ToNext();
 
-				if (type == MS_GEN_TYPE_CHARS)
+				if (HasGenericType(it.Data()))
 				{
-					// get number of chars, eg. "chars [12] name"
-					MS.SyntaxAssertion(it.Type() == NodeType.SQUARE_BRACKETS, it, "chars size expected");
-					it.ToChild();
-					MS.SyntaxAssertion(!it.HasNext(), it, "only the chars size expected");
-					it.ToChild();
-					MS.SyntaxAssertion(!it.HasNext(), it, "only the chars size expected");
-					MS.SyntaxAssertion(it.Type() == NodeType.NUMBER_TOKEN, it, "chars size (number) expected");
-
-					// parse size and calculate array size
-
-					int charCount = MS.ParseInt(it.Data().GetString());
-
-					it.ToParent();
-					it.ToParent();
-
-					it.ToNext();
-					MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
-
-					sd.AddChars(tree.AddText(it.Data()), charCount);
-				}
-				else if (it.Type() == NodeType.SQUARE_BRACKETS)
-				{
-					// eg. "int [5] numbers"
-
-					// NOTE: almost same as when defining variables...
-
-					// array size
-					it.ToChild();
-					MS.SyntaxAssertion(!it.HasNext(), it, "array size expected");
-					it.ToChild();
-					MS.SyntaxAssertion(!it.HasNext(), it, "array size expected");
-					MS.SyntaxAssertion(it.Type() == NodeType.NUMBER_TOKEN, it, "array size (number) expected");
-					int arraySize = MS.ParseInt(it.Data().GetString());
-					it.ToParent();
-					it.ToParent();
-
-					// array name
-					it.ToNext();
-					MS.Verbose("Member array: " + it.Data() + ", size" + arraySize);
-
-					sd.AddArray(tree.AddText(it.Data()), type, arraySize);
+					AddGeneric(it.Copy(), sd);
 				}
 				else
 				{
-					MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "member name expected");
-					MS.SyntaxAssertion(sd.GetTagAddressByName((it.Data())) < 0, it, "duplicate name: " + it.Data());
-					MS.Verbose("Add struct member: " + it.Data());
-					sd.AddMember(tree.AddText(it.Data()), type);
-				}
-				MS.SyntaxAssertion(!it.HasNext(), it, "break expected");
+					MS.SyntaxAssertion(HasDataType(it.Data()), it, "createStructDef: unknown type: " + it.Data());
+					var dataType = GetDataType(it.Data());
+					it.ToNext();
 
+					MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "member name expected");
+					MS.SyntaxAssertion(!sd.HasMember(it.Data()), it, "duplicate name: " + it.Data());
+					MS.Verbose("Add struct member: " + it.Data());
+					sd.AddMember(tree.AddText(it.Data()), dataType, Arg.DATA);
+					MS.SyntaxAssertion(!it.HasNext(), it, "break expected");
+				}
+				
 				it.ToParent();
 			}
 			while (it.ToNextOrFalse());
@@ -542,23 +515,25 @@ namespace Meanscript
 
 		public void WriteStructDefs(ByteCode bc)
 		{
+			// TODO: encode StructDefs
+			
 			// write globals
-			StructDef sd = contexts[0].variables;
-			for (int a = 0; a < sd.codeTop; a++)
-			{
-				bc.AddWord(sd.code[a]);
-			}
-
-			// write user struct definitions to code
-			for (int i = MAX_MS_TYPES; i < MAX_TYPES; i++)
-			{
-				if (typeStructDefs[i] == null) continue;
-				sd = typeStructDefs[i];
-				for (int a = 0; a < sd.codeTop; a++)
-				{
-					bc.AddWord(sd.code[a]);
-				}
-			}
+			//StructDef sd = contexts[0].variables;
+			//for (int a = 0; a < sd.codeTop; a++)
+			//{
+			//	bc.AddWord(sd.code[a]);
+			//}
+			//
+			//// write user struct definitions to code
+			//for (int i = MAX_MS_TYPES; i < MAX_TYPES; i++)
+			//{
+			//	if (typeStructDefs[i] == null) continue;
+			//	sd = typeStructDefs[i];
+			//	for (int a = 0; a < sd.codeTop; a++)
+			//	{
+			//		bc.AddWord(sd.code[a]);
+			//	}
+			//}
 		}
 	}
 }

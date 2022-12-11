@@ -1,3 +1,5 @@
+using System;
+
 namespace Meanscript
 {
 
@@ -327,17 +329,27 @@ namespace Meanscript
 			}
 			else if (op == OP_PUSH_GLOBAL)
 			{
-				int address = bc.code[instructionPointer + 1];
-				int size = bc.code[instructionPointer + 2];
+				int size = PopStack();
+				int address = PopStack();
+
+				//int address = bc.code[instructionPointer + 1];
+				//int size = bc.code[instructionPointer + 2];
 
 				PushData(stack, address, size);
 			}
 			else if (op == OP_PUSH_LOCAL)
 			{
-				int address = bc.code[instructionPointer + 1];
-				int size = bc.code[instructionPointer + 2];
+				int size = PopStack();
+				int address = PopStack();
+				//int address = bc.code[instructionPointer + 1];
+				//int size = bc.code[instructionPointer + 2];
 
 				PushData(stack, stackBase + address, size);
+			}
+			else if (op == OP_ADD_TOP)
+			{
+				int val = bc.code[instructionPointer + 1];
+				stack[stackTop - 1] += val;
 			}
 			else if (op == OP_PUSH_GLOBAL_REF)
 			{
@@ -375,21 +387,17 @@ namespace Meanscript
 				// fill the rest
 				for (int i = 0; i < (structSize - textDataSize); i++) Push(0);
 			}
-			else if (op == OP_POP_STACK_TO_GLOBAL)
+			else if (op == OP_POP_STACK_TO_GLOBAL || op == OP_POP_STACK_TO_LOCAL)
 			{
+				// stack: ... [target address][           data           ][size]
+
 				// write from stack to global target
 
-				int size = bc.code[instructionPointer + 1];
-				int address = bc.code[instructionPointer + 2];
-				PopStackToTarget(bc, stack, size, address);
-			}
-			else if (op == OP_POP_STACK_TO_LOCAL)
-			{
-				// write from stack to local target
-
-				int size = bc.code[instructionPointer + 1];
-				int address = bc.code[instructionPointer + 2];
-				PopStackToTarget(bc, stack, size, address + stackBase);
+				int size = PopStack();
+				int address = stack[stackTop - size - 1];
+				PopStackToTarget(bc, stack, size, address + (op == OP_POP_STACK_TO_LOCAL ? stackBase : 0));
+				// pop address and check everything went fine
+				MS.Assertion(address == PopStack(), EC_CODE, "OP_POP_STACK_TO_x failed");
 			}
 			else if (op == OP_POP_STACK_TO_GLOBAL_REF)
 			{
@@ -449,21 +457,20 @@ namespace Meanscript
 			else if (op == OP_CALLBACK_CALL)
 			{
 				//public MeanMachine (ByteCode _byteCode, StructDef _structDef, int _base)
-				int callbackIndex = bc.code[instructionPointer + 1];
-				MCallback cb = bc.common.callbacks[callbackIndex];
+				int callbackIndex = (int)(instruction & VALUE_TYPE_MASK);
+				CallbackType cb = bc.common.callbacks[callbackIndex];
 				MS.Assertion(cb != null, MC.EC_INTERNAL, "invalid callback");
-				int argsSize = cb.argStruct.structSize;
+				int argsSize = cb.argStruct.StructSize();
 
 				MArgs args = new MArgs(bc, cb.argStruct, stackTop - argsSize);
 
 				MS.Verbose("-------- callback " + callbackIndex);
+				PrintStack();
 				cb.func(this, args);
-
-				args = null;
-
 				MS.Verbose("Clear stack after call");
 				// clear stack after callback is done
-				stackTop -= cb.argStruct.structSize;
+				stackTop -= argsSize;
+				PrintStack();
 			}
 			else if (op == OP_FUNCTION_CALL)
 			{
@@ -528,6 +535,7 @@ namespace Meanscript
 					instruction = bc.code[instructionPointer];
 					instructionPointer += 1 + InstrSize(instruction);
 				}
+				PrintStack();
 				jumped = true;
 			}
 			else if (op == OP_GO_END)
@@ -567,6 +575,11 @@ namespace Meanscript
 			}
 		}
 
+		public int PopStack()
+		{
+			return stack[--stackTop];
+		}
+
 		public void PopStackToTarget(ByteCode bc, IntArray target, int size, int address)
 		{
 			for (int i = 0; i < size; i++)
@@ -580,8 +593,21 @@ namespace Meanscript
 
 		public void Push(int data)
 		{
-			MS.Verbose("push stack: " + data);
+			MS.Verbosen("push stack: " + data + "    ");
 			stack[stackTop++] = data;
+			PrintStack();
+		}
+
+		private void PrintStack()
+		{
+			MS.Verbosen("STACK:\n    ");
+			if (MS._verboseOn)
+			{
+				for(int i=stackTop-1; i>=0; i--)
+					if (i == stackBase) MS.Verbosen("/["+stack[i]+"]");
+					else MS.Verbosen("/"+stack[i]);
+			}
+			MS.Verbose("");
 		}
 
 		public void CallbackReturn(int type, int value)

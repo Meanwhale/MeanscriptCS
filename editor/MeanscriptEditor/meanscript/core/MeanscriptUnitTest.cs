@@ -7,13 +7,15 @@ namespace Meanscript
 
 		// code: struct vec [int x, int y]
 		public static readonly int[] vecStructCode = new int[] {
-	134225936,3,6514038,486547458,1,120,151003137,0,
-	1,486547458,1,121,151003137,1,1,
-};
+			134225936,3,6514038,486547458,1,120,151003137,0,
+			1,486547458,1,121,151003137,1,1,
+		};
 
-		private const string testStructs = "struct vec [int x, int y]; struct person [vec pos, text name, int age];";
-		private const string simpleVariableScript = "int a: 5; int64 short: -1; int64 long: 1234567891234; text b: \"x\";chars [12] ch: \"asds\";float c:-123.456; float64 d: 12.123456789; bool b1: true; bool b2: false; text utf: \"A\\xc3\\x84\"";
-		private const string complexStructs = "struct vec [int x, int y, chars[7] name]\nstruct person [chars[32] name, vec [4] corner, vec pos, float age]\nstruct group [text title, person [3] member]";
+		public const string testStructs = "struct vec [int x, int y]; struct person [vec pos, text name, int age];";
+		public const string simpleVariableScript = "int a: 5;\nint64 short: -1;\nint64 long: 1234567891234;\ntext b: \"x\";\nchars [12] ch: \"asds\";\nfloat c:-123.456;\nfloat64 d: 12.123456789;\nbool b1: true;\nbool b2: false;\ntext utf: \"A\\xc3\\x84\"";
+		public const string complexStructs = "struct vec [int x, int y, chars[7] name]\nstruct person [chars[32] name, vec [4] corner, vec pos, float age]\nstruct group [text title, person [3] member]";
+		public const string quiteComplexStructs = "struct vec [int x, int y]\nstruct person [array[vec,4] corner, vec pos, float age]\nstruct group [text title, array[person,3] member]" +
+		                                          "\ngroup g\ng.member[1].corner[2].x: 345\nprint g.member[1].corner[2].x";
 
 		private static void MsText()
 		{
@@ -122,7 +124,7 @@ namespace Meanscript
 			MS.Assertion(txt.ByteAt(0) == 0x41 && txt.ByteAt(1) == 0xc3 && txt.ByteAt(2) == 0x84, EC_TEST, "");
 		}
 
-		private static void SimpleVariable()
+		public static void SimpleVariable()
 		{
 			// long max: 9223372036854775807
 

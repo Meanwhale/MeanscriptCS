@@ -6,12 +6,16 @@ namespace Meanscript
 	{
 		public readonly MSError error;
 		private readonly string info;
-		public MException() { error = null; info = "Meanscript exception"; }
-		public MException(MSError err, string s) { error = err; info = s; }
+		public MException() {
+			error = null; info = "Meanscript exception";
+		}
+		public MException(MSError err, string s) {
+			error = err; info = s;
+		}
 		new public string ToString() {
 			return "---------------- EXCEPTION ----------------\n"
 			     + info
-				 + "\n-------------------------------------------"; }
+				 + "\n-------------------------------------------\n"; }
 	}
 	public class Printer : MSOutputPrint
 	{
@@ -100,7 +104,7 @@ namespace Meanscript
 			}
 			public int GetHashCode(MSText x)
 			{
-				return x.HashCode();
+				return x.GetHashCode();
 			}
 		}
 
@@ -235,6 +239,5 @@ namespace Meanscript
 				throw new MException(MC.EC_PARSE, "float64 parsing failed: " + s);
 			}
 		}
-
 	}
 }

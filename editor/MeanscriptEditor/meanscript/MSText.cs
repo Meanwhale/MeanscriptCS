@@ -1,7 +1,7 @@
 namespace Meanscript
 {
 
-	public class MSText : MC
+	public class MSText
 	{
 		// Text bytes in an integer array. first int is the number of bytes. Bytes go from right to left (to be convinient on C++).
 		// Specification:
@@ -14,6 +14,9 @@ namespace Meanscript
 		// Can't be modified. TODO: C++ reference counter for smart memory handling.
 
 		IntArray data;
+
+		private static readonly MSText _empty = new MSText("");
+		public static MSText Empty() {return _empty;}
 
 		public MSText(string src)
 		{
@@ -30,7 +33,7 @@ namespace Meanscript
 		{
 			data = new IntArray((length / 4) + 2);
 			data[0] = length;
-			BytesToInts(src, start, data, 1, length);
+			MC.BytesToInts(src, start, data, 1, length);
 		}
 
 		public MSText(MSText src)
@@ -78,12 +81,6 @@ namespace Meanscript
 			MS.Assertion(index >= 0 && index <= data[0], MC.EC_INTERNAL, "index overflow");
 			return ((data[(index / 4) + 1]) >> ((index % 4) * 8) & 0x000000ff);
 		}
-		public int HashCode()
-		{
-			int hash = 0;
-			for (int i = 0; i < data.Length; i++) hash += data[i];
-			return hash;
-		}
 		public int Write(IntArray trg, int start)
 		{
 			for (int i = 0; i < data.Length; i++)
@@ -130,6 +127,22 @@ namespace Meanscript
 		{
 			Check();
 			return System.Text.Encoding.UTF8.GetString(MS.IntsToBytes(data, 1, data[0]));
+		}
+		
+		// 'object' overrides:
+
+		public override int GetHashCode()
+		{
+			int hash = 0;
+			for (int i = 0; i < data.Length; i++) hash += data[i];
+			return hash;
+		}
+		public override bool Equals(object obj)
+		{
+			if (obj == null) return false;
+			if (obj is MSText t) return Compare(t) == 0;
+			if (obj is string s) return System.Text.Encoding.UTF8.GetString(MS.IntsToBytes(data, 1, data[0])).Equals(s);
+			return false;
 		}
 		public override string ToString()
 		{

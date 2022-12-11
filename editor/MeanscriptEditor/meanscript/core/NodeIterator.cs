@@ -66,6 +66,11 @@ namespace Meanscript
 			MS.Assertion(HasNext(), MC.EC_INTERNAL, "toNext: no next");
 			node = node.next;
 		}
+		public void ToNext(NodeType nt)
+		{
+			MS.Assertion(HasNext() && NextType() == nt, MC.EC_INTERNAL, "expected: " + nt.ToString());
+			node = node.next;
+		}
 		public bool ToNextOrFalse()
 		{
 			if (!HasNext()) return false;

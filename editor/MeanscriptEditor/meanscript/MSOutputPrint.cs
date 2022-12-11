@@ -18,6 +18,12 @@ namespace Meanscript
 		{
 		}
 
+		public MSOutputPrint Print(MSText text)
+		{
+			if (text == null) return Print("null");
+			return PrintIntsToChars(text.GetData(), 1, text.NumBytes(), false);
+		}
+
 		public MSOutputPrint Print(int x)
 		{
 			Print((long)x);
@@ -118,13 +124,6 @@ namespace Meanscript
 				Print(hexs[index]);
 			}
 			return this;
-		}
-
-
-		public MSOutputPrint Print(MSText text)
-		{
-			if (text == null) return Print("null");
-			return PrintIntsToChars(text.GetData(), 1, text.NumBytes(), false);
 		}
 
 		public MSOutputPrint PrintCharSymbol(int i)

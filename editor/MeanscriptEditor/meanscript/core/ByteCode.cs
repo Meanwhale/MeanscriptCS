@@ -1,3 +1,5 @@
+using System;
+
 namespace Meanscript
 {
 
@@ -110,6 +112,5 @@ namespace Meanscript
 			}
 			MS.Assertion(false, MC.EC_INTERNAL, "bytecode init end tag not found");
 		}
-
 	}
 }

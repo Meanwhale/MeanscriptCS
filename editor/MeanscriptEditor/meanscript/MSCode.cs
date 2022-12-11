@@ -192,7 +192,7 @@ namespace Meanscript
 			TokenTree tree = Parser.Parse(input);
 			Semantics semantics = new Semantics(tree);
 			common.Initialize(semantics);
-			semantics.Analyze();
+			semantics.Analyze(common);
 			ByteCode bc = Generator.Generate(tree, semantics, common);
 			initialized = true;
 			return bc;

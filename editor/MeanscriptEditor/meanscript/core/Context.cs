@@ -16,7 +16,7 @@ namespace Meanscript
 
 		public Context(Semantics sem, int _nameID, int _functionID, int _returnType)
 		{
-			variables = new StructDef(sem, _nameID, _functionID);
+			variables = new StructDef(sem, _nameID);
 			functionID = _functionID;
 			returnType = _returnType;
 			tagAddress = -1;

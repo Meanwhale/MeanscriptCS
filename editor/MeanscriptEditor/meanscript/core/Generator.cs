@@ -1,6 +1,8 @@
+using System;
+
 namespace Meanscript
 {
-	public class Generator : MC
+	public class Generator
 	{
 		Context currentContext;
 		readonly TokenTree tree;
@@ -39,7 +41,7 @@ namespace Meanscript
 			currentContext = sem.contexts[0];
 
 			// start
-			bc.AddInstructionWithData(OP_START_INIT, 1, BYTECODE_EXECUTABLE, tree.textCount);
+			bc.AddInstructionWithData(MC.OP_START_INIT, 1, MC.BYTECODE_EXECUTABLE, tree.textCount);
 
 			// add texts (0 = empty)
 
@@ -47,7 +49,7 @@ namespace Meanscript
 			{
 				MSText t = sem.GetText(i);
 				MS.Assertion(t != null, MC.EC_INTERNAL, "tree texts not containing text ID: " + i);
-				bc.codeTop = AddTextInstruction(t, OP_ADD_TEXT, bc.code, bc.codeTop);
+				bc.codeTop = MC.AddTextInstruction(t, MC.OP_ADD_TEXT, bc.code, bc.codeTop);
 			}
 
 			// define structure types
@@ -59,18 +61,18 @@ namespace Meanscript
 				if (sem.contexts[i] != null)
 				{
 					sem.contexts[i].tagAddress = bc.codeTop;
-					bc.AddInstruction(OP_FUNCTION, 5, 0);
+					bc.AddInstruction(MC.OP_FUNCTION, 5, 0);
 					bc.AddWord(sem.contexts[i].functionID);
 					bc.AddWord(-1); // add start address later
 					bc.AddWord(-1); // add struct size later (temp. variables may be added)
-					bc.AddWord(sem.contexts[i].variables.argsSize);
+					bc.AddWord(sem.contexts[i].variables.ArgsSize); // args part of stack
 					bc.AddWord(-1); // add end address later...
 									// ...where the 'go back' instruction is, or in the future
 									// some local un-initialization or something.
 									// 'return' takes you there.
 				}
 			}
-			bc.AddInstruction(OP_END_INIT, 0, 0);
+			bc.AddInstruction(MC.OP_END_INIT, 0, 0);
 
 			currentContext = sem.contexts[0]; // = global
 			currentContext.codeStartAddress = bc.codeTop;
@@ -80,7 +82,7 @@ namespace Meanscript
 			GenerateCodeBlock(it.Copy());
 
 			currentContext.codeEndAddress = bc.codeTop;
-			bc.AddInstruction(OP_GO_BACK, 0, 0); // end of global code
+			bc.AddInstruction(MC.OP_GO_BACK, 0, 0); // end of global code
 
 			for (int i = 1; i < sem.maxContexts; i++)
 			{
@@ -99,7 +101,7 @@ namespace Meanscript
 				if (sem.contexts[i] != null)
 				{
 					bc.code[(sem.contexts[i].tagAddress) + 2] = sem.contexts[i].codeStartAddress;
-					bc.code[(sem.contexts[i].tagAddress) + 3] = sem.contexts[i].variables.structSize;
+					bc.code[(sem.contexts[i].tagAddress) + 3] = sem.contexts[i].variables.StructSize();
 					bc.code[(sem.contexts[i].tagAddress) + 5] = sem.contexts[i].codeEndAddress;
 				}
 			}
@@ -113,100 +115,135 @@ namespace Meanscript
 			currentContext.codeStartAddress = bc.codeTop;
 			GenerateCodeBlock(it);
 			currentContext.codeEndAddress = bc.codeTop;
-			bc.AddInstruction(OP_GO_BACK, 0, 0);
+			bc.AddInstruction(MC.OP_GO_BACK, 0, 0);
 		}
 
 		private void GenerateCodeBlock(NodeIterator it)
 		{
 			while (true)
 			{
-				if (it.Type() == NodeType.EXPR)
+				var exprType = it.Type();
+				if (exprType == NodeType.EXPR)
 				{
 					if (!it.HasChild())
 					{
-						MS.Verbose("<EMPTY EXPR>");
+						MS.Verbose("---- EMPTY EXPR ----");
 					}
 					else
 					{
 						// make a new iterator for child
-						it.ToChild();
 						GenerateExpression(it.Copy());
-						it.ToParent();
 					}
 
-					if (!it.HasNext()) return;
-
-					it.ToNext();
+				}
+				else if (exprType == NodeType.EXPR_INIT)
+				{
+					MS.Verbose("skip variable init");
+				}
+				else if (exprType == NodeType.EXPR_STRUCT)
+				{
+					MS.Verbose("skip struct");
+				}
+				else if (exprType == NodeType.EXPR_ASSIGN)
+				{
+					MS.Verbose("EXPR_ASSIGN");
+					var cp = it.Copy();
+					cp.ToChild();
+					GenerateAssign(cp);
+				}
+				else if (exprType == NodeType.EXPR_INIT_AND_ASSIGN)
+				{
+					MS.Verbose("EXPR_INIT_AND_ASSIGN");
+					GenerateInitAndAssign(it.Copy());
+				}
+				else if (exprType != NodeType.EXPR_STRUCT)
+				{
+					MS.SyntaxAssertion(false, it, "expression expected");
+					return;
 				}
 				else
 				{
-					MS.SyntaxAssertion(false, it, "expression expected");
+					MS.SyntaxAssertion(false, it, "unhandled token");
 				}
+				if (!it.HasNext()) return;
+				it.ToNext();
 			}
 		}
 
+		private void GenerateInitAndAssign(NodeIterator it)
+		{
+			MS.Verbose("------------ GenerateInitAndAssign ------------");
+			if (MS._verboseOn) it.PrintTree(false);
+			// eg. "int a: 5"
+
+			//		[<EXPR>]
+			//			[int]
+			//			[a]
+			//			[<ASSIGNMENT>]
+			//				[<EXPR>]
+			//			      [5]
+			//		[<EXPR>] ...
+
+			MS.Assertion(it.Type() == NodeType.EXPR_INIT_AND_ASSIGN);
+			it.ToChild();
+			var memberType = sem.GetDataType(it.Data()); // eg. "int"
+			it.ToNext();
+
+			GenerateAssign(it);
+		}
+
+		private void GenerateAssign(NodeIterator it)
+		{
+			MS.Verbose("------------ GenerateAssign ------------");
+			if (MS._verboseOn) it.PrintTree(false);
+			// eg. "a: 5"
+
+			//var member = sem.currentContext.variables.GetMember(it.Data()); // eg. "a"
+			if (it.Type() == NodeType.SQUARE_BRACKETS && it.GetParent().type == NodeType.EXPR_INIT_AND_ASSIGN)
+			{
+				it.ToNext(); // generic init & assign
+			}
+			var assignTarget = ResolveAndPushVariableAddress(it);
+			it.ToNext();
+			MS.Assertion(it.Type() == NodeType.ASSIGNMENT_BLOCK, MC.EC_INTERNAL, "assignment struct expected");
+			it.ToChild(); // expression that contains value(s) to assign, eg. "5"
+			MS.Assertion(it.Type() == NodeType.EXPR);
+			it.ToChild();
+			
+			// push values and make conversions if available
+			PushAssignValues(it, assignTarget);
+
+			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, assignTarget.Def.SizeOf());
+
+			// stack: ... [target address][           data           ][size]
+
+			bc.AddInstruction(InGlobal() ? MC.OP_POP_STACK_TO_GLOBAL : MC.OP_POP_STACK_TO_LOCAL, 0, MC.MS_TYPE_VOID);
+		}
 
 		private void GenerateExpression(NodeIterator it)
 		{
-			MS.Verbose("------------ read expr ------------");
+			MS.Assertion(it.Type() == NodeType.EXPR);
+			it.ToChild();
+			MS.Verbose("------------ GenerateExpression ------------");
 			if (MS._verboseOn) it.PrintTree(false);
 
 			if (it.Type() == NodeType.NAME_TOKEN)
 			{
-				Context context = sem.FindContext(it.Data());
+				// get list of arguments and find a call that match the list.
 
-				if (context != null)
-				{
-					GenerateFunctionCall(it, context);
-				}
-				else if ((common.callbackIDs.ContainsKey(it.Data())))
-				{
-					GenerateCallbackCall(it);
-				}
-				else if (currentContext.variables.HasMember(it.Data()))
-				{
-					GenerateAssignment(it);
-				}
-				else if (sem.HasType(it.Data()))
-				{
-					MS.Verbose("Initialize a variable");
-					it.ToNext();
+				// TODO: check if it's "return"
 
-					if (it.Type() == NodeType.SQUARE_BRACKETS)
-					{
-						// eg. "int [] numbers" or "person [5] team"
-						it.ToNext();
-					}
+				var args = PushArgs(it);
 
-					MS.SyntaxAssertion(currentContext.variables.HasMember(it.Data()), it, "unknown variable: " + it.Data());
-					if (it.HasNext()) GenerateAssignment(it);
-				}
-				else if ((it.Data()).Match(keywords[KEYWORD_RETURN_ID]))
-				{
-					MS.Verbose("Generate a return call");
-					MS.SyntaxAssertion(it.HasNext(), it, "'return' is missing a value"); // TODO: return from a void context
-					it.ToNext();
-					MS.SyntaxAssertion(!it.HasNext(), it, "'return' can take only one value");
-					MS.SyntaxAssertion(currentContext.returnType >= 0, it, "can't return");
+				// try to find a callback
 
-					// TODO: return value could be an array, a reference, etc.
-					SingleArgumentPush(currentContext.returnType, it, -1);
-
-					bc.AddInstruction(OP_POP_STACK_TO_REG, 1, currentContext.returnType);
-					bc.AddWord(sem.GetType(currentContext.returnType, it).structSize);
-					bc.AddInstruction(OP_GO_END, 0, 0);
-				}
-				else if ((it.Data()).Match(keywords[KEYWORD_STRUCT_ID]))
+				var callback = common.FindCallback(args);
+				if (callback != null)
 				{
-					MS.Verbose("Skip a struct definition");
-				}
-				else if ((it.Data()).Match(keywords[KEYWORD_FUNC_ID]))
-				{
-					MS.Verbose("Skip a function definition for now");
-				}
-				else
-				{
-					MS.SyntaxAssertion(false, it, "unknown word: " + it.Data());
+					MS.Verbose("callback found: ");
+					callback.Print(MS.printOut);
+					bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
+					return;
 				}
 			}
 			else
@@ -214,227 +251,164 @@ namespace Meanscript
 				MS.SyntaxAssertion(false, it, "unexpected token");
 			}
 		}
-
-		private void GenerateFunctionCall(NodeIterator it, Context funcContext)
+		
+		private void PushAssignValues(NodeIterator it, ArgType trg)
 		{
-			MS.Verbose("Generate a function call");
-
-			bc.AddInstruction(OP_SAVE_BASE, 0, 0);
-
-			if (funcContext.numArgs != 0)
+			// Assume "it" is on expression's first token, value to assign.
+			if (trg.Def is PrimitiveType)
 			{
-				MS.SyntaxAssertion(it.HasNext(), it, "function arguments expected");
+				ResolveAndPushArgument(it, trg.Def);
+			}
+			else if (trg.Def is GenericCharsType)
+			{
+				// write size and chars
+				ResolveAndPushArgument(it, trg.Def);
+			}
+			else
+			{
+				MS.Assertion(false);
+			}
+		}
+
+		private MList<ArgType> PushArgs(NodeIterator it)
+		{	
+			// Push expression arguments and return type list.
+			// Assume "it" is on expression's first token.
+
+			var args = new MList<ArgType>();
+			while (true)
+			{
+				var a = ResolveAndPushArgument(it);
+				if (a == null) break;
+				MS.Verbose("ARG type: " + a);
+				args.Add(a);
+
+				if (!it.HasNext()) break;
 				it.ToNext();
-				CallArgumentPush(it.Copy(), funcContext.variables, funcContext.numArgs);
 			}
-			bc.AddInstructionWithData(OP_FUNCTION_CALL, 1, 0, funcContext.functionID);
-			bc.AddInstruction(OP_LOAD_BASE, 0, 0);
+			return args;
 		}
 
-		private MCallback GenerateCallbackCall(NodeIterator it)
+		private ArgType ResolveAndPushArgument(NodeIterator it, TypeDef trg = null)
 		{
-			int callbackID = common.callbackIDs[it.Data()];
-			MCallback callback = common.callbacks[callbackID];
-			MS.Verbose("Callback call, id " + callbackID);
-			if (callback.argStruct.numMembers > 0)
+			// move the iterator forward inside the expression
+
+			if (it.node.type == NodeType.NAME_TOKEN)
 			{
-				it.ToNext();
-				CallArgumentPush(it.Copy(), callback.argStruct, callback.argStruct.numMembers);
-			}
-			bc.AddInstructionWithData(OP_CALLBACK_CALL, 1, 0, callbackID);
-			return callback;
-		}
-
-		private void GenerateAssignment(NodeIterator it)
-		{
-			// e.g. "int a:5" or "a:6"
-
-			MS.Verbose("Add value assinging instructions");
-
-			// get assignment target 
-
-			VarGen target = ResolveMember(it);
-
-			it.ToNext();
-			MS.Assertion(it.Type() == NodeType.ASSIGNMENT, MC.EC_INTERNAL, "assignment struct expected");
-
-			if (target.IsArray())
-			{
-				// assign array
-				MS.SyntaxAssertion(target.arraySize == it.NumChildren(), it, "wrong number of arguments in array assignment");
-				MS.SyntaxAssertion(!target.isReference, it, "array reference can't be assigned");
-
-				// assign children i.e. array items
-
-				it.ToChild();
-
-				int arrayDataSize = ArrayPush(it, target.type, target.arraySize);
-
-				bc.AddInstruction(InGlobal() ? OP_POP_STACK_TO_GLOBAL : OP_POP_STACK_TO_LOCAL, 2, MS_TYPE_VOID);
-				bc.AddWord(arrayDataSize);
-				bc.AddWord(target.address);
-
-				it.ToParent();
-
-				return;
-			}
-
-			StructDef typeSD = sem.GetType(target.type, it);
-
-			// get value for assignment target
-
-			it.ToChild();
-			if (it.HasNext())
-			{
-				// list of arguments to assign
-				ArgumentStructPush(it.Copy(), typeSD, typeSD.numMembers, true);
-			}
-			else
-			{
-				NodeIterator cp = new NodeIterator(it);
-				SingleArgumentPush(target.type, cp, target.charCount); // last arg. > 0 if the type is chars
-			}
-
-			// WRITE values. This works like a callback call.
-			// Actually here we could call overridden assignment callback for the type.
-
-			// local or global?
-			if (target.isReference)
-			{
-				bc.AddInstruction(InGlobal() ? OP_POP_STACK_TO_GLOBAL_REF : OP_POP_STACK_TO_LOCAL_REF, 2, MS_TYPE_VOID);
-			}
-			else
-			{
-				bc.AddInstruction(InGlobal() ? OP_POP_STACK_TO_GLOBAL : OP_POP_STACK_TO_LOCAL, 2, MS_TYPE_VOID);
-			}
-
-			if (target.type == MS_GEN_TYPE_CHARS)
-			{
-				bc.AddWord(target.charCount / 4 * 2);
-			}
-			else
-			{
-				MS.Assertion(sem.GetType(target.type, it).structSize > 0, MC.EC_INTERNAL, "...");
-				bc.AddWord(sem.GetType(target.type, it).structSize);
-			}
-
-			bc.AddWord(target.address);
-		}
-
-		private int ArrayPush(NodeIterator it, int itemType, int arraySize)
-		{
-			StructDef itemSD = sem.GetType(itemType);
-			int itemSize = itemSD.structSize;
-
-			for (int i = 0; i < arraySize; i++)
-			{
-				it.ToChild();
-				NodeIterator cp = new NodeIterator(it);
-				SingleArgumentPush(itemType, cp, -1);
-				it.ToParent();
-				if (it.HasNext()) it.ToNext();
-			}
-			return arraySize * itemSize;
-		}
-
-		private void SquareBracketArgumentPush(NodeIterator it, StructDef sd, int numArgs)
-		{
-			MS.Verbose("Assign struct values in square brackets");
-
-			int argIndex = 0;
-			it.ToChild();
-			MS.Assertion(it.Type() == NodeType.EXPR, MC.EC_INTERNAL, "expression expected");
-			MS.Assertion(it.HasChild(), MC.EC_INTERNAL, "argument expected");
-
-			do
-			{
-				it.ToChild();
-				MS.SyntaxAssertion(argIndex < numArgs, it, "wrong number of arguments, expected " + numArgs);
-				int memberType = InstrValueTypeID(sd.GetMemberTagByIndex(argIndex));
-				int numItems = -1;
-				if (memberType == MS_GEN_TYPE_ARRAY)
+				var typeArg = sem.GetType(it.Data());
+				if (typeArg != null)
 				{
-					numItems = sd.GetMemberArrayItemCountOrNegative(argIndex);
-				}
-				if (memberType == MS_GEN_TYPE_CHARS)
-				{
-					numItems = sd.GetMemberCharCount(argIndex);
-				}
-				SingleArgumentPush(memberType, it, numItems);
-				it.ToParent();
-				argIndex++;
-			}
-			while (it.ToNextOrFalse());
-
-			it.ToParent();
-
-			MS.SyntaxAssertion(!(it.HasNext()) && argIndex == numArgs, it, "wrong number of arguments");
-		}
-
-		private void CallArgumentPush(NodeIterator it, StructDef sd, int numArgs)
-		{
-			if ((it.Type() == NodeType.PARENTHESIS && !it.HasNext()))
-			{
-				// F2 (a1, a2)
-
-				it.ToChild();
-				ArgumentStructPush(it, sd, numArgs, true);
-			}
-			else
-			{
-				// F1 a1
-				// F2 a1 a2
-				// F2 (F3 x) a2
-
-				ArgumentStructPush(it, sd, numArgs, false);
-			}
-		}
-
-		private void ArgumentStructPush(NodeIterator it, StructDef sd, int numArgs, bool commaSeparated)
-		{
-			MS.Verbose("Assign struct argument");
-
-			// HANDLE BOTH CASES:
-			// 1)		func arg1 arg2
-			// 2)		func (arg1, arg2)
-
-			int argIndex = 0;
-			do
-			{
-				if (!commaSeparated)
-				{
-					MS.SyntaxAssertion(!IsFunctionOrCallback(it.Data()), it, "function arguments must be in brackets or comma-separated");
+					if (typeArg is CallNameType cn)
+					{
+						return ArgType.Void(cn);
+					}
 				}
 				else
 				{
-					it.ToChild(); // comma-separated are expressions
+					return ResolveAndPushVariableData(it);
 				}
-
-				MS.SyntaxAssertion(sd.IndexInRange(argIndex), it, "too many arguments");
-				int memberTag = sd.GetMemberTagByIndex(argIndex);
-				int arrayItemCount = sd.GetMemberArrayItemCountOrNegative(argIndex);
-				SingleArgumentPush(InstrValueTypeID(memberTag), it, arrayItemCount);
-
-				if (commaSeparated)
-				{
-					it.ToParent();
-				}
-
-				argIndex++;
 			}
-			while (it.ToNextOrFalse());
-
-			MS.SyntaxAssertion(!(it.HasNext()) && argIndex == numArgs, it, "wrong number of arguments");
+			else
+			{
+				return SingleArgumentPush(it, trg);
+			}
+			MS.SyntaxAssertion(false, it, "unexpected argument");
+			return null;
 		}
-
-		private bool IsFunctionOrCallback(MSText name)
+		private ArgType ResolveAndPushVariableData(NodeIterator it)
 		{
-			Context context = sem.FindContext(name);
-			if (context == null) return ((common.callbackIDs.ContainsKey(name)));
-			return true;
+			var arg = ResolveAndPushVariableAddress(it);
+			
+			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, arg.Def.SizeOf());
+
+			// OP_PUSH_GLOBAL/LOCAL gets address and size from stack and push to the stack
+
+			bc.AddInstruction(InGlobal() ? MC.OP_PUSH_GLOBAL : MC.OP_PUSH_LOCAL, 0, MC.MS_TYPE_INT);
+
+			return arg;
 		}
 
+		private ArgType ResolveAndPushVariableAddress(NodeIterator it)
+		{	
+			var member = sem.currentContext.variables.GetMember(it.Data());
+			MS.SyntaxAssertion(member != null, it, "unknown: " + it.Data()); 
+			var varType = member.Type;
+			int address = member.Address;
+			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, address);
 
+			while(true)
+			{
+				if (!it.HasNext()) break;
+				if (it.NextType() == NodeType.DOT)
+				{
+					// eg. "vec.x"
+					it.ToNext();
+					MS.SyntaxAssertion(it.HasNext(), it, "member after dot expected");
+					MS.SyntaxAssertion(varType is StructDefType, it, "struct before dot expected: " + varType);
+					it.ToNext();
+					member = ((StructDefType)varType).SD.GetMember(it.Data());
+					MS.SyntaxAssertion(member != null, it, "unknown member: " + it.Data());
+					bc.AddInstructionWithData(MC.OP_ADD_TOP, 1, MC.MS_TYPE_INT, member.Address);
+					varType = member.Type;
+					continue;
+				}
+				else if (it.NextType() == NodeType.SQUARE_BRACKETS)
+				{
+					// push argument in square brackets and call getter
+					// eg. "a[2]"
+					//	[<EXPR>]
+					//		[a]
+					//		[<SQUARE_BRACKETS>]
+					//			[<EXPR>]
+					//				[2]
+					MS.SyntaxAssertion(member.Type is GenericArrayType, it, "array expected");
+					var arrayType = (GenericArrayType)member.Type;
+					it.ToNext();
+					var cp = it.Copy();
+					cp.ToChild();
+					MS.SyntaxAssertion(!cp.HasNext(), cp, "only one index expected");
+					cp.ToChild();
+					var args = PushArgs(cp);
+					MS.SyntaxAssertion(arrayType.ValidIndex(args), it, "wrong array index");
+					
+					// now there should be the array address and the index in stack
+					// so let's get the array item address by array's callback
+					
+					args.AddFirst(ArgType.Void(common.genericGetAtCallName));
+					args.AddFirst(ArgType.Addr(arrayType));
+
+					// agrs = arrayType, @getAt, index type
+					// which Matched callback defined in GenericArrayType
+
+					var callback = common.FindCallback(args);
+
+					MS.SyntaxAssertion(callback != null, it, "array getter not found");
+
+					MS.Verbose("array callback found: ");
+					callback.Print(MS.printOut);
+					bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
+
+					// address is in register, so push it to stack
+
+					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.MS_TYPE_VOID, 1);
+
+					member = null;
+					varType = arrayType.itemType;
+					continue;
+				}
+				else if (it.NextType() == NodeType.PARENTHESIS)
+				{
+					// TODO: resolve the expression in parenthesis
+					MS.Assertion(false);
+				}
+				break;
+			}
+			return ArgType.Data(varType);
+		}
+
+		
+		
+			/*
 		private VarGen ResolveMember(NodeIterator it)
 		{
 			// read a variable from a chain of nodes and return its address, type, etc.
@@ -478,7 +452,7 @@ namespace Meanscript
 					// StructDef memberType = sem.getType((int)(memberTag & VALUE_TYPE_MASK), it);
 					// memberTag = memberType.getMemberTagByName(it.data());
 
-					currentStruct = sem.GetType(memberType, it);
+					currentStruct = sem.GetStructDefType(memberType, it);
 
 					MS.Verbose("    DOT: " + it.Data());
 
@@ -522,7 +496,7 @@ namespace Meanscript
 					it.ToChild();
 
 					// get array item type
-					StructDef arrayItemType = sem.GetType(arrayItemTypeID, it);
+					StructDef arrayItemType = sem.GetStructDefType(arrayItemTypeID, it);
 					int itemSize = arrayItemType.structSize;
 
 					if (it.Type() == NodeType.NUMBER_TOKEN)
@@ -605,76 +579,273 @@ namespace Meanscript
 			MS.Verbose("RES. OUT size:" + size + " mtype:" + memberType + " addr:" + srcAddress + " arrC:" + arrayItemCount + " charCount:" + charCount + " ref:" + isReference);
 
 			return new VarGen(size, memberType, srcAddress, arrayItemCount, charCount, isReference);
+
+			return null;
 		}
 
-		private void SingleArgumentPush(int targetType, NodeIterator it, int arrayItemCount)
+		private void GenerateAssignment(NodeIterator it)
+		{
+			// e.g. "int a:5" or "a:6"
+
+			MS.Verbose("Add value assinging instructions");
+
+			// get assignment target 
+
+			VarGen target = ResolveMember(it);
+
+			it.ToNext();
+			MS.Assertion(it.Type() == NodeType.ASSIGNMENT, MC.EC_INTERNAL, "assignment struct expected");
+
+			if (target.IsArray())
+			{
+				// assign array
+				MS.SyntaxAssertion(target.arraySize == it.NumChildren(), it, "wrong number of arguments in array assignment");
+				MS.SyntaxAssertion(!target.isReference, it, "array reference can't be assigned");
+
+				// assign children i.e. array items
+
+				it.ToChild();
+
+				int arrayDataSize = ArrayPush(it, target.type, target.arraySize);
+
+				bc.AddInstruction(InGlobal() ? OP_POP_STACK_TO_GLOBAL : OP_POP_STACK_TO_LOCAL, 2, MS_TYPE_VOID);
+				bc.AddWord(arrayDataSize);
+				bc.AddWord(target.address);
+
+				it.ToParent();
+
+				return;
+			}
+
+			StructDef typeSD = sem.GetStructDefType(target.type, it);
+
+			// get value for assignment target
+
+			it.ToChild();
+			if (it.HasNext())
+			{
+				// list of arguments to assign
+				ArgumentStructPush(it.Copy(), typeSD, typeSD.NumMembers(), true);
+			}
+			else
+			{
+				NodeIterator cp = new NodeIterator(it);
+				SingleArgumentPush(target.type, cp, target.charCount); // last arg. > 0 if the type is chars
+			}
+
+			// WRITE values. This works like a callback call.
+			// Actually here we could call overridden assignment callback for the type.
+
+			// local or global?
+			if (target.isReference)
+			{
+				bc.AddInstruction(InGlobal() ? OP_POP_STACK_TO_GLOBAL_REF : OP_POP_STACK_TO_LOCAL_REF, 2, MS_TYPE_VOID);
+			}
+			else
+			{
+				bc.AddInstruction(InGlobal() ? OP_POP_STACK_TO_GLOBAL : OP_POP_STACK_TO_LOCAL, 2, MS_TYPE_VOID);
+			}
+
+			if (target.type == MS_GEN_TYPE_CHARS)
+			{
+				bc.AddWord(target.charCount / 4 * 2);
+			}
+			else
+			{
+				MS.Assertion(sem.GetType(target.type, it).Size() > 0, MC.EC_INTERNAL, "...");
+				bc.AddWord(sem.GetType(target.type, it).Size());
+			}
+
+			bc.AddWord(target.address);
+		}
+
+		private int ArrayPush(NodeIterator it, int itemType, int arraySize)
+		{
+			StructDef itemSD = sem.GetStructDefType(itemType);
+			int itemSize = itemSD.StructSize();
+
+			for (int i = 0; i < arraySize; i++)
+			{
+				it.ToChild();
+				NodeIterator cp = new NodeIterator(it);
+				SingleArgumentPush(itemType, cp, -1);
+				it.ToParent();
+				if (it.HasNext()) it.ToNext();
+			}
+			return arraySize * itemSize;
+		}
+
+		private void SquareBracketArgumentPush(NodeIterator it, StructDef sd, int numArgs)
+		{
+			MS.Verbose("Assign struct values in square brackets");
+
+			int argIndex = 0;
+			it.ToChild();
+			MS.Assertion(it.Type() == NodeType.EXPR, MC.EC_INTERNAL, "expression expected");
+			MS.Assertion(it.HasChild(), MC.EC_INTERNAL, "argument expected");
+
+			do
+			{
+				it.ToChild();
+				MS.SyntaxAssertion(argIndex < numArgs, it, "wrong number of arguments, expected " + numArgs);
+				int memberType = sd.GetMemberByIndex(argIndex).Type.ID;
+				int numItems = -1;
+
+				// LEGACY:
+				//if (memberType == MS_GEN_TYPE_ARRAY)
+				//{
+				//	numItems = sd.GetMemberArrayItemCountOrNegative(argIndex);
+				//}
+				//if (memberType == MS_GEN_TYPE_CHARS)
+				//{
+				//	numItems = sd.GetMemberCharCount(argIndex);
+				//}
+				
+				SingleArgumentPush(memberType, it, numItems);
+				it.ToParent();
+				argIndex++;
+			}
+			while (it.ToNextOrFalse());
+
+			it.ToParent();
+
+			MS.SyntaxAssertion(!(it.HasNext()) && argIndex == numArgs, it, "wrong number of arguments");
+		}
+
+		private void CallArgumentPush(NodeIterator it, StructDef sd, int numArgs)
+		{
+			if ((it.Type() == NodeType.PARENTHESIS && !it.HasNext()))
+			{
+				// F2 (a1, a2)
+
+				it.ToChild();
+				ArgumentStructPush(it, sd, numArgs, true);
+			}
+			else
+			{
+				// F1 a1
+				// F2 a1 a2
+				// F2 (F3 x) a2
+
+				ArgumentStructPush(it, sd, numArgs, false);
+			}
+		}
+
+		private void ArgumentStructPush(NodeIterator it, StructDef sd, int numArgs, bool commaSeparated)
+		{
+			MS.Assertion(false);
+			//MS.Verbose("Assign struct argument");
+			//
+			//// HANDLE BOTH CASES:
+			//// 1)		func arg1 arg2
+			//// 2)		func (arg1, arg2)
+			//
+			//int argIndex = 0;
+			//do
+			//{
+			//	if (!commaSeparated)
+			//	{
+			//		MS.SyntaxAssertion(!IsFunctionOrCallback(it.Data()), it, "function arguments must be in brackets or comma-separated");
+			//	}
+			//	else
+			//	{
+			//		it.ToChild(); // comma-separated are expressions
+			//	}
+			//
+			//	MS.SyntaxAssertion(argIndex < sd.NumMembers(), it, "too many arguments");
+			//	int memberTag = sd.GetMemberTagByIndex(argIndex);
+			//	int arrayItemCount = sd.GetMemberArrayItemCountOrNegative(argIndex);
+			//	SingleArgumentPush(InstrValueTypeID(memberTag), it, arrayItemCount);
+			//
+			//	if (commaSeparated)
+			//	{
+			//		it.ToParent();
+			//	}
+			//
+			//	argIndex++;
+			//}
+			//while (it.ToNextOrFalse());
+			//
+			//MS.SyntaxAssertion(!(it.HasNext()) && argIndex == numArgs, it, "wrong number of arguments");
+		}
+
+		//private bool IsFunctionOrCallback(MSText name)
+		//{
+		//	Context context = sem.FindContext(name);
+		//	if (context == null) return ((common.callbackIDs.ContainsKey(name)));
+		//	return true;
+		//}
+		*/
+
+		private ArgType SingleArgumentPush(NodeIterator it, TypeDef trg = null)
 		{
 			MS.Verbose("Assign an argument [" + it.Data() + "]");
 
-			MS.Assertion(targetType < MAX_TYPES, MC.EC_INTERNAL, "invalid type");
+			//MS.Assertion(targetType < MAX_TYPES, MC.EC_INTERNAL, "invalid type");
 
 			if (it.Type() == NodeType.EXPR)
 			{
-				MS.SyntaxAssertion(!it.HasNext(), it, "argument syntax error");
-				it.ToChild();
-				NodeIterator cp = new NodeIterator(it);
-				SingleArgumentPush(targetType, cp, arrayItemCount);
-				it.ToParent();
-				return;
+				MS.Assertion(false);
+				//MS.SyntaxAssertion(!it.HasNext(), it, "argument syntax error");
+				//it.ToChild();
+				//NodeIterator cp = new NodeIterator(it);
+				//SingleArgumentPush(targetType, cp, arrayItemCount);
+				//it.ToParent();
+				return null;
 			}
 
 			if (it.Type() == NodeType.HEX_TOKEN)
 			{
-				if (targetType == MS_TYPE_INT)
-				{
-					long number = ParseHex((it.Data()).GetString(), 8);
-					bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, MS_TYPE_INT, Int64lowBits(number));
-					return;
-				}
-				else if (targetType == MS_TYPE_INT64)
-				{
-					long number = ParseHex((it.Data()).GetString(), 16);
-					bc.AddInstruction(OP_PUSH_IMMEDIATE, 2, MS_TYPE_INT64);
-					bc.AddWord(Int64highBits(number));
-					bc.AddWord(Int64lowBits(number));
-					return;
-				}
-				else
-				{
-					MS.SyntaxAssertion(false, it, "number error");
-				}
+				//if (targetType == MS_TYPE_INT)
+				//{
+					long number = MC.ParseHex(it.Data().GetString(), 8);
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, MC.Int64lowBits(number));
+					return ArgType.Data(common.IntType);
+				//}
+				//else if (targetType == MS_TYPE_INT64)
+				//{
+				//	long number = ParseHex((it.Data()).GetString(), 16);
+				//	bc.AddInstruction(OP_PUSH_IMMEDIATE, 2, MS_TYPE_INT64);
+				//	bc.AddWord(Int64highBits(number));
+				//	bc.AddWord(Int64lowBits(number));
+				//	return;
+				//}
+				//else
+				//{
+				//	MS.SyntaxAssertion(false, it, "number error");
+				//}
 			}
 			else if (it.Type() == NodeType.NUMBER_TOKEN)
 			{
-				if (targetType == MS_TYPE_INT)
+				if (trg == null || trg.ID == MC.MS_TYPE_INT)
 				{
 					int number = MS.ParseInt((it.Data()).GetString());
-					bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, MS_TYPE_INT, number);
-					return;
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, number);
+					return ArgType.Data(common.IntType);
 				}
-				else if (targetType == MS_TYPE_INT64)
+				else if (trg.ID == MC.MS_TYPE_INT64)
 				{
-					long number = MS.ParseInt64((it.Data()).GetString());
-					bc.AddInstruction(OP_PUSH_IMMEDIATE, 2, MS_TYPE_INT64);
-					bc.AddWord(Int64highBits(number));
-					bc.AddWord(Int64lowBits(number));
-					return;
+					long number = MS.ParseInt64(it.Data().GetString());
+					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.MS_TYPE_INT64);
+					bc.AddWord(MC.Int64highBits(number));
+					bc.AddWord(MC.Int64lowBits(number));
+					return ArgType.Data(trg);
 				}
-				else if (targetType == MS_TYPE_FLOAT)
+				else if (trg.ID == MC.MS_TYPE_FLOAT)
 				{
 					float f = MS.ParseFloat32(it.Data().GetString());
 					int floatToInt = MS.FloatToIntFormat(f);
-					bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, MS_TYPE_FLOAT, floatToInt);
-					return;
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_FLOAT, floatToInt);
+					return ArgType.Data(trg);
 				}
-				else if (targetType == MS_TYPE_FLOAT64)
+				else if (trg.ID == MC.MS_TYPE_FLOAT64)
 				{
 					double f = MS.ParseFloat64((it.Data()).GetString());
 					long number = MS.Float64ToInt64Format(f);
-					bc.AddInstruction(OP_PUSH_IMMEDIATE, 2, MS_TYPE_FLOAT64);
-					bc.AddWord(Int64highBits(number));
-					bc.AddWord(Int64lowBits(number));
-					return;
+					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.MS_TYPE_FLOAT64);
+					bc.AddWord(MC.Int64highBits(number));
+					bc.AddWord(MC.Int64lowBits(number));
+					return ArgType.Data(trg);
 				}
 				else
 				{
@@ -685,34 +856,43 @@ namespace Meanscript
 			{
 				int textID = tree.GetTextID(it.Data());
 				MS.Assertion(textID >= 0, MC.EC_INTERNAL, "text not found");
-				if (targetType == MS_TYPE_TEXT)
+				if (trg is GenericCharsType chars)
 				{
-					// assign text id
-					bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, MS_TYPE_TEXT, textID);
+					//OP_PUSH_CHARS:
+					//	int textID = bc.code[instructionPointer + 1];
+					//	int maxChars = bc.code[instructionPointer + 2];
+					//	int structSize = bc.code[instructionPointer + 3];
+
+					// copy chars
+					// chars.maxChars == eg. 7 if "chars[7] x"
+					bc.AddInstructionWithData(MC.OP_PUSH_CHARS, 3, MC.MS_TYPE_TEXT, textID);
+					bc.AddWord(chars.maxChars);
+					bc.AddWord(chars.SizeOf()); // sizeOf in ints. characters + size.
+					return ArgType.Data(trg);
 				}
 				else
 				{
-					// copy chars
-					int maxChars = arrayItemCount; // eg. 7 if "chars[7] x"
-												   // StructDef sd = sem.typeStructDefs[targetType];
-					MS.SyntaxAssertion(targetType == MS_GEN_TYPE_CHARS, it, "chars type expected");
-					bc.AddInstructionWithData(OP_PUSH_CHARS, 3, MS_TYPE_TEXT, textID);
-					bc.AddWord(maxChars);
-					bc.AddWord((maxChars / 4) + 2 + 1); // characters + size
+					// assign text id
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_TEXT, textID);
+					return ArgType.Data(common.TextType);
 				}
-				return;
+				//else
+				//{
+				//}
+				//return;
 			}
 			else if (it.Type() == NodeType.NAME_TOKEN)
 			{
-				Context functionContext = sem.FindContext(it.Data());
+				MS.Assertion(false);
+				/*Context functionContext = sem.FindContext(it.Data());
 				if (functionContext != null)
 				{
 					// PUSH A FUNCTION ARGUMENT
 
 					GenerateFunctionCall(it.Copy(), functionContext);
-					StructDef returnData = sem.GetType(functionContext.returnType, it);
+					StructDef returnData = sem.GetStructDefType(functionContext.returnType, it);
 					MS.SyntaxAssertion(targetType == returnData.typeID, it, "type mismatch");
-					bc.AddInstructionWithData(OP_PUSH_REG_TO_STACK, 1, MS_TYPE_VOID, returnData.structSize);
+					bc.AddInstructionWithData(OP_PUSH_REG_TO_STACK, 1, MS_TYPE_VOID, returnData.StructSize());
 					return;
 				}
 				else if ((common.callbackIDs.ContainsKey(it.Data())))
@@ -721,9 +901,9 @@ namespace Meanscript
 					// PUSH A CALLBACK ARGUMENT
 
 					MCallback callback = GenerateCallbackCall(it.Copy());
-					StructDef returnData = sem.GetType(callback.returnType, it);
+					StructDef returnData = sem.GetStructDefType(callback.returnType, it);
 					MS.SyntaxAssertion(targetType == returnData.typeID, it, "type mismatch");
-					bc.AddInstructionWithData(OP_PUSH_REG_TO_STACK, 1, MS_TYPE_VOID, returnData.structSize);
+					bc.AddInstructionWithData(OP_PUSH_REG_TO_STACK, 1, MS_TYPE_VOID, returnData.StructSize());
 					return;
 				}
 				else
@@ -749,22 +929,26 @@ namespace Meanscript
 					MS.SyntaxAssertion(targetType == vg.type, it, "type mismatch");
 
 					return;
-				}
+				}*/
 			}
+
+			// HANDLE THE REST IN UPPER LEVEL
+			/*
 			else if (it.Type() == NodeType.PARENTHESIS)
 			{
-				it.ToChild();
-				NodeIterator cp = new NodeIterator(it);
-				SingleArgumentPush(targetType, cp, arrayItemCount);
-				it.ToParent();
-				return;
+				MS.Assertion(false);
+				//it.ToChild();
+				//NodeIterator cp = new NodeIterator(it);
+				//SingleArgumentPush(targetType, cp, arrayItemCount);
+				//it.ToParent();
+				//return;
 			}
 			else if (it.Type() == NodeType.REFERENCE_TOKEN)
 			{
 				// TODO: SYNTAX type
-				int memberTag = currentContext.variables.GetMemberTagByName(it.Data());
-				int address = currentContext.variables.GetMemberAddressByName(it.Data());
-				int memberType = (int)(memberTag & VALUE_TYPE_MASK);
+				var member = currentContext.variables.GetMember(it.Data());
+				int address = member.Address;
+				int memberType = member.Type.ID;
 				bc.AddInstructionWithData(OP_PUSH_IMMEDIATE, 1, memberType, address);
 				return;
 			}
@@ -807,18 +991,14 @@ namespace Meanscript
 				{
 					// push array values
 
-					StructDef sd = sem.typeStructDefs[targetType];
+					StructDef sd = sem.GetStructDefType(targetType);
 					MS.SyntaxAssertion(sd != null, it, "generator: unknown type: " + targetType);
-					SquareBracketArgumentPush(it.Copy(), sd, sd.numMembers);
+					SquareBracketArgumentPush(it.Copy(), sd, sd.NumMembers());
 					return;
 				}
-			}
-			else
-			{
-				MS.SyntaxAssertion(false, it, "argument error");
-			}
+			}*/
+			MS.SyntaxAssertion(false, it, "argument error");
+			return null;
 		}
-
-
 	}
 }

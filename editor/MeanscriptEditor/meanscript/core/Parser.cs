@@ -78,7 +78,7 @@ namespace Meanscript
 
 		private static void AddExpr()
 		{
-			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR, new MSText("<EXPR>"));
+			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR);
 			currentExpr.next = expr;
 			currentExpr = expr;
 			currentToken = null;
@@ -135,7 +135,7 @@ namespace Meanscript
 			// check that comma is used properly
 			if (baPtr.currentInput == ',')
 			{
-				MS.Assertion(currentBlock != null && (currentBlock.type == NodeType.ASSIGNMENT || currentBlock.type == NodeType.SQUARE_BRACKETS || currentBlock.type == NodeType.PARENTHESIS), EC_PARSE, "unexpected comma");
+				MS.Assertion(currentBlock != null && (currentBlock.type == NodeType.ASSIGNMENT_BLOCK || currentBlock.type == NodeType.SQUARE_BRACKETS || currentBlock.type == NodeType.PARENTHESIS), EC_PARSE, "unexpected comma");
 			}
 
 			if (currentBlock != null) currentBlock.numChildren++;
@@ -147,7 +147,7 @@ namespace Meanscript
 					// end assignment block
 					// hack solution to allow assignment args without brackets
 					assignment = false;
-					EndBlock(NodeType.ASSIGNMENT);
+					EndBlock(NodeType.ASSIGNMENT_BLOCK);
 					AddExpr();
 				}
 				else
@@ -169,25 +169,18 @@ namespace Meanscript
 		private static void AddBlock(NodeType blockType)
 		{
 
-			MSText blockTypeName = null;
-
-			if (blockType == NodeType.PARENTHESIS) blockTypeName = new MSText("<PARENTHESIS>");
-			else if (blockType == NodeType.SQUARE_BRACKETS) blockTypeName = new MSText("<SQUARE_BRACKETS>");
-			else if (blockType == NodeType.ASSIGNMENT)
+			if (blockType == NodeType.ASSIGNMENT_BLOCK)
 			{
+				currentExpr.type = NodeType.EXPR_ASSIGN; 
 				assignment = true;
-				blockTypeName = new MSText("<ASSIGNMENT>");
 			}
-			else if (blockType == NodeType.CODE_BLOCK) blockTypeName = new MSText("<CODE_BLOCK>");
-			else MS.Assertion(false, MC.EC_INTERNAL, "invalid block type");
 
 			{ if (MS._debug) { MS.Verbose("add block: " + blockType); } };
 
 			lastStart = -1;
 
-			MS.Assertion(blockTypeName != null, MC.EC_INTERNAL, "blockTypeName is null");
 
-			MNode block = new MNode(lineNumber, characterNumber, currentExpr, blockType, blockTypeName);
+			MNode block = new MNode(lineNumber, characterNumber, currentExpr, blockType, null);
 
 			if (currentToken == null)
 			{
@@ -203,7 +196,7 @@ namespace Meanscript
 
 			currentBlock = block;
 
-			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR, new MSText("<EXPR>"));
+			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR);
 			currentBlock.child = expr;
 			currentExpr = expr;
 			currentToken = null;
@@ -273,7 +266,7 @@ namespace Meanscript
 			ba.Transition(space, "]", () => { EndBlock(NodeType.SQUARE_BRACKETS); });
 			ba.Transition(space, "{", () => { AddBlock(NodeType.CODE_BLOCK); Next(skipLineBreaks); });
 			ba.Transition(space, "}", () => { EndBlock(NodeType.CODE_BLOCK); });
-			ba.Transition(space, ":", () => { AddBlock(NodeType.ASSIGNMENT); Next(skipLineBreaks); });
+			ba.Transition(space, ":", () => { AddBlock(NodeType.ASSIGNMENT_BLOCK); Next(skipLineBreaks); });
 			ba.Transition(space, ".", () => { AddOperator(NodeType.DOT, new MSText(".")); });
 
 			ba.Transition(name, letters, null);
@@ -283,7 +276,7 @@ namespace Meanscript
 			ba.Transition(name, expressionBreak, () => { AddToken(NodeType.NAME_TOKEN); ExprBreak(); Next(space); });
 			ba.Transition(name, blockStart, () => { AddToken(NodeType.NAME_TOKEN); Bwd(); Next(space); });
 			ba.Transition(name, blockEnd, () => { AddToken(NodeType.NAME_TOKEN); Bwd(); Next(space); });
-			ba.Transition(name, ":", () => { AddToken(NodeType.NAME_TOKEN); AddBlock(NodeType.ASSIGNMENT); Next(skipLineBreaks); });
+			ba.Transition(name, ":", () => { AddToken(NodeType.NAME_TOKEN); AddBlock(NodeType.ASSIGNMENT_BLOCK); Next(skipLineBreaks); });
 			ba.Transition(name, ".", () => { AddToken(NodeType.NAME_TOKEN); AddOperator(NodeType.DOT, new MSText(".")); Next(space); });
 
 			ba.Transition(reference, letters, null);

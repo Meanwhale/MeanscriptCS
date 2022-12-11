@@ -65,22 +65,13 @@ namespace MeanscriptEditor
 			//Meanscript.MS.printOut = winOutput;
 			//Meanscript.MS.errorOut = winOutput;
 			//Meanscript.MS.userOut = winOutput;
-			try
-			{
-				//MeanscriptUnitTest.RunAll();
-				//Status("MeanscriptUnitTest DONE!");
-				//winOutput.Print("\nTEST DONE!");
-				//winOutput.ScrollToEnd();
-			}
-			catch (Exception e)
-			{
-				Status("unit test failed");
-				TextBoxOutput.Text = e.ToString();
-			}
+
 		
 			KeyDown += new KeyEventHandler(MainWindow_KeyDown);
 
-			TextBoxCode.Text = "int a: 5";
+			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
+			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
+			TextBoxCode.Text = "chars [10] c : \"moi!\"";
 
 		}
 
@@ -90,10 +81,34 @@ namespace MeanscriptEditor
 			if (e.Key == Key.F5)
 			{
 				Command_Parse();
-				//Command_CompileAndRun();
+			}
+			if (e.Key == Key.F8)
+			{
+				TextBoxCode.Text = MeanscriptUnitTest.simpleVariableScript;
+				//MeanscriptUnitTest.SimpleVariable();
+			}
+			if (e.Key == Key.F9)
+			{
+				TextBoxCode.Text = MeanscriptUnitTest.quiteComplexStructs;
+				//MeanscriptUnitTest.SimpleVariable();
 			}
 		}
 
+		private void RunUnitTests()
+		{
+			try
+			{
+				MeanscriptUnitTest.RunAll();
+				Status("MeanscriptUnitTest DONE!");
+				winOutput.Print("\nTEST DONE!");
+				winOutput.ScrollToEnd();
+			}
+			catch (Exception e)
+			{
+				Status("unit test failed");
+				TextBoxOutput.Text = e.ToString();
+			}
+		}
 		private void Command_Parse()
 		{
 			// parse TextBoxCode.Text
@@ -104,8 +119,12 @@ namespace MeanscriptEditor
 				Common com = new Common();
 				com.Initialize(semantics);
 
-				semantics.Analyze(); // tarviiko enää treetä antaa tässä?
+				semantics.Analyze(com); // tarviiko enää treetä antaa tässä?
 				semantics.Info(winOutput);
+				
+				ByteCode bc = Generator.Generate(tree, semantics, com);
+				var mm = new MeanMachine(bc);
+				mm.CallFunction(0);
 			}
 			catch (MException e)
 			{

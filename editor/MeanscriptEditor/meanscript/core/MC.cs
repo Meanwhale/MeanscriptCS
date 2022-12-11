@@ -11,7 +11,7 @@ namespace Meanscript
 		EXPR_STRUCT,			// struct vec [int x, int y]
 		ARG,
 		PARENTHESIS,
-		ASSIGNMENT,
+		ASSIGNMENT_BLOCK,
 		SQUARE_BRACKETS,
 		CODE_BLOCK,
 		NAME_TOKEN,
@@ -28,9 +28,24 @@ namespace Meanscript
 		COMMA,
 		HEX_TOKEN,
 	}
+	public class Keyword
+	{
+		public readonly string name;
+		public readonly int id;
+		public readonly MSText text;
+
+		public Keyword(string name, int id)
+		{
+			this.name = name;
+			this.id = id;
+			text = new MSText(name);
+			MC.keywords.AddLast(this);
+		}
+	}
 
 	public class MC
 	{
+		public static MList<Keyword> keywords = new MList<Keyword>();
 		// node types
 
 
@@ -55,6 +70,7 @@ namespace Meanscript
 		public const int OP_NOOP = 0x0c000000;
 		public const int OP_ADD_TEXT = 0x10000000; // add immutable text to text map and add index to register
 		public const int OP_PUSH_IMMEDIATE = 0x11000000; // push immediate value to stack
+		public const int OP_ADD_TOP = 0x12000000; // add a value on stack's top item
 		public const int OP_PUSH_REG_TO_STACK = 0x13000000; // push content of register to stack
 		public const int OP_FUNCTION = 0x14000000; // introduce a function
 		public const int OP_START_INIT = 0x15000000;
@@ -83,7 +99,7 @@ namespace Meanscript
 			"jump",                 "go back",              "go end",               "---OLD---",
 			"struct definition",    "struct member",        "save base",            "load base",
 			"no operation",         "---OLD---",            "---OLD---",            "---OLD---",
-			"text",                 "push immediate",       "---OLD---",            "push from reg.",
+			"text",                 "push immediate",       "add top",	            "push from reg.",
 			"function data",        "start init",           "end init",             "function call",
 			"push local",           "push global",          "pop to local",         "pop to global",
 			"pop to register",      "---OLD---",            "init globals",         "generic member",
@@ -93,29 +109,36 @@ namespace Meanscript
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
 			};
 
-		public const int KEYWORD_FUNC_ID = 0;
-		public const int KEYWORD_STRUCT_ID = 1;
-		public const int KEYWORD_RETURN_ID = 2;
-		public const int KEYWORD_GLOBAL_ID = 3;
-		public const int NUM_KEYWORDS = 4;
 
-		public static readonly string[] keywords = new string[] {
-			"func",
-			"struct",
-			"return",
-			"global"
-		};
-		public static readonly string[] primitiveNames = new string[] {
-			"",
-			"int",
-			"int64",
-			"float",
-			"float64",
-			"text",
-			"bool",
-			"",
-			"",
-			"chars",
+		public static readonly Keyword KEYWORD_FUNC		= new Keyword("func", 0);
+		public static readonly Keyword KEYWORD_STRUCT	= new Keyword("struct", 0);
+		public static readonly Keyword KEYWORD_RETURN	= new Keyword("return", 0);
+		public static readonly Keyword KEYWORD_GLOBAL	= new Keyword("global", 0);
+		public static readonly Keyword KEYWORD_ARRAY	= new Keyword("array", 0);
+		
+		public const int MS_TYPE_VOID = 0; // primitive types
+		public const int MS_TYPE_INT = 1;
+		public const int MS_TYPE_INT64 = 2;
+		public const int MS_TYPE_FLOAT = 3;
+		public const int MS_TYPE_FLOAT64 = 4;
+		public const int MS_TYPE_TEXT = 5;
+		public const int MS_TYPE_BOOL = 6;
+		public const int MS_TYPE_CODE_ADDRESS = 7;
+		public const int MS_TYPE_TEXT_DATA = 8; // internal: array of text size + chars
+		public const int MAX_MS_TYPES = 16;
+		public const int MAX_TYPES = 256;
+
+		public static readonly MSText[] primitiveNames = new MSText[] {
+			new MSText("void"),
+			new MSText("int"),
+			new MSText("int64"),
+			new MSText("float"),
+			new MSText("float64"),
+			new MSText("text"),
+			new MSText("bool"),
+			MSText.Empty(),
+			MSText.Empty(),
+			new MSText("chars"),
 		};
 
 		public const string HORIZONTAL_LINE = "------------------------------------------";
@@ -130,18 +153,6 @@ namespace Meanscript
 		public const int SIZE_SHIFT = 16;
 		public const int VALUE_TYPE_SHIFT = 0;
 
-		public const int MS_TYPE_VOID = 0; // primitive types
-		public const int MS_TYPE_INT = 1;
-		public const int MS_TYPE_INT64 = 2;
-		public const int MS_TYPE_FLOAT = 3;
-		public const int MS_TYPE_FLOAT64 = 4;
-		public const int MS_TYPE_TEXT = 5;
-		public const int MS_TYPE_BOOL = 6;
-		public const int MS_TYPE_CODE_ADDRESS = 7;
-		public const int MS_GEN_TYPE_ARRAY = 8; // generic types
-		public const int MS_GEN_TYPE_CHARS = 9;
-		public const int MAX_MS_TYPES = 16;
-		public const int MAX_TYPES = 256;
 
 		// error classes
 
@@ -178,14 +189,14 @@ namespace Meanscript
 
 		public static bool IsArrayTag(int tag)
 		{
-			//MS.assertion((tag & OPERATION_MASK) == OP_STRUCT_MEMBER || (tag & OPERATION_MASK) == OP_GENERIC_MEMBER,MC.EC_INTERNAL, "not a member tag");
-			return InstrValueTypeID(tag) == MS_GEN_TYPE_ARRAY;
+			MS.Assertion(false);
+			return false;
 		}
 
 		public static bool IsCharsTag(int tag)
 		{
-			//MS.assertion((tag & OPERATION_MASK) == OP_STRUCT_MEMBER || (tag & OPERATION_MASK) == OP_GENERIC_MEMBER,MC.EC_INTERNAL, "not a member tag");
-			return InstrValueTypeID(tag) == MS_GEN_TYPE_CHARS;
+			MS.Assertion(false);
+			return false;
 		}
 
 		public static int InstrSize(int instruction)

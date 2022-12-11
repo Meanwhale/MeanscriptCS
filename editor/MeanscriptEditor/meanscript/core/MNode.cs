@@ -13,7 +13,7 @@ namespace Meanscript
 		internal MNode child = null;
 		internal MNode parent = null;
 
-		public MNode(int line, int ch, MNode _parent, NodeType _type, MSText _data)
+		public MNode(int line, int ch, MNode _parent, NodeType _type, MSText _data = null)
 		{
 			data = _data;
 			lineNumber = line;
@@ -53,8 +53,9 @@ namespace Meanscript
 			MNode node = _node;
 
 			for (int i = 0; i < depth; i++) MS.Printn("  ");
-
-			MS.Printn("[" + node.data + "]");
+			
+			if (node.data == null) MS.Printn("[" + node.type + "]");
+			else MS.Printn("[" + node.data + "]");
 
 			// if (node.numChildren > 0) { MS.verbose(" + " + node.numChildren); }
 

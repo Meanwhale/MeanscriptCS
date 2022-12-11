@@ -11,6 +11,11 @@ namespace Meanscript
 			textCount = 1; // textID 0 means empty ("")
 		}
 
+		public int AddText(string s)
+		{
+			return AddText(new MSText(s));
+		}
+
 		public int AddText(MSText data)
 		{
 			// text is already there
@@ -24,7 +29,7 @@ namespace Meanscript
 
 		public int GetTextID(MSText data)
 		{
-			if ((texts.ContainsKey(data))) return texts[data];
+			if (data != null && texts.ContainsKey(data)) return texts[data];
 			return -1;
 		}
 

@@ -92,7 +92,6 @@
     <Compile Include="meanscript\core\Generator.cs" />
     <Compile Include="meanscript\core\MArgs.cs" />
     <Compile Include="meanscript\core\MC.cs" />
-    <Compile Include="meanscript\core\MCallback.cs" />
     <Compile Include="meanscript\core\MeanMachine.cs" />
     <Compile Include="meanscript\core\MeanscriptUnitTest.cs" />
     <Compile Include="meanscript\core\MNode.cs" />
@@ -101,7 +100,7 @@
     <Compile Include="meanscript\core\Semantics.cs" />
     <Compile Include="meanscript\core\StructDef.cs" />
     <Compile Include="meanscript\core\TokenTree.cs" />
-    <Compile Include="meanscript\core\VarGen.cs" />
+    <Compile Include="meanscript\core\TypeDef.cs" />
     <Compile Include="meanscript\MSCode.cs" />
     <Compile Include="meanscript\MSData.cs" />
     <Compile Include="meanscript\MSDataArray.cs" />
