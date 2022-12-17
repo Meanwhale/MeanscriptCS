@@ -1,4 +1,92 @@
+struct vec2 [int x, int y]
+struct person [text name, ptr [vec2] point, ptr[person] boss]
+array [person, 3] arr
+arr[1].point: (23,45)
+1   2  3      4
 
+1) push arr address
+2) push 1 -> call array getter -> stack: 2nd item's address
+3) add point's offset -> stack: point's dynamic address
+4) copy struct values to dynamic address
+
+arr[1].point.x: 23
+1   2  3     4  5
+
+1) push arr address
+2) push 1 -> call array getter -> stack: 2nd item's address
+3) add point's offset -> stack: point's dynamic address
+4) 
+
+---
+
+muistinhallinta
+
+ - onko pointertypessä järkeä jos ao. ideat toteutetaan?
+ - muistivuodon estämiseksi DO:lla pitää olla omistaja
+ - sen lisäksi voi olla heikkoja linkkejä eli osoitteita DO:n
+ 
+struct vec2 [int x, int y]
+struct person [
+	text name,
+	map [int, vec2] refs
+]
+
+person p : "Jack", null
+// ...
+p: "Joe", null						// pitää kutsua "destruktoria":
+									// p:n osoite pinoon
+									// DESTRUCTOR pop + 1 (refsin osoite namen jälkeen), type
+									// sama sitten kaikille mapin arvoille, joilla ei tosin ole
+									// vapautettavaa.
+p: "Jill", [(1,(2,3)),(4,(5,6))]	// IDEA
+
+person q : give(p)					// IDEA: p -> null
+
+ - huono idea: JOS HALUAISI PITÄÄ YKSINKERTAISENA NIIN DYNAAMISIA OBJECKTEJA OLISI VAIN GLOBAALISSA.
+   muuten voisi käyttää vain (heikkoja) viitteitä
+ 
+ ______________
+ 
+pointteri
+
+struct vec2 [int x, int y]
+vec2 v : 12, 34
+
+ptr[vec2] p : v						// push "v"'s values to stack -> copy to dynamic
+ptr[vec2] q : 56, 78
+
+map[int, ptr[vec2]] m				// map: <int> --> <dynamic object address of type "vec2">
+m.add (123, ptr[vec2](456,789))		// push "lambda variable" to stack and give as an arg.
+m.add (101, v)						// ERROR: type mismatch
+m.add (102, ptr[vec2](v))			// good. creates a new dynamic object.
+m.add (101, p)						// good.
+
+map[int, vec2] n
+n.add (234, vec2(345,345))			// "lambda variable"
+n.add (123, (456,789))				// same: type is got from something like "assign target"
+n.add (345, p)						// ERROR: type mismatch
+n.add (345, valueof(p))				// good. TODO: replace "valueof"
+m.add (345, v)						// good.
+
+ ______________
+ 
+operaattorit
+
+ - if, else yms.
+ - laskutoimitukset
+		- override kaikille 2 numeron comboille
+		- jos numerot ovat esim. int ja float niin palauta float
+
+12 + -23	-->		<12>	<+>		<-23>
+-23 -23		-->		<-23>	<->		<23>
+-a + 12		-->		<->		<a>		<+>		<12>
+					[0]		[1]		[2]		[3]
+ - viimeisin
+		- pinossa a:n arvo ja 12
+		- copy [1] to reg.
+		- negate reg.
+		- add [3] to reg.
+ ______________
 
 callback as an argument:
  - callnametype voi olla vain ensimmäisenä
@@ -13,7 +101,6 @@ callback as an argument:
 	F2 (F3 x) a2
 	
 bool b : true
-
  ______________
  
  assign struct:

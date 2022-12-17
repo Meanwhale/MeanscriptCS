@@ -132,7 +132,7 @@ namespace Meanscript
 					else
 					{
 						// make a new iterator for child
-						GenerateExpression(it.Copy());
+						GenerateExpression(it.Copy(), true);
 					}
 
 				}
@@ -149,12 +149,12 @@ namespace Meanscript
 					MS.Verbose("EXPR_ASSIGN");
 					var cp = it.Copy();
 					cp.ToChild();
-					GenerateAssign(cp);
+					GenerateAssign(cp, false);
 				}
 				else if (exprType == NodeType.EXPR_INIT_AND_ASSIGN)
 				{
 					MS.Verbose("EXPR_INIT_AND_ASSIGN");
-					GenerateInitAndAssign(it.Copy());
+					GenerateAssignWithInit(it.Copy());
 				}
 				else if (exprType != NodeType.EXPR_STRUCT)
 				{
@@ -170,56 +170,7 @@ namespace Meanscript
 			}
 		}
 
-		private void GenerateInitAndAssign(NodeIterator it)
-		{
-			MS.Verbose("------------ GenerateInitAndAssign ------------");
-			if (MS._verboseOn) it.PrintTree(false);
-			// eg. "int a: 5"
-
-			//		[<EXPR>]
-			//			[int]
-			//			[a]
-			//			[<ASSIGNMENT>]
-			//				[<EXPR>]
-			//			      [5]
-			//		[<EXPR>] ...
-
-			MS.Assertion(it.Type() == NodeType.EXPR_INIT_AND_ASSIGN);
-			it.ToChild();
-			var memberType = sem.GetDataType(it.Data()); // eg. "int"
-			it.ToNext();
-
-			GenerateAssign(it);
-		}
-
-		private void GenerateAssign(NodeIterator it)
-		{
-			MS.Verbose("------------ GenerateAssign ------------");
-			if (MS._verboseOn) it.PrintTree(false);
-			// eg. "a: 5"
-
-			//var member = sem.currentContext.variables.GetMember(it.Data()); // eg. "a"
-			if (it.Type() == NodeType.SQUARE_BRACKETS && it.GetParent().type == NodeType.EXPR_INIT_AND_ASSIGN)
-			{
-				it.ToNext(); // generic init & assign
-			}
-			var assignTarget = ResolveAndPushVariableAddress(it);
-			it.ToNext();
-			MS.Assertion(it.Type() == NodeType.ASSIGNMENT_BLOCK, MC.EC_INTERNAL, "assignment struct expected");
-			it.ToChild(); // expression that contains value(s) to assign, eg. "5"
-			MS.Assertion(it.Type() == NodeType.EXPR);
-			
-			// push values and make conversions if available
-			PushAssignValues(it, assignTarget);
-
-			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, assignTarget.Def.SizeOf());
-
-			// stack: ... [target address][           data           ][size]
-
-			bc.AddInstruction(InGlobal() ? MC.OP_POP_STACK_TO_GLOBAL : MC.OP_POP_STACK_TO_LOCAL, 0, MC.MS_TYPE_VOID);
-		}
-
-		private MList<ArgType> GenerateExpression(NodeIterator it)
+		private MList<ArgType> GenerateExpression(NodeIterator it, bool call)
 		{
 			MS.Assertion(it.Type() == NodeType.EXPR);
 			it.ToChild();
@@ -247,11 +198,76 @@ namespace Meanscript
 				args = new MList<ArgType>();
 				args.Add(callback.returnType);
 			}
+			else if (call)
+			{
+				MS.SyntaxAssertion(false, it, "no function found with given arguments");
+			}
 
 			return args;
 		}
 		
-		private void PushAssignValues(NodeIterator it, ArgType trg, int depth = 0)
+		private void GenerateAssignWithInit(NodeIterator it)
+		{
+			MS.Verbose("------------ GenerateInitAndAssign ------------");
+			if (MS._verboseOn) it.PrintTree(false);
+			// eg. "int a: 5"
+
+			//		[<EXPR>]
+			//			[int]
+			//			[a]
+			//			[<ASSIGNMENT>]
+			//				[<EXPR>]
+			//			      [5]
+			//		[<EXPR>] ...
+
+			MS.Assertion(it.Type() == NodeType.EXPR_INIT_AND_ASSIGN);
+			it.ToChild();
+			it.ToNext();
+
+			GenerateAssign(it, true);
+		}
+
+		private void GenerateAssign(NodeIterator it, bool init)
+		{
+			MS.Verbose("------------ GenerateAssign ------------");
+			if (MS._verboseOn) it.PrintTree(false);
+			// eg. "a: 5"
+
+			//var member = sem.currentContext.variables.GetMember(it.Data()); // eg. "a"
+			if (it.Type() == NodeType.SQUARE_BRACKETS && it.GetParent().type == NodeType.EXPR_INIT_AND_ASSIGN)
+			{
+				it.ToNext(); // generic init & assign
+			}
+			var assignTarget = ResolveAndPushVariableAddress(it, true);
+			it.ToNext();
+			MS.Assertion(it.Type() == NodeType.ASSIGNMENT_BLOCK, MC.EC_INTERNAL, "assignment struct expected");
+			it.ToChild(); // expression that contains value(s) to assign, eg. "5"
+			MS.Assertion(it.Type() == NodeType.EXPR);
+			
+			// push values and make conversions if available
+			PushAssignValues(it, 0, assignTarget);
+
+			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, assignTarget.Def.SizeOf());
+
+			// stack: ... [target address][           data           ][size] top
+
+			if (assignTarget.Ref == Arg.ADDRESS)
+			{
+				bc.AddInstruction(InGlobal() ? MC.OP_POP_STACK_TO_GLOBAL : MC.OP_POP_STACK_TO_LOCAL, 0, MC.MS_TYPE_VOID);
+			}
+			else if (assignTarget.Ref == Arg.DYNAMIC)
+			{
+				// current dynamic object is set before
+			    // stack: ... [target offset for dynamic][           data           ][size] top
+				bc.AddInstruction(MC.OP_POP_STACK_TO_DYNAMIC, 0, MC.MS_TYPE_VOID);
+			}
+			else
+			{
+				MS.Assertion(false, MC.EC_INTERNAL, "stack or heap address expected");
+			}
+		}
+
+		private void PushAssignValues(NodeIterator it, int offset, ArgType trg, int depth = 0)
 		{
 			MS.Assertion(depth < 1000);
 			//Assume "it" is on assign expression.
@@ -271,8 +287,17 @@ namespace Meanscript
 				{
 					numArgs ++;
 					
-					PushAssignValues(it.Copy(), new ArgType(member.Ref, member.Type), depth + 1);
-					if (it.HasNext()) it.ToNext();
+					PushAssignValues(it.Copy(), offset, new ArgType(member.Ref, member.Type), depth + 1);
+					offset += member.Type.SizeOf();
+					if (numArgs < sdt.SD.NumMembers())
+					{
+						MS.SyntaxAssertion(it.HasNext(), it, "too few arguments");
+						it.ToNext();
+					}
+					else
+					{
+						MS.SyntaxAssertion(!it.HasNext(), it, "too many arguments");
+					}
 				}
 				
 				MS.SyntaxAssertion(sdt.SD.NumMembers() == numArgs, it, "wrong number of arguments for struct: " + sdt.SD);
@@ -287,17 +312,45 @@ namespace Meanscript
 				while(true)
 				{
 					numArgs++;
-					PushAssignValues(it.Copy(), new ArgType(Arg.DATA, array.itemType), depth + 1);
+					PushAssignValues(it.Copy(), offset, new ArgType(Arg.DATA, array.itemType), depth + 1);
+					offset += array.itemType.SizeOf();
 					if (it.HasNext()) it.ToNext();
 					else break;
 				}
 				
 				MS.SyntaxAssertion(array.itemCount == numArgs, it, "wrong number of arguments for array");
 			}
+			else if (trg.Def is PointerType ptr)
+			{
+				// check if it's null
+				if (it.GetChild().type == NodeType.NAME_TOKEN && it.GetChild().data.Equals("null"))
+				{
+					MS.SyntaxAssertion(it.GetChild().next == null, it, "extra tokens after null");
+					MS.Verbose("NULL!!!");
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, 0);
+					return;
+				}
+			
+				// stack for ptr getter: top >>      data      >> offset >> ...
+				
+				bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, offset);
+
+				// eg. "ptr[int] p : 5"
+				// read argument(s), make it a dynamic object IN THE SETTER BELOW, and assign its address
+				PushAssignValues(it.Copy(), 0, new ArgType(Arg.DATA, ptr.itemType), depth + 1);
+
+				// stack: ... [           data           ]
+
+				// setter creates dynamic data object and saves the address tag to register.
+				bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, ptr.SetterID);
+
+				// save dynamic address to reg.
+				bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.MS_TYPE_VOID, 1);
+			}
 			else
 			{
-				var retVal = GenerateExpression(it);
-				MS.Assertion(retVal.Size() == 1 && retVal.First().Def == trg.Def && retVal.First().Ref == trg.Ref);
+				var retVal = GenerateExpression(it, false);
+				MS.SyntaxAssertion(retVal.Size() == 1 && retVal.First().Def == trg.Def, it, "wrong argument");
 			}
 		}
 
@@ -336,6 +389,15 @@ namespace Meanscript
 						MS.SyntaxAssertion(first, it, "unexpected function name");
 						return ArgType.Void(cn);
 					}
+					
+					// is NULL needed here? 
+
+					//else if (typeArg is NullType nt)
+					//{
+					
+					//	bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_NULL, 0);
+					//	return ArgType.Dynamic(nt);
+					//}
 				}
 				else
 				{
@@ -351,18 +413,31 @@ namespace Meanscript
 		}
 		private ArgType ResolveAndPushVariableData(NodeIterator it)
 		{
-			var arg = ResolveAndPushVariableAddress(it);
-			
-			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, arg.Def.SizeOf());
+			// TODO yhdistä assignin kanssa
 
-			// OP_PUSH_GLOBAL/LOCAL gets address and size from stack and push to the stack
+			var arg = ResolveAndPushVariableAddress(it, false);
 
-			bc.AddInstruction(InGlobal() ? MC.OP_PUSH_GLOBAL : MC.OP_PUSH_LOCAL, 0, MC.MS_TYPE_INT);
+			if (arg.Ref == Arg.ADDRESS)
+			{
+				bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, arg.Def.SizeOf());
+				// OP_PUSH_GLOBAL/LOCAL gets address and size from stack and push to the stack
+				bc.AddInstruction(InGlobal() ? MC.OP_PUSH_GLOBAL : MC.OP_PUSH_LOCAL, 0, MC.MS_TYPE_INT);
+			}
+			else if (arg.Ref == Arg.DYNAMIC)
+			{
+				// TODO: ei toimi vain tällä:
+				//bc.AddInstruction(MC.OP_POP_STACK_TO_DYNAMIC, 0, MC.MS_TYPE_VOID);
+				MS.Assertion(false);
+			}
+			else
+			{
+				MS.Assertion(false, MC.EC_INTERNAL, "stack or heap address expected");
+			}
 
-			return arg;
+			return new ArgType(Arg.DATA, arg.Def); // return info what's on the stack now
 		}
 
-		private ArgType ResolveAndPushVariableAddress(NodeIterator it)
+		private ArgType ResolveAndPushVariableAddress(NodeIterator it, bool target)
 		{	
 			var member = sem.currentContext.variables.GetMember(it.Data());
 			MS.SyntaxAssertion(member != null, it, "unknown: " + it.Data()); 
@@ -370,9 +445,26 @@ namespace Meanscript
 			int address = member.Address;
 			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, address);
 
+			bool dynamic = false;
+
 			while(true)
 			{
 				if (!it.HasNext()) break;
+
+				if (it.GetNext().type == NodeType.ASSIGNMENT_BLOCK) break;
+				
+				if (varType is DynamicType)
+				{
+					// add instruction that takes DYNAMIC POINTERS ADDRESS from stack, get the dynamic pointer, sets the object and push 0 (new offset).
+					// if object is a target here, create if it's null
+					bc.AddInstruction(MC.OP_SET_DYNAMIC_OBJECT, 0, 0);
+					if (varType is PointerType ptr)
+					{
+						varType = ptr.itemType;
+					}
+					dynamic = true;
+				}
+
 				if (it.NextType() == NodeType.DOT)
 				{
 					// eg. "vec.x"
@@ -380,10 +472,10 @@ namespace Meanscript
 					MS.SyntaxAssertion(it.HasNext(), it, "member after dot expected");
 					MS.SyntaxAssertion(varType is StructDefType, it, "struct before dot expected: " + varType);
 					it.ToNext();
-					member = ((StructDefType)varType).SD.GetMember(it.Data());
-					MS.SyntaxAssertion(member != null, it, "unknown member: " + it.Data());
-					bc.AddInstructionWithData(MC.OP_ADD_TOP, 1, MC.MS_TYPE_INT, member.Address);
-					varType = member.Type;
+					var structMember = ((StructDefType)varType).SD.GetMember(it.Data());
+					MS.SyntaxAssertion(structMember != null, it, "unknown member: " + it.Data());
+					bc.AddInstructionWithData(MC.OP_ADD_TOP, 1, MC.MS_TYPE_INT, structMember.Address);
+					varType = structMember.Type;
 					continue;
 				}
 				else if (it.NextType() == NodeType.SQUARE_BRACKETS)
@@ -395,14 +487,22 @@ namespace Meanscript
 					//		[<SQUARE_BRACKETS>]
 					//			[<EXPR>]
 					//				[2]
-					MS.SyntaxAssertion(member.Type is GenericArrayType, it, "array expected");
-					var arrayType = (GenericArrayType)member.Type;
+					MS.SyntaxAssertion(varType is GenericArrayType, it, "array expected");
+					var arrayType = (GenericArrayType)varType;
 					it.ToNext();
 					var cp = it.Copy();
 					cp.ToChild();
 					MS.SyntaxAssertion(!cp.HasNext(), cp, "only one index expected");
 					cp.ToChild();
+					
+					// unset and set assign target
+					var tmp = assignTarget;
+					assignTarget = null;
+
 					var args = PushArgs(cp);
+					
+					assignTarget = tmp;
+
 					MS.SyntaxAssertion(arrayType.ValidIndex(args), it, "wrong array index");
 					
 					// now there should be the array address and the index in stack
@@ -416,7 +516,12 @@ namespace Meanscript
 
 					var callback = common.FindCallback(args);
 
-					MS.SyntaxAssertion(callback != null, it, "array getter not found");
+					if (callback == null)
+					{
+						ArgType.PrintList(args, MS.errorOut);
+						MS.errorOut.EndLine();
+						MS.SyntaxAssertion(false, it, "array getter not found");
+					}
 
 					MS.Verbose("array callback found: ");
 					callback.Print(MS.printOut);
@@ -426,7 +531,6 @@ namespace Meanscript
 
 					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.MS_TYPE_VOID, 1);
 
-					member = null;
 					varType = arrayType.itemType;
 					continue;
 				}
@@ -437,7 +541,8 @@ namespace Meanscript
 				}
 				break;
 			}
-			return ArgType.Data(varType);
+			if (dynamic) return ArgType.Dynamic(varType);
+			return ArgType.Addr(varType);
 		}
 
 		
@@ -855,7 +960,7 @@ namespace Meanscript
 			{
 				if (assignTarget == null || assignTarget.ID == MC.MS_TYPE_INT)
 				{
-					int number = MS.ParseInt((it.Data()).GetString());
+					int number = MS.ParseInt(it.Data().GetString());
 					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, number);
 					return ArgType.Data(common.IntType);
 				}
@@ -876,7 +981,7 @@ namespace Meanscript
 				}
 				else if (assignTarget.ID == MC.MS_TYPE_FLOAT64)
 				{
-					double f = MS.ParseFloat64((it.Data()).GetString());
+					double f = MS.ParseFloat64(it.Data().GetString());
 					long number = MS.Float64ToInt64Format(f);
 					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.MS_TYPE_FLOAT64);
 					bc.AddWord(MC.Int64highBits(number));
@@ -885,7 +990,7 @@ namespace Meanscript
 				}
 				else
 				{
-					MS.SyntaxAssertion(false, it, "number error");
+					MS.SyntaxAssertion(false, it, "type mismatch. number vs. " + assignTarget.TypeNameString());
 				}
 			}
 			else if (it.Type() == NodeType.TEXT)
@@ -916,6 +1021,10 @@ namespace Meanscript
 			else if (it.Type() == NodeType.NAME_TOKEN)
 			{
 				MS.Assertion(false);
+			}
+			else if (it.Type() == NodeType.PLUS)
+			{
+				return ArgType.Void(common.PlusOperatorType);
 			}
 
 			MS.SyntaxAssertion(false, it, "argument error");

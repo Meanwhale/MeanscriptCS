@@ -90,6 +90,7 @@
     <Compile Include="meanscript\core\Common.cs" />
     <Compile Include="meanscript\core\Context.cs" />
     <Compile Include="meanscript\core\Generator.cs" />
+    <Compile Include="meanscript\core\MHeap.cs" />
     <Compile Include="meanscript\core\MArgs.cs" />
     <Compile Include="meanscript\core\MC.cs" />
     <Compile Include="meanscript\core\MeanMachine.cs" />

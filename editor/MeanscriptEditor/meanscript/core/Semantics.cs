@@ -49,6 +49,10 @@ namespace Meanscript
 		{
 			return AddTypeDef(new PrimitiveType(typeID, size));
 		}
+		public TypeDef AddOperatorType(int typeID, MSText name)
+		{
+			return AddTypeDef(new OperatorType(typeID, name));
+		}
 		public TypeDef AddTypeDef(TypeDef newType)
 		{
 			MS.Assertion(!types.ContainsKey(newType.ID));
@@ -426,8 +430,8 @@ namespace Meanscript
 					
 			MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
 			MS.Verbose("New variable: " + it.Data() + " <" + GetText(currentContext.variables.nameID) + ">");
-			var genType = CreateGenericVariable(genTypeName, genArgs, it);
-			sd.AddMember(tree.AddText(it.Data()), genType, Arg.DATA);
+			var genArgType = CreateGenericVariable(genTypeName, genArgs, it);
+			sd.AddMember(tree.AddText(it.Data()), genArgType);
 			
 			if (it.HasNext())
 			{
@@ -440,18 +444,19 @@ namespace Meanscript
 			}
 		}
 
-		private GenericType CreateGenericVariable(MSText genTypeName, MList<MNode> genArgs, NodeIterator it)
+		private ArgType CreateGenericVariable(MSText genTypeName, MList<MNode> genArgs, NodeIterator it)
 		{
 			MS.Assertion(HasGenericType(genTypeName));
-			if (genTypeName.Equals("array")) return new GenericArrayType(GetNewTypeID(), genArgs, this, common, it);
-			if (genTypeName.Equals("chars")) return new GenericCharsType(GetNewTypeID(), genArgs, this, common, it);
+			if (genTypeName.Equals("array")) return new ArgType(Arg.DATA, new GenericArrayType(GetNewTypeID(), genArgs, this, common, it));
+			if (genTypeName.Equals("chars")) return new ArgType(Arg.DATA, new GenericCharsType(GetNewTypeID(), genArgs, this, common, it));
+			if (genTypeName.Equals("ptr")) return new ArgType(Arg.DYNAMIC, new PointerType(GetNewTypeID(), genArgs, this, common, it));
 			return null;
 		}
 
 		private bool HasGenericType(MSText name)
 		{
 			// TODO: add more types
-			return name.Equals("array") || name.Equals("chars");
+			return name.Equals("array") || name.Equals("chars") || name.Equals("ptr");
 		}
 
 		private void SetParentExpr(NodeIterator it, NodeType nt)
@@ -467,11 +472,15 @@ namespace Meanscript
 			int nameID = tree.AddText(name);
 
 			StructDef sd = new StructDef(this, nameID);
-			CreateStructDef(sd, it.Copy());
-
-			sd.Info(MS.printOut);
-
+			
+			// TODO: add it already here to allow ptr references to itself, eg.
+			// currently it would cause stack overflow...
+			
 			AddStructDef(name, sd);
+
+			CreateStructDef(sd, it.Copy());
+			sd.Info(MS.printOut);
+			
 		}
 
 		public void AddStructDef(MSText name, StructDef sd)

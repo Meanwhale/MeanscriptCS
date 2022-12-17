@@ -27,11 +27,17 @@ namespace MeanscriptEditor
 
 		public override MSOutputPrint Print(char x)
 		{
+			// print both console (for debug) and window
+			Console.Write(x);
+			
 			return Print(x.ToString());
 		}
 
 		public override MSOutputPrint Print(string x)
 		{
+			// print both console (for debug) and window
+			Console.Write(x);
+			
 			sb.Append(x);
 			if (sb.Length > MAX_SIZE)
 			{
@@ -62,17 +68,27 @@ namespace MeanscriptEditor
 		{
 			InitializeComponent();
 			winOutput = new WinOutputPrinter(TextBoxOutput, TextBoxOutputScrollViewer);
-			//Meanscript.MS.printOut = winOutput;
-			//Meanscript.MS.errorOut = winOutput;
-			//Meanscript.MS.userOut = winOutput;
+			Meanscript.MS.printOut = winOutput;
+			Meanscript.MS.errorOut = winOutput;
+			Meanscript.MS.userOut = winOutput;
 
 		
 			KeyDown += new KeyEventHandler(MainWindow_KeyDown);
 
 			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
 			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
-			TextBoxCode.Text = "chars [10] c : \"moi!\"";
+			//TextBoxCode.Text = "int a: 3\nint b : a\nptr[int] p\nset p 5";
 
+			//TextBoxCode.Text = "struct vec2 [int x, int y]\nstruct person [text name, ptr [vec2] point]\n"
+			//                  + "array [int, 9] arr\nint a: 5\nperson p: \"JANE\", (56,78)\np.name: \"JONE\"\np.point: (12,34)\nint b: 6\nprint a\nprint b";
+
+			TextBoxCode.Text = "struct vec2 [int x, int y]\nstruct person [text name, ptr [vec2] point, ptr[person] boss]\n"
+			                  + "int a: 5\narray [person, 3] arr: [(\"J\", (1,2), null),(\"J\", (1,2), null),(\"J\", (1,2), null)]\n"
+							  + "arr[1].point: (23,45)\n"
+							  + "arr[1].boss: (\"J\", (123,234), null)\n"
+							  + "arr[1].boss.point.x: 1010101\n"
+							  + "int b: 6\nprint a\nprint b\n//print arr[1].point.x";
+			//TextBoxCode.Text = MeanscriptUnitTest.simpleArrayScript;
 		}
 
 		void MainWindow_KeyDown(object sender, KeyEventArgs e)
@@ -113,6 +129,7 @@ namespace MeanscriptEditor
 		private void Command_Parse()
 		{
 			// parse TextBoxCode.Text
+			MeanMachine mm = null;
 			try
 			{
 				TokenTree tree = Parser.Parse(TextBoxCode.Text);
@@ -124,12 +141,18 @@ namespace MeanscriptEditor
 				semantics.Info(winOutput);
 				
 				ByteCode bc = Generator.Generate(tree, semantics, com);
-				var mm = new MeanMachine(bc);
+				
+				mm = new MeanMachine(bc);
 				mm.CallFunction(0);
 			}
 			catch (MException e)
 			{
 				winOutput.Print(e.ToString());
+				if (mm != null)
+				{
+					mm.PrintStack();
+					mm.Heap.Print();
+				}
 			}
 			catch (Exception e)
 			{

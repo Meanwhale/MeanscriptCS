@@ -19,6 +19,11 @@ namespace Meanscript
 		public TypeDef Float64Type	{ get; private set; }
 		public TypeDef TextType		{ get; private set; } 
 		public TypeDef BoolType		{ get; private set; }
+		
+		public TypeDef PlusOperatorType		{ get; private set; }
+		public TypeDef MinusOperatorType	{ get; private set; }
+		public TypeDef DivOperatorType		{ get; private set; }
+		public TypeDef MulOperatorType		{ get; private set; }
 
 		// private static data. common for all MeanScript objects
 
@@ -137,9 +142,16 @@ namespace Meanscript
 			Float64Type = sem.AddElementaryType(MS_TYPE_FLOAT64, 2);
 			TextType = sem.AddElementaryType(MS_TYPE_TEXT, 1);
 			BoolType = sem.AddElementaryType(MS_TYPE_BOOL, 1);
+			
+			PlusOperatorType = sem.AddOperatorType(MS_TYPE_PLUS, new MSText("+"));
+			MinusOperatorType = sem.AddOperatorType(MS_TYPE_MINUS, new MSText("-"));
+			DivOperatorType = sem.AddOperatorType(MS_TYPE_DIV, new MSText("/"));
+			MulOperatorType = sem.AddOperatorType(MS_TYPE_MUL, new MSText("*"));
 
-			genericGetAtCallName = new CallNameType(sem.GetNewTypeID(), new MSText("@getAt"));
-			genericSetAtCallName = new CallNameType(sem.GetNewTypeID(), new MSText("@setAt"));
+			sem.AddTypeDef(new NullType(MS_TYPE_NULL));
+
+			genericGetAtCallName = new CallNameType(sem.GetNewTypeID(), new MSText("get"));
+			genericSetAtCallName = new CallNameType(sem.GetNewTypeID(), new MSText("set"));
 			
 			sem.AddTypeDef(genericGetAtCallName);
 			sem.AddTypeDef(genericSetAtCallName);
@@ -147,7 +159,7 @@ namespace Meanscript
 			CreateCallbacks(sem);
 		}
 
-		public void CreateCallback(Semantics sem, ArgType returnType, ArgType [] args, MS.MCallbackAction _func)
+		public int CreateCallback(Semantics sem, ArgType returnType, ArgType [] args, MS.MCallbackAction _func)
 		{
 			int cbTypeID = sem.GetNewTypeID();
 			
@@ -164,6 +176,7 @@ namespace Meanscript
 			sem.AddTypeDef(cbTypeDef);
 			callbacks[cbTypeID] = cbTypeDef;
 			
+			return cbTypeID;
 		}
 
 		public void CreateCallbacks(Semantics sem)
@@ -172,6 +185,9 @@ namespace Meanscript
 			sem.AddTypeDef(sumNameType);
 			CreateCallback(sem, ArgType.Data(IntType), new ArgType []{ ArgType.Void(sumNameType), ArgType.Data(IntType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum2Callback(mm, a); });
 			CreateCallback(sem, ArgType.Data(IntType), new ArgType []{ ArgType.Void(sumNameType), ArgType.Data(IntType), ArgType.Data(IntType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum3Callback(mm, a); });
+			
+			// sum by +
+			CreateCallback(sem, ArgType.Data(IntType), new ArgType []{ ArgType.Data(IntType), ArgType.Void(PlusOperatorType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum2Callback(mm, a); });
 			
 			var printNameType = new CallNameType(sem.GetNewTypeID(), new MSText("print"));
 			sem.AddTypeDef(printNameType);

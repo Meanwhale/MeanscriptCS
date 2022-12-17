@@ -20,7 +20,7 @@ namespace Meanscript
 	public class Printer : MSOutputPrint
 	{
 		override public void WriteByte(byte x) { System.Console.Write((char)x); }
-		override public MSOutputPrint Print(String x) { System.Console.Write(x); return this; }
+		override public MSOutputPrint Print(string x) { System.Console.Write(x); return this; }
 		override public MSOutputPrint Print(char x) { System.Console.Write(x); return this; }
 	}
 
@@ -140,8 +140,9 @@ namespace Meanscript
 
 		internal static void SyntaxAssertion(bool b, NodeIterator it, string s)
 		{
-			// TODO: printtaa node. Javasta mallia.
-			Assertion(b, null, s);
+			// printtaa node. Javasta mallia.
+			s += "\nLine: " + it.Line() + " Character: " + it.node.characterNumber;
+			Assertion(b, MC.EC_SYNTAX, s);
 		}
 
 		public static void NativeTest()

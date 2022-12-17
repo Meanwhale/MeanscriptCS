@@ -20,9 +20,16 @@ namespace Meanscript
 		public TypeDef Def;
 
 		public ArgType(Arg r, TypeDef d) { Ref = r; Def = d; }
-		public static ArgType Void(TypeDef t)	{ return new ArgType(Arg.VOID, t); }
-		public static ArgType Data(TypeDef t)	{ return new ArgType(Arg.DATA, t); }
-		public static ArgType Addr(TypeDef t)	{ return new ArgType(Arg.ADDRESS, t); }
+		public static ArgType Void(TypeDef t)		{ return new ArgType(Arg.VOID, t); }
+		public static ArgType Data(TypeDef t)		{ return new ArgType(Arg.DATA, t); }
+		public static ArgType Addr(TypeDef t)		{ return new ArgType(Arg.ADDRESS, t); }
+		public static ArgType Dynamic(TypeDef t)	{ return new ArgType(Arg.DYNAMIC, t); }
+		
+		public static void PrintList(MList<ArgType> list, MSOutputPrint o)
+		{
+			foreach(var m in list)
+				o.Print("<").Print(m.Ref.ToString()).Print(":").Print(m.Def.TypeNameString()).Print(">");
+		}
 	}
 
 	public abstract class TypeDef
@@ -35,17 +42,10 @@ namespace Meanscript
 	}
 	public class OperatorType : TypeDef
 	{
-		public readonly NodeType Token; // parser token that represents the operator
-		public OperatorType(int id, NodeType token) : base(id)
-		{
-			Token = token;
-		}
+		public MSText Name { get; }
+		public OperatorType(int id, MSText name) : base(id) { Name = name; }
 		public override int SizeOf() { return 0; }
-
-		public override MSText TypeName()
-		{
-			return null;
-		}
+		public override MSText TypeName() { return Name; }
 	}
 	public class CallNameType : TypeDef
 	{
@@ -146,12 +146,10 @@ namespace Meanscript
 	}
 	public abstract class GenericType : DataTypeDef
 	{
-		public readonly int[] Args;
 		private readonly MSText _name;
 
-		public GenericType(int id, int [] args, MSText name) : base(id)
+		public GenericType(int id, MSText name) : base(id)
 		{
-			Args = args;
 			_name = name;
 		}
 		public override MSText TypeName()
@@ -159,6 +157,86 @@ namespace Meanscript
 			return _name;
 		}
 	}
+
+	public abstract class DynamicType : GenericType
+	{
+		protected DynamicType(int id, MSText name) : base(id, name) { }
+	}
+
+	public class NullType : DynamicType
+	{
+		public NullType(int id) : base(id, new MSText("null")) { }
+		public override int SizeOf() { return 1; }
+		public override bool TypeMatch(MList<ArgType> args)
+		{
+			return args.Size() == 1 && args.First().Ref == Arg.DYNAMIC && (args.First().Def is DynamicType);
+		}
+	}
+
+	public class PointerType : DynamicType
+	{
+		public readonly DataTypeDef itemType;
+		public int ItemSize { get { return itemType.SizeOf(); } }
+		public readonly int SetterID;
+		public PointerType(int id, MList<MNode> genArgs, Semantics sem, Common common, NodeIterator it) : base(id, null)
+		{
+			MS.SyntaxAssertion(genArgs.Size() == 1, it, "pointer: 1 argument expected");
+			itemType = sem.GetDataType(genArgs.First().data);
+
+			var thisType = sem.AddTypeDef(this);			// create a callback that generator finds with certain arguments "thisKindOfArray @getAt index"
+			SetterID = common.CreateCallback(
+				sem,
+				ArgType.Void(common.VoidType),					// return value
+				new ArgType [] {
+					ArgType.Void(common.genericSetAtCallName),	// "get"
+					ArgType.Data(thisType),						// "thisKindOfArray"
+					ArgType.Data(itemType) },					// data type
+				Setter											// callback to call when executing the code
+			);
+		}
+
+		private void Setter(MeanMachine mm, MArgs args)
+		{
+			MS.Verbose("//////////////// pointer setter: base " + args.baseIndex);
+
+			// stack: top >>      data      >> tag address >> ...
+			
+			// TODO: we can be in stack OR DYNAMIC OBJECT
+
+			var offset = mm.stack[mm.stackTop - ItemSize - 1];
+			var address = mm.stack[mm.stackBase];
+			if (MS._verboseOn) MS.printOut.Print("previous tag address: ").Print(address).Print("+").Print(offset).Print(", tag: ").PrintHex(mm.stack[address]).EndLine();
+
+			// TODO: don't free! overwrite old DData
+
+			// mm.Heap.Free(mm.stack[address + offset], itemType.ID);
+
+			var data = new IntArray(ItemSize);
+			IntArray.Copy(mm.stack, mm.stackTop - ItemSize, data, 0, itemType.SizeOf());
+			int tag = mm.Heap.Alloc(itemType.ID, data);
+			//mm.stackTop -= ItemSize + 1; // args size is item size + address size (1)
+			mm.CallbackReturn(ID, tag);
+		}
+
+		public override int SizeOf()
+		{
+			return 1; // pointer to the dynamic object array
+		}
+
+		public override bool TypeMatch(MList<ArgType> args)
+		{
+			return args.Size() == 1 && args.First().Def.ID == ID;
+		}
+		public override string TypeNameString()
+		{
+			return "ptr";
+		}
+		public override string ToString()
+		{
+			return "ptr [" + itemType + "]";
+		}
+	}
+
 	public class GenericArrayType : GenericType
 	{
 		// generic type of array. size is defined compile time for fixed size total data.
@@ -166,7 +244,7 @@ namespace Meanscript
 
 		public readonly DataTypeDef itemType;
 		public readonly int itemCount;
-		public GenericArrayType(int id, MList<MNode> genArgs, Semantics sem, Common common, NodeIterator it) : base(id, null, null)
+		public GenericArrayType(int id, MList<MNode> genArgs, Semantics sem, Common common, NodeIterator it) : base(id, null)
 		{
 			MS.SyntaxAssertion(genArgs.Size() == 2, it, "array: 2 arguments expected");
 			itemType = sem.GetDataType(genArgs.First().data);
@@ -182,7 +260,7 @@ namespace Meanscript
 				ArgType.Data(itemType),						// return value
 				new ArgType [] {
 					ArgType.Addr(thisType),						// "thisKindOfArray"
-					ArgType.Data(common.genericGetAtCallName),	// "@getAt"
+					ArgType.Void(common.genericGetAtCallName),	// "get"
 					ArgType.Data(common.IntType) },				// index type
 				Getter								// callback to call when executing the code
 			);
@@ -227,7 +305,7 @@ namespace Meanscript
 		public readonly int maxChars;
 		private int size;
 
-		public GenericCharsType(int id, MList<MNode> genArgs, Semantics sem, Common common, NodeIterator it) : base(id, null, null)
+		public GenericCharsType(int id, MList<MNode> genArgs, Semantics sem, Common common, NodeIterator it) : base(id, null)
 		{
 			MS.SyntaxAssertion(genArgs.Size() == 1, it, "chars: 1 arguments expected");
 			maxChars = MS.ParseInt(genArgs.Last().data.GetString());

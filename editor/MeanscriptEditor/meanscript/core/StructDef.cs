@@ -51,7 +51,7 @@ namespace Meanscript
 		internal void PrintArgTypes(MSOutputPrint printOut)
 		{
 			foreach(var m in members)
-				printOut.Print("<").Print(m.Type.ToString()).Print(">");
+				printOut.Print("<").Print(m.Ref.ToString()).Print(":").Print(m.Type.ToString()).Print(">");
 			printOut.EndLine();
 		}
 		public override string ToString()
@@ -59,8 +59,8 @@ namespace Meanscript
 			string s = "";
 			foreach(var m in members)
 			{
-				if (m.NameID > 0) s += "<" + semantics.GetText(m.NameID) + ":" + m.Type + ">";
-				else s += "<" + m.Type + ">";
+				if (m.NameID > 0) s += "<" + m.Ref.ToString() + ":" + semantics.GetText(m.NameID) + ":" + m.Type.TypeNameString() + ">";
+				else s += "<" + m.Ref.ToString() + ":" + m.Type.TypeNameString() + ">";
 			}
 			return s;
 		}
@@ -74,7 +74,7 @@ namespace Meanscript
 			{
 				it2.Next();
 				// check that both data and reference types match
-				if (it1.Value.Def.ID != it2.Value.Type.ID && it1.Value.Ref != it2.Value.Ref) return false;
+				if (it1.Value.Def.ID != it2.Value.Type.ID || it1.Value.Ref != it2.Value.Ref) return false;
 			}
 			return true;
 		}
@@ -201,6 +201,10 @@ namespace Meanscript
 
 		//	return address;
 		//}
+		public void AddMember(int nameID, ArgType at)
+		{
+			AddMember(nameID, at.Def, at.Ref);
+		}
 		public void AddMember(int nameID, TypeDef type, Arg arg)
 		{
 			MS.Assertion(nameID < 0 || GetMemberByNameID(nameID) == null);
@@ -212,6 +216,8 @@ namespace Meanscript
 				case Arg.DATA: size = type.SizeOf();
 					break;
 				case Arg.ADDRESS: size = 1;
+					break;
+				case Arg.DYNAMIC: size = 1;
 					break;
 				default:
 					MS.Assertion(false);
@@ -393,7 +399,7 @@ namespace Meanscript
 			o.PrintLine(MC.HORIZONTAL_LINE);
 			foreach(var m in members)
 			{
-				o.PrintLine("    " + m.Type.TypeNameString() + " " + semantics.GetText(m.NameID));
+				o.PrintLine("    " + m.Ref.ToString() + " : " + m.Type.TypeNameString() + " " + semantics.GetText(m.NameID));
 			}
 			o.PrintLine(MC.HORIZONTAL_LINE);
 		}

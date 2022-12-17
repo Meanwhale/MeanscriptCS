@@ -78,13 +78,17 @@ namespace Meanscript
 		public const int OP_FUNCTION_CALL = 0x17000000;
 		public const int OP_PUSH_LOCAL = 0x18000000;
 		public const int OP_PUSH_GLOBAL = 0x19000000;
+		
 		public const int OP_POP_STACK_TO_LOCAL = 0x1a000000;
 		public const int OP_POP_STACK_TO_GLOBAL = 0x1b000000;
 		public const int OP_POP_STACK_TO_REG = 0x1c000000;
-		//public const int OP_MEMBER_NAME				= 0x1d000000;
+		public const int OP_POP_STACK_TO_DYNAMIC = 0x1d000000;
+		
 		public const int OP_INIT_GLOBALS = 0x1e000000;
 		public const int OP_GENERIC_MEMBER = 0x1f000000;
-		public const int OP_MULTIPLY_GLOBAL_ARRAY_INDEX = 0x20000000;
+		
+		public const int OP_SET_DYNAMIC_OBJECT = 0x20000000;
+		
 		public const int OP_POP_STACK_TO_LOCAL_REF = 0x21000000;
 		public const int OP_POP_STACK_TO_GLOBAL_REF = 0x22000000;
 		public const int OP_PUSH_LOCAL_REF = 0x23000000;
@@ -102,8 +106,8 @@ namespace Meanscript
 			"text",                 "push immediate",       "add top",	            "push from reg.",
 			"function data",        "start init",           "end init",             "function call",
 			"push local",           "push global",          "pop to local",         "pop to global",
-			"pop to register",      "---OLD---",            "init globals",         "generic member",
-			"multiply array index", "pop to local ref.",    "pop to global ref.",   "push local ref.",
+			"pop to register",      "pop to dynamic",       "init globals",         "generic member",
+			"set dynamic object",   "pop to local ref.",    "pop to global ref.",   "push local ref.",
 			"push global ref.",     "push chars",           "---ERROR---",          "---ERROR---",
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
@@ -125,6 +129,11 @@ namespace Meanscript
 		public const int MS_TYPE_BOOL = 6;
 		public const int MS_TYPE_CODE_ADDRESS = 7;
 		public const int MS_TYPE_TEXT_DATA = 8; // internal: array of text size + chars
+		public const int MS_TYPE_PLUS = 9;
+		public const int MS_TYPE_MINUS = 10;
+		public const int MS_TYPE_MUL = 11;
+		public const int MS_TYPE_DIV = 12;
+		public const int MS_TYPE_NULL = 13;
 		public const int MAX_MS_TYPES = 16;
 		public const int MAX_TYPES = 256;
 
@@ -173,7 +182,7 @@ namespace Meanscript
 		public static int MakeInstruction(int operation, int size, int auxData)
 		{
 			MS.Assertion((operation | OPERATION_MASK) == OPERATION_MASK, MC.EC_INTERNAL, "invalid operation");
-			MS.Assertion(size >= 0 && size < 256, MC.EC_INTERNAL, "wrong size");
+			MS.Assertion(size >= 0 && size < 256, MC.EC_INTERNAL, "wrong size"); // TODO: size | 0xff == 0xff?
 			MS.Assertion((auxData | VALUE_TYPE_MASK) == VALUE_TYPE_MASK, MC.EC_INTERNAL, "wrong aux. data");
 			int sizeBits = size << SIZE_SHIFT;
 			int instruction = operation | sizeBits | auxData;

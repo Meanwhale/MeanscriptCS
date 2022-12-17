@@ -15,7 +15,7 @@ namespace Meanscript
 		public const string blockEnd = ")]}";
 		public const string op = "+*<>="; // '-' or '/' will be special cases
 
-		private static byte space, name, reference, number, hex, minus, decimalNumber, slash, quote, comment, skipLineBreaks, escapeChar, hexByte, zero;
+		private static byte space, name, reference, number, hex, minus, plus, decimalNumber, slash, quote, comment, skipLineBreaks, escapeChar, hexByte, zero;
 
 
 		private static readonly byte[] tmp = new byte[4096];
@@ -241,6 +241,7 @@ namespace Meanscript
 			number = ba.AddState("number");
 			hex = ba.AddState("hex");
 			minus = ba.AddState("minus");
+			plus = ba.AddState("plus");
 			decimalNumber = ba.AddState("decimal number");
 			//expNumber = ba.addState("exp. number");
 			slash = ba.AddState("slash");
@@ -254,7 +255,8 @@ namespace Meanscript
 			ba.Transition(space, whitespace, null);
 			ba.Transition(space, letters, () => { Next(name); });
 			ba.Transition(space, "#", () => { Next(reference); });
-			ba.Transition(space, "-", () => { Next(minus); });
+			ba.Transition(space, "-", () => { Next(minus); }); // jos eka expr niin toimii kuin ennen, mutta muuten kuin operaattori
+			ba.Transition(space, "+", () => { Next(plus); }); 
 			ba.Transition(space, "/", () => { Next(slash); });
 			ba.Transition(space, "\"", () => { Next(quote); quoteIndex = 0; });
 			ba.Transition(space, numbers, () => { Next(number); });
@@ -319,6 +321,8 @@ namespace Meanscript
 			/* decimalNumber = ba.addState("decimal number");
 
 			   expNumber = ba.addState("exp. number");*/
+			   
+			ba.FillTransition(plus, () => { AddToken(NodeType.PLUS); Bwd(); Next(space); });
 
 			ba.FillTransition(slash, () => { AddToken(NodeType.DIV); Bwd(); Next(space); });
 			ba.Transition(slash, "/", () => { Next(comment); });

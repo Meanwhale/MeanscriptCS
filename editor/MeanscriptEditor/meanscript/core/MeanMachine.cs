@@ -1,5 +1,3 @@
-using System;
-
 namespace Meanscript
 {
 
@@ -28,7 +26,7 @@ namespace Meanscript
 		public MSData globals;
 		internal int globalsTagAddress;
 
-
+		internal MHeap Heap = new MHeap();
 
 		private static int currentStructID = 0;
 		private static int textCounter = 0;
@@ -395,9 +393,39 @@ namespace Meanscript
 
 				int size = PopStack();
 				int address = stack[stackTop - size - 1];
-				PopStackToTarget(bc, stack, size, address + (op == OP_POP_STACK_TO_LOCAL ? stackBase : 0));
+				PopStackToTarget(stack, size, address + (op == OP_POP_STACK_TO_LOCAL ? stackBase : 0));
 				// pop address and check everything went fine
 				MS.Assertion(address == PopStack(), EC_CODE, "OP_POP_STACK_TO_x failed");
+			}
+			else if (op == OP_POP_STACK_TO_DYNAMIC)
+			{
+				// stack: ... [dynamic target offset][           data           ][size]
+
+				// write from stack to dynamic target
+
+				int size = PopStack();
+				int offset = stack[stackTop - size - 1];
+				PopStackToTarget(Heap.Target.data, size, offset);
+				// pop address and check everything went fine
+				MS.Assertion(offset == PopStack(), EC_CODE, "OP_POP_STACK_TO_DYNAMIC failed");
+				Heap.ClearTarget();
+			}
+			else if (op == OP_SET_DYNAMIC_OBJECT)
+			{
+				int dynamicPointersAddress = PopStack();
+				int dynamicPointer;
+				if (Heap.Target != null)
+				{
+					// get pointer from dynamic object's member
+					dynamicPointer = Heap.Target.data[dynamicPointersAddress];
+				}
+				else
+				{
+					// get pointer from stack
+					dynamicPointer = stack[dynamicPointersAddress];
+				}
+				Heap.SetTarget(dynamicPointer);
+				Push(0);
 			}
 			else if (op == OP_POP_STACK_TO_GLOBAL_REF)
 			{
@@ -406,7 +434,7 @@ namespace Meanscript
 				int size = bc.code[instructionPointer + 1];
 				int refAddress = bc.code[instructionPointer + 2];
 				int address = stack[refAddress];
-				PopStackToTarget(bc, stack, size, address);
+				PopStackToTarget(stack, size, address);
 			}
 			else if (op == OP_POP_STACK_TO_LOCAL_REF)
 			{
@@ -415,45 +443,45 @@ namespace Meanscript
 				int size = bc.code[instructionPointer + 1];
 				int refAddress = bc.code[instructionPointer + 2];
 				int address = stack[stackBase + refAddress];
-				PopStackToTarget(bc, stack, size, address);
+				PopStackToTarget(stack, size, address);
 			}
 			else if (op == OP_POP_STACK_TO_REG)
 			{
 				// when 'return' is called
 				int size = bc.code[instructionPointer + 1];
-				PopStackToTarget(bc, registerData, size, 0);
+				PopStackToTarget(registerData, size, 0);
 				registerType = (int)(instruction & VALUE_TYPE_MASK);
 			}
-			else if (op == OP_MULTIPLY_GLOBAL_ARRAY_INDEX)
-			{
-				// array index is pushed to the stack before
-				// NOTE: works only for global arrays (check at Generator)
+			//else if (op == OP_MULTIPLY_GLOBAL_ARRAY_INDEX)
+			//{
+			//	// array index is pushed to the stack before
+			//	// NOTE: works only for global arrays (check at Generator)
 
-				int indexAddress = bc.code[instructionPointer + 1];
-				int arrayItemSize = bc.code[instructionPointer + 2];
-				int arrayDataAddress = bc.code[instructionPointer + 3];
-				int arrayItemCount = bc.code[instructionPointer + 4];
+			//	int indexAddress = bc.code[instructionPointer + 1];
+			//	int arrayItemSize = bc.code[instructionPointer + 2];
+			//	int arrayDataAddress = bc.code[instructionPointer + 3];
+			//	int arrayItemCount = bc.code[instructionPointer + 4];
 
-				// get the index from stack top
-				stackTop--;
-				int arrayIndex = stack[stackTop];
-				if (arrayIndex < 0 || arrayIndex >= arrayItemCount)
-				{
-					MS.errorOut.Print("ERROR: index " + arrayIndex + ", size" + arrayItemCount);
-					MS.Assertion(false, EC_SCRIPT, "index out of bounds");
-				}
-				if (arrayDataAddress < 0)
-				{
-					// add address as this is not the first variable index of the chain,
-					// e.g. "team[foo].position[bar]"
-					stack[indexAddress] += (arrayIndex * arrayItemSize);
-				}
-				else
-				{
-					// save address to local variable for later use
-					stack[indexAddress] = arrayDataAddress + (arrayIndex * arrayItemSize);
-				}
-			}
+			//	// get the index from stack top
+			//	stackTop--;
+			//	int arrayIndex = stack[stackTop];
+			//	if (arrayIndex < 0 || arrayIndex >= arrayItemCount)
+			//	{
+			//		MS.errorOut.Print("ERROR: index " + arrayIndex + ", size" + arrayItemCount);
+			//		MS.Assertion(false, EC_SCRIPT, "index out of bounds");
+			//	}
+			//	if (arrayDataAddress < 0)
+			//	{
+			//		// add address as this is not the first variable index of the chain,
+			//		// e.g. "team[foo].position[bar]"
+			//		stack[indexAddress] += (arrayIndex * arrayItemSize);
+			//	}
+			//	else
+			//	{
+			//		// save address to local variable for later use
+			//		stack[indexAddress] = arrayDataAddress + (arrayIndex * arrayItemSize);
+			//	}
+			//}
 			else if (op == OP_CALLBACK_CALL)
 			{
 				//public MeanMachine (ByteCode _byteCode, StructDef _structDef, int _base)
@@ -525,6 +553,7 @@ namespace Meanscript
 				if (ipStackTop == 0)
 				{
 					MS.Verbose("DONE!");
+					if (MS._verboseOn) Heap.Print();
 					done = true;
 				}
 				else
@@ -580,7 +609,7 @@ namespace Meanscript
 			return stack[--stackTop];
 		}
 
-		public void PopStackToTarget(ByteCode bc, IntArray target, int size, int address)
+		public void PopStackToTarget(IntArray target, int size, int address)
 		{
 			for (int i = 0; i < size; i++)
 			{
@@ -598,7 +627,7 @@ namespace Meanscript
 			PrintStack();
 		}
 
-		private void PrintStack()
+		public void PrintStack()
 		{
 			MS.Verbosen("STACK:\n    ");
 			if (MS._verboseOn)

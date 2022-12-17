@@ -1,4 +1,6 @@
-﻿namespace Meanscript
+﻿using System;
+
+namespace Meanscript
 {
 	public class IntArray
 	{
@@ -31,13 +33,18 @@
 			set => data[key] = value;
 		}
 		public int Length { get { return data.Length; } }
-		public void Copy(IntArray a, int ai, IntArray b, int bi, int length)
+		public static void Copy(IntArray src, int srcIndex, IntArray trg, int trgIndex, int length)
 		{
-			System.Array.Copy(a.data, ai, b.data, bi, length);
+			System.Array.Copy(src.data, srcIndex, trg.data, trgIndex, length);
 		}
-		public void Copy(IntArray a, IntArray b, int length)
+		public static void Copy(IntArray src, IntArray trg, int length)
 		{
-			System.Array.Copy(a.data, b.data, length);
+			System.Array.Copy(src.data, trg.data, length);
+		}
+
+		internal void Print(MSOutputPrint o)
+		{
+			foreach(int i in data) o.Print("/").Print(i);
 		}
 	}
 }
