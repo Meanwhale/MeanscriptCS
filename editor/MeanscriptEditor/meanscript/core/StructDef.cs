@@ -6,21 +6,12 @@ namespace Meanscript
 {
 	public class StructDef
 	{
-		private Semantics semantics;
+		private Types types;
 		internal int nameID; // reference to Semantics' text
 
 		internal MList<Member> members = new MList<Member>();
 
 		private int offset = 0;
-		public int ArgsSize = 0; // legacy? for functions
-
-		// LEGACY:
-		//internal IntArray code;
-		//internal IntArray tagAddress; // tagAddress[n] = code (above) address of _n_th member
-		//internal int numMembers;
-		//internal int argsSize;
-		//public int structSize;
-		//internal int codeTop;
 
 		public class Member
 		{
@@ -42,9 +33,9 @@ namespace Meanscript
 			}
 		}
 
-		public StructDef(Semantics _semantics, int _nameID)
+		public StructDef(Types _types, int _nameID)
 		{
-			semantics = _semantics;
+			types = _types;
 			nameID = _nameID;
 		}
 
@@ -59,7 +50,7 @@ namespace Meanscript
 			string s = "";
 			foreach(var m in members)
 			{
-				if (m.NameID > 0) s += "<" + m.Ref.ToString() + ":" + semantics.GetText(m.NameID) + ":" + m.Type.TypeNameString() + ">";
+				if (m.NameID > 0) s += "<" + m.Ref.ToString() + ":" + types.texts.GetText(m.NameID) + ":" + m.Type.TypeNameString() + ">";
 				else s += "<" + m.Ref.ToString() + ":" + m.Type.TypeNameString() + ">";
 			}
 			return s;
@@ -78,129 +69,6 @@ namespace Meanscript
 			}
 			return true;
 		}
-
-		//
-
-		//	DESIGN
-		//			0: OP_STRUCT_MEMBER
-		//			1: nameID
-		//			2: address
-		//			3: memberSize = sizeOf
-		//	
-		//			0: OP_GENERIC_MEMBER
-		//			1: nameID
-		//			2: address
-		//			3: memberSize = sizeOf
-		//			4...n: argumentit
-		//	
-		//			0: OP_GENERIC_MEMBER: MS_GEN_TYPE_ARRAY
-		//			1: nameID
-		//			2: address
-		//			3: memberSize = sizeOf
-		//			4: item type
-		//			5: item count
-		//	
-		//			0: OP_GENERIC_MEMBER: MS_GEN_TYPE_CHARS
-		//			1: nameID
-		//			2: address
-		//			3: memberSize = sizeOf
-		//			4: char count
-
-		//public int AddArray(int nameID, int itemType, int itemCount)
-		//{
-		//	MS.Assertion(false);
-		//	return 0;
-		//	/*MS.Assertion(itemCount > 0 && itemCount < MS.globalConfig.maxArraySize, MC.EC_INTERNAL, "invalid array size");
-		//	StructDef sd = semantics.typeStructDefs[itemType];
-		//	MS.Assertion(sd != null, MC.EC_INTERNAL, "struct missing");
-		//	int itemSize = sd.structSize;
-		//	int dataSize = itemCount * itemSize; // "sizeof"
-
-		//	// create tag
-
-		//	tagAddress[numMembers] = codeTop;
-
-		//	int memberTag = MakeInstruction(OP_GENERIC_MEMBER, 5, MS_GEN_TYPE_ARRAY);
-		//	code[codeTop] = memberTag;
-		//	int address = structSize;
-		//	code[codeTop + 1] = nameID;
-		//	code[codeTop + 2] = address; // offset = sum of previous type sizes
-		//	code[codeTop + 3] = dataSize; // "sizeof"
-
-		//	code[codeTop + 4] = itemType;
-		//	code[codeTop + 5] = itemCount;
-
-		//	structSize += dataSize;
-
-		//	codeTop += 6;
-
-		//	numMembers++;
-
-		//	return address;*/
-		//}
-		//public int AddChars(int nameID, int charCount)
-		//{
-		//	MS.Assertion(false);
-		//	return 0;
-		//	/*
-		//	int dataSize = (charCount / 4) + 2; // "sizeof"
-
-		//	// create tag
-
-		//	tagAddress[numMembers] = codeTop;
-
-		//	int memberTag = MakeInstruction(OP_GENERIC_MEMBER, 4, MS_GEN_TYPE_CHARS);
-		//	code[codeTop] = memberTag;
-		//	int address = structSize;
-		//	code[codeTop + 1] = nameID;
-		//	code[codeTop + 2] = address; // offset = sum of previous type sizes
-		//	code[codeTop + 3] = dataSize; // "sizeof"
-		//	code[codeTop + 4] = charCount;
-
-		//	structSize += dataSize;
-
-		//	codeTop += 5;
-
-		//	numMembers++;
-		//	return address;
-		//	*/
-		//}
-
-		//public int AddMember(int nameID, int type)
-		//{
-		//	MS.Assertion(false);
-		//	return 0;
-		//	/*
-		//	// get size
-
-		//	StructDef sd = semantics.typeStructDefs[type];
-		//	MS.Assertion(sd != null, MC.EC_INTERNAL, "struct missing");
-		//	int memberSize = sd.structSize;
-		//	return AddMember(nameID, type, memberSize);
-		//	*/
-		//}
-
-		//public int AddMember(int nameID, int type, int memberSize)
-		//{
-		//	// create tag
-
-		//	tagAddress[numMembers] = codeTop;
-
-		//	int memberTag = MakeInstruction(OP_STRUCT_MEMBER, 3, type);
-		//	code[codeTop] = memberTag;
-		//	int address = structSize;
-		//	code[codeTop + 1] = nameID;
-		//	code[codeTop + 2] = address; // offset = sum of previous type sizes
-		//	code[codeTop + 3] = memberSize; // "sizeof"
-
-		//	structSize += memberSize;
-
-		//	codeTop += 4;
-
-		//	numMembers++;
-
-		//	return address;
-		//}
 		public void AddMember(int nameID, ArgType at)
 		{
 			AddMember(nameID, at.Def, at.Ref);
@@ -217,8 +85,6 @@ namespace Meanscript
 					break;
 				case Arg.ADDRESS: size = 1;
 					break;
-				case Arg.DYNAMIC: size = 1;
-					break;
 				default:
 					MS.Assertion(false);
 					size = 0;
@@ -232,6 +98,18 @@ namespace Meanscript
 				members.Size(),
 				nameID));			// index (0, 1, 2, ...)
 			offset += size;
+		}
+		internal void AddMember(int nameID, TypeDef typeDef, int refID, int address, int datasize, int index)
+		{
+			MS.Assertion(typeDef != null);
+			members.AddLast(new Member(
+				typeDef,			// data type
+				(Arg)refID,			// reference type
+				address,			// address
+				datasize,			// "sizeof" the member
+				index,
+				nameID));			// index (0, 1, 2, ...)
+			offset += datasize;
 		}
 
 		internal void AddMember(ArgType arg)
@@ -251,7 +129,7 @@ namespace Meanscript
 
 		public Member GetMember(MSText name)
 		{
-			int id = semantics.GetTextID(name);
+			int id = types.texts.GetTextID(name);
 			return GetMemberByNameID(id);
 		}
 
@@ -278,130 +156,44 @@ namespace Meanscript
 		{
 			return GetMemberByNameID(nameID) != null;
 		}
-
-		//public int GetTagAddressByNameID(int nameID)
-		//{
-		//	// get code offset for a member with a name
-
-		//	for (int i = 0; i < numMembers; i++)
-		//	{
-		//		int offset = tagAddress[i];
-		//		if (code[offset + 1] == nameID) return offset;
-		//	}
-		//	return -1;
-		//}
-
-		//public int GetMemberTagByName(MSText name)
-		//{
-		//	int index = GetTagAddressByName(name);
-		//	MS.Assertion(index >= 0, MC.EC_INTERNAL, "undefined variable, ID: " + name);
-		//	return code[index];
-		//}
-		//public int GetMemberAddressByName(MSText name)
-		//{
-		//	int index = GetTagAddressByName(name);
-		//	MS.Assertion(index >= 0, MC.EC_INTERNAL, "undefined variable, ID: " + name);
-		//	return code[index + 2]; // see above for definition
-		//}
-		//public int GetMemberSizeByName(MSText name)
-		//{
-		//	int index = GetTagAddressByName(name);
-		//	MS.Assertion(index >= 0, MC.EC_INTERNAL, "undefined variable, ID: " + name);
-		//	return code[index + 3]; // see above for definition
-		//}
-
-		//////////////// GENERIC STUFF ////////////////
-		/*
-		public int GetCharCount(MSText varName)
-		{
-			int index = GetTagAddressByName(varName);
-			MS.Assertion(index >= 0, MC.EC_INTERNAL, "undefined variable: " + varName);
-			int tag = code[index];
-			MS.Assertion(IsCharsTag(tag), EC_SYNTAX, "not a chars: " + varName);
-			return code[index + 4];
-		}
-		public int GetMemberCharCount(int index)
-		{
-			MS.Assertion(IndexInRange(index), MC.EC_INTERNAL, "argument index out of range: " + index);
-			int tag = code[tagAddress[index]];
-			if (IsCharsTag(tag)) return -1;
-			return code[index + 4];
-		}
-		public int GetMemberArrayItemType(MSText varName)
-		{
-			int index = GetTagAddressByName(varName);
-			MS.Assertion(index >= 0, MC.EC_INTERNAL, "undefined variable: " + varName);
-			int tag = code[index];
-			MS.Assertion(IsArrayTag(tag), EC_SYNTAX, "not an array: " + varName);
-			return code[index + 4]; // see above for definition
-		}
-		public int GetMemberArrayItemCount(MSText varName)
-		{
-			int index = GetTagAddressByName(varName);
-			MS.Assertion(index >= 0, MC.EC_INTERNAL, "undefined variable: " + varName);
-			int tag = code[index];
-			MS.Assertion(IsArrayTag(tag), EC_SYNTAX, "not an array: " + varName);
-			return code[index + 5]; // see above for definition
-		}
-		public int GetMemberArrayItemCountOrNegative(MSText varName)
-		{
-			int index = GetTagAddressByName(varName);
-			MS.Assertion(index >= 0, MC.EC_INTERNAL, "undefined variable: " + varName);
-			int tag = code[index];
-			if (IsArrayTag(tag)) return -1;
-			return code[index + 5]; // see above for definition
-		}
-		public int GetMemberArrayItemCountOrNegative(int index)
-		{
-			MS.Assertion(IndexInRange(index), MC.EC_INTERNAL, "argument index out of range: " + index);
-			int tag = code[tagAddress[index]];
-			if (IsArrayTag(tag)) return -1;
-			return code[tagAddress[index] + 5]; // see above for definition
-		}
-		*/
-		/////////////////////////////////////////////
-
-		//public bool IndexInRange(int index)
-		//{
-		//	return index >= 0 && index < numMembers;
-		//}
-		//public int GetMemberTagByIndex(int index)
-		//{
-		//	MS.Assertion(IndexInRange(index), MC.EC_INTERNAL, "argument index out of range: " + index);
-		//	return code[tagAddress[index]];
-		//}
-		//public int GetMemberAddressByIndex(int index)
-		//{
-		//	MS.Assertion(IndexInRange(index), MC.EC_INTERNAL, "argument index out of range: " + index);
-		//	return code[tagAddress[index] + 1]; // see above for definition
-		//}
-		//public int GetMemberSizeByIndex(int index)
-		//{
-		//	MS.Assertion(IndexInRange(index), MC.EC_INTERNAL, "argument index out of range: " + index);
-		//	return code[tagAddress[index] + 2]; // see above for definition
-		//}
-		//public int GetMemberNameIDByIndex(int index)
-		//{
-		//	// name ID of _n_th member
-		//
-		//	int offset = tagAddress[index];
-		//	return code[offset + 1];
-		//
-		//	//MS.assertion(indexInRange(index),MC.EC_INTERNAL, "argument index out of range: " + index);
-		//	//int offset = nameOffset[index];
-		//	//return System.Text.Encoding.UTF8.GetString(MS.intsToBytes(code, offset + 2, code[offset + 1]));
-		//}
 		
 		internal void Info(MSOutputPrint o)
 		{
 			o.PrintLine(MC.HORIZONTAL_LINE);
-			o.PrintLine("STRUCT CODE: " + semantics.GetText(nameID));
+			o.PrintLine("STRUCT CODE: " + types.texts.GetText(nameID));
 			o.PrintLine(MC.HORIZONTAL_LINE);
 			foreach(var m in members)
 			{
-				o.PrintLine("    " + m.Ref.ToString() + " : " + m.Type.TypeNameString() + " " + semantics.GetText(m.NameID));
+				o.PrintLine("    " + m.Ref.ToString() + " : " + m.Type.TypeNameString() + " " + types.texts.GetText(m.NameID));
 			}
 			o.PrintLine(MC.HORIZONTAL_LINE);
+		}
+
+		internal void Encode(ByteCode bc, int typeID)
+		{
+			MS.Verbose("ENCODE StructDef: " + typeID + " " + types.texts.GetText(nameID));
+			bc.AddInstructionWithData(MC.OP_STRUCT_DEF, 1, typeID, nameID);
+
+			// encode members
+
+			foreach(var m in members)
+			{
+				/*
+				public readonly TypeDef Type;
+				public readonly Arg Ref;
+				public readonly int Address; // from 0
+				public readonly int DataSize; // sizeof
+				public readonly int Index; // 0, 1, 2, ...
+				public readonly int NameID; // 0, 1, 2, ...
+				*/
+
+				bc.AddInstructionWithData(MC.OP_STRUCT_MEMBER, 6, typeID, m.NameID); // struct type and member name
+				bc.AddWord(m.Type.ID);
+				bc.AddWord((int)m.Ref);
+				bc.AddWord(m.Address);
+				bc.AddWord(m.DataSize);
+				bc.AddWord(m.Index);
+			}
 		}
 
 	}

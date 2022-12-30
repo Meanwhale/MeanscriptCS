@@ -18,7 +18,11 @@ namespace Meanscript
 		{
 			o.PrintHex(tag).Print(" ");
 			data.Print(o);
-			o.Print("    ").Print(tag);
+		}
+
+		internal bool InRange(int offset)
+		{
+			return offset >= 0 && offset < data.Length;
 		}
 	}
 	public class MHeap
@@ -26,7 +30,7 @@ namespace Meanscript
 		private int capacity = 16;
 		private DData [] array;
 		
-		public DData Target { private set; get; }
+		private DData Target; // { private set; private get; }
 
 		public MHeap ()
 		{
@@ -44,9 +48,16 @@ namespace Meanscript
 		{
 			Target = null;
 		}
+		internal DData AllocGlobal(int size)
+		{
+			MS.Assertion(array[1] == null);
+			array[1] = new DData(0, new IntArray(size));
+			return array[1];
+		}
 		private int FindFreeSlot()
 		{
-			for (int i=0; i<capacity; i++)
+			// 0 = null, 1 = global
+			for (int i=2; i<capacity; i++)
 				if (array[i] == null) return i;
 			throw new MException(MC.EC_INTERNAL, "heap full");
 		}
@@ -57,7 +68,11 @@ namespace Meanscript
 			int tag = MakeTag(type,index,1);
 			array[index] = new DData(tag, data);
 
-			if (MS._verboseOn) MS.printOut.Print("HEAP alloc [").Print(index).Print("] tag: ").PrintHex(tag).EndLine();
+			if (MS._verboseOn)
+			{
+				MS.printOut.Print("HEAP alloc [").Print(index).Print("] tag: ").PrintHex(tag).Print(" data:");
+				data.Print(MS.printOut); MS.printOut.EndLine();
+			}
 
 			return tag;
 		}
@@ -68,7 +83,7 @@ namespace Meanscript
 			int type = TagType(tag);
 			int index = TagIndex(tag);
 
-			MS.Assertion(type == datatype);
+			MS.Assertion(datatype < 0 || type == datatype);
 			if (array[index] == null)
 			{
 				MS.Verbose("Heap free: was empty");
@@ -77,30 +92,44 @@ namespace Meanscript
 			array[index] = null;
 			MS.Verbose("Heap free @ " + index);
 		}
-		
-		private int TagType(int tag)
+
+		internal IntArray GetDataArray(int heapID)
+		{
+			return array[heapID].data;
+		}
+		internal int GetAt(int heapID, int offset)
+		{
+			MS.Assertion(HasObject(heapID), MC.EC_CODE, "wrong heap ID: " + heapID);
+			MS.Assertion(array[heapID].InRange(offset), MC.EC_CODE, "object data index out of bounds: " + offset);
+			return array[heapID].data[offset];
+		}		
+		internal bool HasObject(int heapID)
+		{
+			return array[heapID] != null;
+		}
+		public static int TagType(int tag)
 		{
 			return (tag >> DDATA_TYPE_SHIFT) & 0xfff;
 		}
-		private int TagIndex(int tag)
+		public static int TagIndex(int tag)
 		{
 			return (tag >> DDATA_INDEX_SHIFT) & 0xfff;
 		}
-		private int TagSign(int tag)
+		public static int TagSignature(int tag)
 		{
-			return (tag >> DDATA_SIGN_SHIFT) & 0xff;
+			return (tag >> DDATA_SIGNATURE_SHIFT) & 0xff;
 		}
 
 		const uint
 			DDATA_TYPE_MASK =	0xfff00000,
 			DDATA_INDEX_MASK =	0x000fff00,
-			DDATA_SIGN_MASK =	0x000000ff;
+			DDATA_SIGNATURE_MASK =	0x000000ff;
 		const int
 			DDATA_TYPE_SHIFT =	20,
 			DDATA_INDEX_SHIFT =	8,
-			DDATA_SIGN_SHIFT =	0;
+			DDATA_SIGNATURE_SHIFT =	0;
 
-		private int MakeTag(int type, int index, int sign)
+		public static int MakeTag(int type, int index, int sign)
 		{
 			// fits pointer information in one int
 
@@ -111,7 +140,7 @@ namespace Meanscript
 			return (int)(
 				((type << DDATA_TYPE_SHIFT) & DDATA_TYPE_MASK) |
 				((index << DDATA_INDEX_SHIFT) & DDATA_INDEX_MASK) |
-				((sign << DDATA_SIGN_SHIFT) & DDATA_SIGN_MASK));
+				((sign << DDATA_SIGNATURE_SHIFT) & DDATA_SIGNATURE_MASK));
 		}
 
 		public DData Get(int tag)
@@ -130,5 +159,6 @@ namespace Meanscript
 				MS.printOut.EndLine();
 			}
 		}
+
 	}
 }

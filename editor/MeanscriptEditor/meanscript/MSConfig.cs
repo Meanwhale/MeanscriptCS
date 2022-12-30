@@ -1,7 +1,7 @@
 namespace Meanscript
 {
 
-	public class MSGlobal : MC
+	public class MSConfig : MC
 	{
 
 		// configuration parameters

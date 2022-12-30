@@ -104,21 +104,21 @@ namespace Meanscript
 		}
 
 
-
+		/*
 		private static void SimpleVariableCheck(MSCode m)
 		{
-			MS.Assertion(m.HasData("a"), EC_TEST, "");
-			MS.Assertion(m.GetInt("a") == 5, EC_TEST, "");
-			MS.Assertion(m.GetInt64("long") == 1234567891234L, EC_TEST, "");
-			MS.Assertion(m.GetInt64("short") == -1L, EC_TEST, "");
-			MS.Assertion((m.GetText("b").Equals("x")), EC_TEST, "");
-			MS.Assertion((m.GetChars("ch").Equals("asds")), EC_TEST, "");
-			MS.Assertion(m.GetFloat("c") == -123.456f, EC_TEST, "");
-			MS.Assertion(m.GetBool("b1") == true, EC_TEST, "");
-			MS.Assertion(m.GetBool("b2") == false, EC_TEST, "");
+			MS.Assertion(m.global.HasData("a"), EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 5, EC_TEST, "");
+			MS.Assertion(m.global.GetInt64("long") == 1234567891234L, EC_TEST, "");
+			MS.Assertion(m.global.GetInt64("short") == -1L, EC_TEST, "");
+			MS.Assertion((m.global.GetText("b").Equals("x")), EC_TEST, "");
+			MS.Assertion((m.global.GetChars("ch").Equals("asds")), EC_TEST, "");
+			MS.Assertion(m.global.GetFloat("c") == -123.456f, EC_TEST, "");
+			MS.Assertion(m.global.GetBool("b1") == true, EC_TEST, "");
+			MS.Assertion(m.global.GetBool("b2") == false, EC_TEST, "");
 
-			MS.Assertion(m.GetFloat64("d") == 12.123456789, EC_TEST, "");
-			string utf = m.GetText("utf");
+			MS.Assertion(m.global.GetFloat64("d") == 12.123456789, EC_TEST, "");
+			string utf = m.global.GetText("utf");
 			MS.Assertion(utf.Length == 2, EC_TEST, ""); // A + A with umlauts
 			MSText txt = new MSText(utf);
 			MS.Assertion(txt.NumBytes() == 3, EC_TEST, "");
@@ -150,9 +150,9 @@ namespace Meanscript
 			s += "p.pos.x: 12\n";
 			MSCode m = new MSCode();
 			m.CompileAndRun(s);
-			MS.Assertion(m.GetData("p").GetMember("pos").GetMember("y").GetInt() == 34, EC_TEST, "");
-			MS.Assertion(m.GetData("p").GetMember("pos").GetMember("x").GetInt() == 12, EC_TEST, "");
-			MS.Assertion(m.GetData("a").GetInt() == 11, EC_TEST, "");
+			MS.Assertion(m.global.GetData("p").GetMember("pos").GetMember("y").GetInt() == 34, EC_TEST, "");
+			MS.Assertion(m.global.GetData("p").GetMember("pos").GetMember("x").GetInt() == 12, EC_TEST, "");
+			MS.Assertion(m.global.GetData("a").GetInt() == 11, EC_TEST, "");
 		}
 
 		private static void ArgumentList()
@@ -161,10 +161,10 @@ namespace Meanscript
 			s += "int a: sum 2 3; int b: (sum 4 5); int c: sum (6, 7); int d: sum (sum 2 (sum (4,7))) 9";
 			MSCode m = new MSCode();
 			m.CompileAndRun(s);
-			MS.Assertion(m.GetInt("a") == 5, EC_TEST, "");
-			MS.Assertion(m.GetInt("b") == 9, EC_TEST, "");
-			MS.Assertion(m.GetInt("c") == 13, EC_TEST, "");
-			MS.Assertion(m.GetInt("d") == 22, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 5, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("b") == 9, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("c") == 13, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("d") == 22, EC_TEST, "");
 		}
 
 		private static void SimpleFunction()
@@ -172,7 +172,7 @@ namespace Meanscript
 			string s = "func int f [int x] { int n: sum (x, 3); return n }; int a: f 5";
 			MSCode m = new MSCode();
 			m.CompileAndRun(s);
-			MS.Assertion(m.GetInt("a") == 8, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 8, EC_TEST, "");
 		}
 
 		private static void StructFunction()
@@ -181,8 +181,8 @@ namespace Meanscript
 			s += "func person p [int a] { person x: [12,34], \"N\", a; return x}; vec foo; person z: p (56)";
 			MSCode m = new MSCode();
 			m.CompileAndRun(s);
-			MS.Assertion(m.GetData("z").GetInt("age") == 56, EC_TEST, "");
-			MS.Assertion(m.GetData("z").GetMember("pos").GetInt("y") == 34, EC_TEST, "");
+			MS.Assertion(m.global.GetData("z").GetInt("age") == 56, EC_TEST, "");
+			MS.Assertion(m.global.GetData("z").GetMember("pos").GetInt("y") == 34, EC_TEST, "");
 		}
 
 		private static void VarArray()
@@ -195,11 +195,11 @@ namespace Meanscript
 
 			MSCode m = new MSCode();
 			m.CompileAndRun(s);
-			MS.Assertion(!(m.HasArray("xxyyzz")), EC_TEST, "");
-			MS.Assertion(m.HasArray("numbers"), EC_TEST, "");
-			MS.Assertion(m.GetInt("a") == 1002, EC_TEST, "");
-			MS.Assertion(m.GetInt("b") == 222222, EC_TEST, "");
-			MS.Assertion(m.GetInt("c") == 222222, EC_TEST, "");
+			MS.Assertion(!(m.global.HasArray("xxyyzz")), EC_TEST, "");
+			MS.Assertion(m.global.HasArray("numbers"), EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 1002, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("b") == 222222, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("c") == 222222, EC_TEST, "");
 		}
 
 		private static void StructArray()
@@ -217,19 +217,19 @@ namespace Meanscript
 
 			// variable test
 
-			MS.Assertion(m.GetInt("a") == 2, EC_TEST, "");
-			MS.Assertion(m.GetInt("b") == 8888, EC_TEST, "");
-			MS.Assertion(m.GetInt("c") == 9999, EC_TEST, "");
-			MS.Assertion((m.GetText("t").Equals("Jaska")), EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 2, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("b") == 8888, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("c") == 9999, EC_TEST, "");
+			MS.Assertion((m.global.GetText("t").Equals("Jaska")), EC_TEST, "");
 
 			// MSData access test
 
-			MSDataArray arr = m.GetArray("team");
+			MSDataArray arr = m.global.GetArray("team");
 			MS.Assertion(arr.GetAt(2).GetInt("age") == 9999, EC_TEST, "");
 			MS.Assertion((arr.GetAt(2).GetChars("title").Equals("boss")), EC_TEST, "");
 
 			// struct array assignment
-			arr = m.GetArray("otherTeam");
+			arr = m.global.GetArray("otherTeam");
 			MS.Assertion(arr.GetAt(2).GetInt("age") == 78, EC_TEST, "");
 			MS.Assertion(arr.GetAt(1).GetArray("pos").GetAt(1).GetInt("y") == 8, EC_TEST, "");
 		}
@@ -244,7 +244,7 @@ namespace Meanscript
 			MSInputArray input = new MSInputArray(code);
 			MSCode m = new MSCode(input, MS.globalConfig.STREAM_SCRIPT);
 			m.Run();
-			MS.Assertion(m.GetInt("a") == 5, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 5, EC_TEST, "");
 
 			MSOutputArray output = new MSOutputArray();
 			m.WriteCode(output);
@@ -252,7 +252,7 @@ namespace Meanscript
 			input = new MSInputArray(output);
 			m.InitBytecode(input);
 			m.Run();
-			MS.Assertion(m.GetInt("a") == 5, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 5, EC_TEST, "");
 		}
 
 
@@ -279,7 +279,7 @@ namespace Meanscript
 			m.DataOutputPrint(MS.printOut);
 
 			// compare values from original script and output script
-			MS.Assertion((m.GetData("g").GetArray("member").GetAt(2).GetArray("corner").GetAt(0).GetChars("name").Equals("Jii")), EC_TEST, "");
+			MS.Assertion(m.global.GetData("g").GetArray("member").GetAt(2).GetArray("corner").GetAt(0).GetChars("name").Equals("Jii"), EC_TEST, "");
 
 			SimpleVariableCheck(m);
 
@@ -293,7 +293,7 @@ namespace Meanscript
 			MSInputArray input = new MSInputArray(code);
 			MSCode m = new MSCode(input, MS.globalConfig.STREAM_SCRIPT);
 			m.Run();
-			MS.Assertion(m.GetInt("a") == 5, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 5, EC_TEST, "");
 
 			MSOutputArray output = new MSOutputArray();
 			m.WriteReadOnlyData(output);
@@ -301,10 +301,10 @@ namespace Meanscript
 			input = null;
 			input = new MSInputArray(output);
 			m.InitBytecode(input);
-			MS.Assertion(m.GetInt("a") == 5, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("a") == 5, EC_TEST, "");
 		}
 
-
+		*/
 		private static bool ParseError()
 		{
 			try
@@ -326,8 +326,8 @@ namespace Meanscript
 			MS.Printn("TEST " + "msText"); MsText(); MS.Print(": OK");
 			MS.Printn("TEST " + "utils"); Utils(); MS.Print(": OK");
 			MS.Printn("TEST " + "consistency"); Consistency(); MS.Print(": OK");
-			MS.Printn("TEST " + "simpleVariable"); SimpleVariable(); MS.Print(": OK");
-			MS.Printn("TEST " + "simpleArray"); SimpleArray(); MS.Print(": OK");
+			//MS.Printn("TEST " + "simpleVariable"); SimpleVariable(); MS.Print(": OK");
+			//MS.Printn("TEST " + "simpleArray"); SimpleArray(); MS.Print(": OK");
 			//MS.Printn("TEST " + "structAssignment"); StructAssignment(); MS.Print(": OK"); ;
 			//MS.Printn("TEST " + "argumentList"); ArgumentList(); MS.Print(": OK"); ;
 			//MS.Printn("TEST " + "simpleFunction"); SimpleFunction(); MS.Print(": OK"); ;

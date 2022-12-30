@@ -57,7 +57,7 @@ namespace Meanscript
 
 		// instructions
 
-		public const int OP_SYSTEM = 0x00000000; // system calls (ERROR, assert, exception, etc. TBD)
+		public const int OP_SYSTEM = 0x00000001; // system calls (ERROR, assert, exception, etc. TBD)
 		public const int OP_CALLBACK_CALL = 0x03000000;
 		public const int OP_JUMP = 0x04000000;
 		public const int OP_GO_BACK = 0x05000000; // return to previous block. named to be less confusing
@@ -70,45 +70,47 @@ namespace Meanscript
 		public const int OP_NOOP = 0x0c000000;
 		public const int OP_ADD_TEXT = 0x10000000; // add immutable text to text map and add index to register
 		public const int OP_PUSH_IMMEDIATE = 0x11000000; // push immediate value to stack
-		public const int OP_ADD_TOP = 0x12000000; // add a value on stack's top item
+		public const int OP_ADD_STACK_TOP_ADDRESS_OFFSET = 0x12000000; // add a value on stack's top item
 		public const int OP_PUSH_REG_TO_STACK = 0x13000000; // push content of register to stack
 		public const int OP_FUNCTION = 0x14000000; // introduce a function
 		public const int OP_START_INIT = 0x15000000;
 		public const int OP_END_INIT = 0x16000000;
 		public const int OP_FUNCTION_CALL = 0x17000000;
 		public const int OP_PUSH_LOCAL = 0x18000000;
-		public const int OP_PUSH_GLOBAL = 0x19000000;
+		public const int OP_PUSH_OBJECT_DATA = 0x19000000;
 		
-		public const int OP_POP_STACK_TO_LOCAL = 0x1a000000;
-		public const int OP_POP_STACK_TO_GLOBAL = 0x1b000000;
+		public const int OP_POP_STACK_TO_OBJECT = 0x1a000000;
+		public const int OP_POP_STACK_TO_OBJECT_TAG = 0x1b000000;
+		//public const int OP_POP_STACK_TO_LOCAL = 0x1a000000;
+		//public const int OP_POP_STACK_TO_GLOBAL = 0x1b000000;
+		//public const int OP_POP_STACK_TO_DYNAMIC = 0x1d000000;
 		public const int OP_POP_STACK_TO_REG = 0x1c000000;
-		public const int OP_POP_STACK_TO_DYNAMIC = 0x1d000000;
 		
 		public const int OP_INIT_GLOBALS = 0x1e000000;
-		public const int OP_GENERIC_MEMBER = 0x1f000000;
+		public const int OP_GENERIC_TYPE = 0x1f000000;
 		
 		public const int OP_SET_DYNAMIC_OBJECT = 0x20000000;
 		
-		public const int OP_POP_STACK_TO_LOCAL_REF = 0x21000000;
-		public const int OP_POP_STACK_TO_GLOBAL_REF = 0x22000000;
-		public const int OP_PUSH_LOCAL_REF = 0x23000000;
-		public const int OP_PUSH_GLOBAL_REF = 0x24000000;
+		//public const int OP_POP_STACK_TO_LOCAL_REF = 0x21000000;
+		//public const int OP_POP_STACK_TO_GLOBAL_REF = 0x22000000;
+		//public const int OP_PUSH_LOCAL_REF = 0x23000000;
+		//public const int OP_PUSH_GLOBAL_REF = 0x24000000;
 		public const int OP_PUSH_CHARS = 0x25000000;
 
 		public const int OP_MAX = 0x30000000;
 		public const int NUM_OP = 0x30;
 
 		public static readonly string[] opName = new string[] {
-			"system",               "---OLD---",            "---OLD---",            "call",
+			"---OLD---",            "system",               "---OLD---",            "call",
 			"jump",                 "go back",              "go end",               "---OLD---",
 			"struct definition",    "struct member",        "save base",            "load base",
 			"no operation",         "---OLD---",            "---OLD---",            "---OLD---",
 			"text",                 "push immediate",       "add top",	            "push from reg.",
 			"function data",        "start init",           "end init",             "function call",
-			"push local",           "push global",          "pop to local",         "pop to global",
-			"pop to register",      "pop to dynamic",       "init globals",         "generic member",
-			"set dynamic object",   "pop to local ref.",    "pop to global ref.",   "push local ref.",
-			"push global ref.",     "push chars",           "---ERROR---",          "---ERROR---",
+			"push local",           "push object data",     "pop to object",        "pop to object tag",
+			"pop to register",      "---OLD---",            "init globals",         "generic type",
+			"set dynamic object",   "---OLD---",            "---OLD---",            "---OLD---",
+			"---OLD---",            "push chars",           "---ERROR---",          "---ERROR---",
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
 			};
@@ -120,7 +122,7 @@ namespace Meanscript
 		public static readonly Keyword KEYWORD_GLOBAL	= new Keyword("global", 0);
 		public static readonly Keyword KEYWORD_ARRAY	= new Keyword("array", 0);
 		
-		public const int MS_TYPE_VOID = 0; // primitive types
+		// primitive types
 		public const int MS_TYPE_INT = 1;
 		public const int MS_TYPE_INT64 = 2;
 		public const int MS_TYPE_FLOAT = 3;
@@ -134,7 +136,15 @@ namespace Meanscript
 		public const int MS_TYPE_MUL = 11;
 		public const int MS_TYPE_DIV = 12;
 		public const int MS_TYPE_NULL = 13;
-		public const int MAX_MS_TYPES = 16;
+		public const int MS_TYPE_GET = 14;
+		public const int MS_TYPE_SET = 15;
+		
+		public const int MS_TYPE_VOID = 16;
+		public const int MS_TYPE_GENERIC_OBJECT = 17;
+		public const int MS_TYPE_GENERIC_ARRAY = 18;
+		public const int MS_TYPE_GENERIC_CHARS = 19;
+		
+		public const int MAX_MS_TYPES = 32;
 		public const int MAX_TYPES = 256;
 
 		public static readonly MSText[] primitiveNames = new MSText[] {
@@ -147,7 +157,14 @@ namespace Meanscript
 			new MSText("bool"),
 			MSText.Empty(),
 			MSText.Empty(),
-			new MSText("chars"),
+			MSText.Empty(),
+			MSText.Empty(),
+			MSText.Empty(),
+			MSText.Empty(),
+			MSText.Empty(),
+			MSText.Empty(),
+			MSText.Empty(),
+			new MSText("void"),
 		};
 
 		public const string HORIZONTAL_LINE = "------------------------------------------";
@@ -230,6 +247,21 @@ namespace Meanscript
 			long x = ((long)high) << 32;
 			x |= ((long)low) & 0x00000000ffffffffL;
 			return x;
+		}
+
+		public static int MakeAddress(int heapID, int offset)
+		{
+			int x = (heapID) << 16;
+			x |= (offset) & 0x0000ffff;
+			return x;
+		}
+		public static int AddressHeapID(int address)
+		{
+			return (address >> 16) & 0x0000ffff;
+		}
+		public static int AddressOffset(int address)
+		{
+			return address & 0x0000ffff;
 		}
 
 		public static void PrintBytecode(IntArray data, int top, int index, bool code)
@@ -323,10 +355,10 @@ namespace Meanscript
 			}
 		}
 
-		public static int AddTextInstruction(MSText text, int instructionCode, IntArray code, int top)
+		public static int AddTextInstruction(MSText text, int instructionCode, IntArray code, int top, int textID)
 		{
 			//MS.verbose("Add text: " + size32 + " x 4 bytes, " + numChars + " characters");
-			int instruction = MakeInstruction(instructionCode, text.DataSize(), MS_TYPE_TEXT);
+			int instruction = MakeInstruction(instructionCode, text.DataSize(), textID);
 			code[top++] = instruction;
 			return text.Write(code, top);
 		}

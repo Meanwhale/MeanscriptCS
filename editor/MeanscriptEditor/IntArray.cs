@@ -44,7 +44,7 @@ namespace Meanscript
 
 		internal void Print(MSOutputPrint o)
 		{
-			foreach(int i in data) o.Print("/").Print(i);
+			foreach(int i in data) o.Print("/").PrintHex(i);
 		}
 	}
 }

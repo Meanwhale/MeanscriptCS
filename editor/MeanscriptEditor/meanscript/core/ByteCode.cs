@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Meanscript
 {
@@ -9,7 +10,8 @@ namespace Meanscript
 		public IntArray code;
 		internal Common common;
 
-
+		// save parsed nodes for debugging
+		public Dictionary<int, MNode> nodes = new Dictionary<int, MNode>();
 
 		public ByteCode(Common _common)
 		{
@@ -49,8 +51,10 @@ namespace Meanscript
 
 		public void AddInstructionWithData(int operation, int size, int valueType, int data)
 		{
-			AddInstruction(operation, size, valueType);
+			int instruction = MakeInstruction(operation, size, valueType);
+			code[codeTop++] = instruction;
 			AddWord(data);
+			MS.Verbose("Add instruction with data: [" + GetOpName(instruction) + "] [" + data + "]");
 		}
 
 		public void AddInstruction(int operation, int size, int valueType)

@@ -22,7 +22,7 @@ namespace Meanscript
 		private static readonly byte[] buffer = new byte[512];
 		private static readonly byte[] quoteBuffer = new byte[4096];
 
-		private static ByteAutomata baPtr;
+		private static ByteAutomata automata;
 		private static bool goBackwards, running, assignment;
 		private static int index, lastStart, lineNumber, characterNumber, quoteIndex;
 		private static MNode root;
@@ -38,14 +38,14 @@ namespace Meanscript
 		{
 			lastStart = index;
 
-			baPtr.Next(state);
+			automata.Next(state);
 		}
 
 		private static void NextCont(byte state)
 		{
 			// continue with same token,
 			// so don't reset the start index
-			baPtr.Next(state);
+			automata.Next(state);
 		}
 
 		private static void Bwd()
@@ -93,7 +93,7 @@ namespace Meanscript
 			if (tokenType == NodeType.TEXT)
 			{
 				MSText data = GetQuoteText();
-				tokenTree.AddText(data);
+				tokenTree.texts.AddText(data);
 				token = new MNode(lineNumber, characterNumber, currentExpr, NodeType.TEXT, data);
 			}
 			else
@@ -133,7 +133,7 @@ namespace Meanscript
 		private static void ExprBreak()
 		{
 			// check that comma is used properly
-			if (baPtr.currentInput == ',')
+			if (automata.currentInput == ',')
 			{
 				MS.Assertion(currentBlock != null && (currentBlock.type == NodeType.ASSIGNMENT_BLOCK || currentBlock.type == NodeType.SQUARE_BRACKETS || currentBlock.type == NodeType.PARENTHESIS), EC_PARSE, "unexpected comma");
 			}
@@ -142,7 +142,7 @@ namespace Meanscript
 
 			if (assignment)
 			{
-				if (baPtr.currentInput != ',')
+				if (automata.currentInput != ',')
 				{
 					// end assignment block
 					// hack solution to allow assignment args without brackets
@@ -206,7 +206,7 @@ namespace Meanscript
 		{
 			MS.Printn("Parse error: ");
 			MS.Print(msg);
-			baPtr.ok = false;
+			automata.ok = false;
 			running = false;
 		}
 
@@ -232,7 +232,7 @@ namespace Meanscript
 
 		private static void DefineTransitions()
 		{
-			ByteAutomata ba = baPtr;
+			ByteAutomata ba = automata;
 
 			space = ba.AddState("space");
 			name = ba.AddState("name");
@@ -327,7 +327,7 @@ namespace Meanscript
 			ba.FillTransition(slash, () => { AddToken(NodeType.DIV); Bwd(); Next(space); });
 			ba.Transition(slash, "/", () => { Next(comment); });
 
-			ba.FillTransition(quote, () => { AddQuoteByte(baPtr.currentInput); });
+			ba.FillTransition(quote, () => { AddQuoteByte(automata.currentInput); });
 			ba.Transition(quote, linebreak, () => { ParseError("line break inside a quotation"); });
 			ba.Transition(quote, "\"", () => { lastStart++; AddToken(NodeType.TEXT); Next(space); });
 			ba.Transition(quote, "\\", () => { Next(escapeChar); });
@@ -429,8 +429,8 @@ namespace Meanscript
 
 			tokenTree = new TokenTree();
 
-			baPtr = new ByteAutomata();
-			ByteAutomata ba = baPtr;
+			automata = new ByteAutomata();
+			ByteAutomata ba = automata;
 
 			DefineTransitions();
 
@@ -504,7 +504,7 @@ namespace Meanscript
 				}
 				MS.errorOut.Print("\n");
 
-				baPtr = null;
+				automata = null;
 				root = null;
 				tokenTree = null;
 				MS.Assertion(false, EC_PARSE, null);
@@ -516,7 +516,7 @@ namespace Meanscript
 				root.PrintTree(true);
 				MS.Print("------------------------ END PARSING");
 			}
-			baPtr = null;
+			automata = null;
 
 			tokenTree.root = root;
 			return tokenTree;

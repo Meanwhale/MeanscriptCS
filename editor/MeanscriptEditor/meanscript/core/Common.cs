@@ -105,11 +105,11 @@ namespace Meanscript
 
 		private static void PrintTextCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("//////////////// PRINT TEXT ////////////////");
+			//MS.Verbose("//////////////// PRINT TEXT ////////////////");
 
-			int address = mm.texts[mm.stack[args.baseIndex]];
-			int numChars = mm.GetStructCode()[address + 1];
-			MS.userOut.Print("").PrintIntsToChars(mm.GetStructCode(), address + 2, numChars, false).EndLine();
+			//int address = mm.texts[mm.stack[args.baseIndex]];
+			//int numChars = mm.GetStructCode()[address + 1];
+			//MS.userOut.Print("").PrintIntsToChars(mm.GetStructCode(), address + 2, numChars, false).EndLine();
 		}
 
 		private static void PrintCharsCallback(MeanMachine mm, MArgs args)
@@ -133,73 +133,76 @@ namespace Meanscript
 		//	callbacks[sem.GetNewTypeID()] = cb;
 		//}
 
-		public void Initialize(Semantics sem)
+		public void Initialize(Types types)
 		{
-			VoidType = sem.AddElementaryType(MS_TYPE_VOID, 0);
-			IntType = sem.AddElementaryType(MS_TYPE_INT, 1);
-			Int64Type = sem.AddElementaryType(MS_TYPE_INT64, 2);
-			FloatType = sem.AddElementaryType(MS_TYPE_FLOAT, 1);
-			Float64Type = sem.AddElementaryType(MS_TYPE_FLOAT64, 2);
-			TextType = sem.AddElementaryType(MS_TYPE_TEXT, 1);
-			BoolType = sem.AddElementaryType(MS_TYPE_BOOL, 1);
+			VoidType = types.AddElementaryType(MS_TYPE_VOID, 0);
+			IntType = types.AddElementaryType(MS_TYPE_INT, 1);
+			Int64Type = types.AddElementaryType(MS_TYPE_INT64, 2);
+			FloatType = types.AddElementaryType(MS_TYPE_FLOAT, 1);
+			Float64Type = types.AddElementaryType(MS_TYPE_FLOAT64, 2);
+			TextType = types.AddElementaryType(MS_TYPE_TEXT, 1);
+			BoolType = types.AddElementaryType(MS_TYPE_BOOL, 1);
 			
-			PlusOperatorType = sem.AddOperatorType(MS_TYPE_PLUS, new MSText("+"));
-			MinusOperatorType = sem.AddOperatorType(MS_TYPE_MINUS, new MSText("-"));
-			DivOperatorType = sem.AddOperatorType(MS_TYPE_DIV, new MSText("/"));
-			MulOperatorType = sem.AddOperatorType(MS_TYPE_MUL, new MSText("*"));
+			PlusOperatorType = types.AddOperatorType(MS_TYPE_PLUS, new MSText("+"));
+			MinusOperatorType = types.AddOperatorType(MS_TYPE_MINUS, new MSText("-"));
+			DivOperatorType = types.AddOperatorType(MS_TYPE_DIV, new MSText("/"));
+			MulOperatorType = types.AddOperatorType(MS_TYPE_MUL, new MSText("*"));
 
-			sem.AddTypeDef(new NullType(MS_TYPE_NULL));
+			types.AddTypeDef(new NullType(MS_TYPE_NULL));
 
-			genericGetAtCallName = new CallNameType(sem.GetNewTypeID(), new MSText("get"));
-			genericSetAtCallName = new CallNameType(sem.GetNewTypeID(), new MSText("set"));
+			genericGetAtCallName = new CallNameType(MS_TYPE_GET, new MSText("get"));
+			genericSetAtCallName = new CallNameType(MS_TYPE_SET, new MSText("set"));
 			
-			sem.AddTypeDef(genericGetAtCallName);
-			sem.AddTypeDef(genericSetAtCallName);
+			types.AddTypeDef(genericGetAtCallName);
+			types.AddTypeDef(genericSetAtCallName);
 
-			CreateCallbacks(sem);
+			CreateCallbacks(types);
 		}
 
-		public int CreateCallback(Semantics sem, ArgType returnType, ArgType [] args, MS.MCallbackAction _func)
+		public void CreateCallback(int id, Types types, ArgType returnType, ArgType [] args, MS.MCallbackAction _func)
 		{
-			int cbTypeID = sem.GetNewTypeID();
-			
-			var sd = new StructDef(sem, 0);
+			var sd = new StructDef(types, 0);
 			foreach(var arg in args) sd.AddMember(arg);
 			var cbTypeDef = 
 				new CallbackType(
-					cbTypeID,
+					id,
 					returnType,
 					sd,
 					_func
 			);
 			
-			sem.AddTypeDef(cbTypeDef);
-			callbacks[cbTypeID] = cbTypeDef;
-			
+			types.AddTypeDef(cbTypeDef);
+			callbacks[id] = cbTypeDef;
+		}
+
+		public int CreateCallback(Types types, ArgType returnType, ArgType [] args, MS.MCallbackAction _func)
+		{
+			int cbTypeID = types.GetNewTypeID();
+			CreateCallback(cbTypeID, types, returnType, args, _func);
 			return cbTypeID;
 		}
 
-		public void CreateCallbacks(Semantics sem)
+		public void CreateCallbacks(Types types)
 		{
-			var sumNameType = new CallNameType(sem.GetNewTypeID(), new MSText("sum"));
-			sem.AddTypeDef(sumNameType);
-			CreateCallback(sem, ArgType.Data(IntType), new ArgType []{ ArgType.Void(sumNameType), ArgType.Data(IntType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum2Callback(mm, a); });
-			CreateCallback(sem, ArgType.Data(IntType), new ArgType []{ ArgType.Void(sumNameType), ArgType.Data(IntType), ArgType.Data(IntType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum3Callback(mm, a); });
+			var sumNameType = new CallNameType(types.GetNewTypeID(), new MSText("sum"));
+			types.AddTypeDef(sumNameType);
+			CreateCallback(types, ArgType.Data(IntType), new ArgType []{ ArgType.Void(sumNameType), ArgType.Data(IntType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum2Callback(mm, a); });
+			CreateCallback(types, ArgType.Data(IntType), new ArgType []{ ArgType.Void(sumNameType), ArgType.Data(IntType), ArgType.Data(IntType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum3Callback(mm, a); });
 			
 			// sum by +
-			CreateCallback(sem, ArgType.Data(IntType), new ArgType []{ ArgType.Data(IntType), ArgType.Void(PlusOperatorType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum2Callback(mm, a); });
+			CreateCallback(types, ArgType.Data(IntType), new ArgType []{ ArgType.Data(IntType), ArgType.Void(PlusOperatorType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { Sum2Callback(mm, a); });
 			
-			var printNameType = new CallNameType(sem.GetNewTypeID(), new MSText("print"));
-			sem.AddTypeDef(printNameType);
-			CreateCallback(sem, ArgType.Void(VoidType), new ArgType []{ ArgType.Void(printNameType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { PrintIntCallback(mm, a); });
+			var printNameType = new CallNameType(types.GetNewTypeID(), new MSText("print"));
+			types.AddTypeDef(printNameType);
+			CreateCallback(types, ArgType.Void(VoidType), new ArgType []{ ArgType.Void(printNameType), ArgType.Data(IntType) }, (MeanMachine mm, MArgs a) => { PrintIntCallback(mm, a); });
 
-			var trueNameType = new CallNameType(sem.GetNewTypeID(), new MSText("true"));
-			sem.AddTypeDef(trueNameType);
-			CreateCallback(sem, ArgType.Data(BoolType), new ArgType []{ ArgType.Void(trueNameType) }, (MeanMachine mm, MArgs a) => { BoolValueCallback(mm, a, true); });
+			var trueNameType = new CallNameType(types.GetNewTypeID(), new MSText("true"));
+			types.AddTypeDef(trueNameType);
+			CreateCallback(types, ArgType.Data(BoolType), new ArgType []{ ArgType.Void(trueNameType) }, (MeanMachine mm, MArgs a) => { BoolValueCallback(mm, a, true); });
 			
-			var falseNameType = new CallNameType(sem.GetNewTypeID(), new MSText("false"));
-			sem.AddTypeDef(falseNameType);
-			CreateCallback(sem, ArgType.Data(BoolType), new ArgType []{ ArgType.Void(falseNameType) }, (MeanMachine mm, MArgs a) => { BoolValueCallback(mm, a, false); });
+			var falseNameType = new CallNameType(types.GetNewTypeID(), new MSText("false"));
+			types.AddTypeDef(falseNameType);
+			CreateCallback(types, ArgType.Data(BoolType), new ArgType []{ ArgType.Void(falseNameType) }, (MeanMachine mm, MArgs a) => { BoolValueCallback(mm, a, false); });
 
 			//CreateCallback(sem, sumNameID, , MS_TYPE_INT, sd);
 			/*

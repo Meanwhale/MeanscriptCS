@@ -3,11 +3,17 @@ namespace Meanscript
 
 	public class MSCode : MC
 	{
+		// interface for
+		//  - compiling and running code
+		//  - access data in MeanMachine
+
 		readonly Common common;
 
 		MeanMachine mm;
 
 		bool initialized;
+
+		public MSData global;
 
 		public MSCode()
 		{
@@ -81,7 +87,7 @@ namespace Meanscript
 
 			initialized = true;
 		}
-
+		/*
 		public bool HasData(string name)
 		{
 			return mm.globals.HasData(name);
@@ -150,7 +156,7 @@ namespace Meanscript
 			CheckInit();
 			return mm.globals.GetArray(name);
 		}
-
+		*/
 		public void WriteReadOnlyData(MSOutputStream output)
 		{
 			mm.WriteReadOnlyData(output);
@@ -175,13 +181,13 @@ namespace Meanscript
 
 		public void PrintData()
 		{
-			if (initialized) mm.DataPrint();
+			if (initialized) mm.PrintGlobals();
 			else MS.Print("printDetails: MSCode is not initialized");
 		}
 
 		public void DataOutputPrint(MSOutputPrint output)
 		{
-			mm.globals.PrintData(output, 0, "");
+			mm.PrintGlobals();
 			output.Close();
 		}
 
@@ -195,6 +201,8 @@ namespace Meanscript
 			semantics.Analyze(common);
 			ByteCode bc = Generator.Generate(tree, semantics, common);
 			initialized = true;
+
+
 			return bc;
 		}
 
@@ -215,6 +223,9 @@ namespace Meanscript
 			MSInputArray ia = new MSInputArray(s);
 			ByteCode bc = Compile(ia);
 			mm = new MeanMachine(bc);
+			
+			global = new MSData(mm, 0, 1 ,0);
+
 			Run();
 		}
 	}

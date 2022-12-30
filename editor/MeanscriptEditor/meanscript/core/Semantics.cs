@@ -4,24 +4,19 @@ using System.Collections.Generic;
 namespace Meanscript
 {
 
-	public class Semantics : MC
+	public class Semantics : Types
 	{
 		internal TokenTree tree;
-		private int typeIDCounter;
 		internal int maxContexts;
 		internal int numContexts;
-		//internal Dictionary<MSText, int> types = new Dictionary<MSText, int>(MS.textComparer);
-		//internal StructDef[] typeStructDefs;
-		internal Dictionary<int, TypeDef> types = new Dictionary<int, TypeDef>();
-		internal Context[] contexts;
+		internal Context[] contexts; // TODO: use list
 		public Context globalContext;
 		internal Context currentContext;
-		private Common common;
 
-		public Semantics(TokenTree _tree)
+		public Semantics(TokenTree _tree) : base (_tree.texts)
 		{
 			tree = _tree;
-			typeIDCounter = MAX_MS_TYPES;
+			tree.texts = null; // from now on, use texts in Types
 			maxContexts = MS.globalConfig.maxFunctions;
 			contexts = new Context[maxContexts];
 
@@ -40,92 +35,14 @@ namespace Meanscript
 			foreach(var c in contexts)
 				if (c != null) c.Info(o);
 		}
-
-		public int GetNewTypeID()
-		{
-			return typeIDCounter++;
-		}
-		public TypeDef AddElementaryType(int typeID, int size)
-		{
-			return AddTypeDef(new PrimitiveType(typeID, size));
-		}
-		public TypeDef AddOperatorType(int typeID, MSText name)
-		{
-			return AddTypeDef(new OperatorType(typeID, name));
-		}
-		public TypeDef AddTypeDef(TypeDef newType)
-		{
-			MS.Assertion(!types.ContainsKey(newType.ID));
-			types[newType.ID] = newType;
-			return newType;
-		}
-
-		public bool HasDataType(MSText name)
-		{
-			return GetDataType(name) != null;
-		}
-
-		public bool HasType(int id)
-		{
-			return types.ContainsKey(id);
-		}
-
-		public TypeDef GetType(int id, NodeIterator itPtr = null)
-		{
-			if (types.ContainsKey(id)) return types[id];
-			return null;
-		}
-		public TypeDef GetType(MSText name, NodeIterator itPtr = null)
-		{
-			foreach(var t in types.Values)
-			{
-				if (t is TypeDef d)
-				{
-					if (name.Equals(d.TypeName())) return d;
-				}
-			}
-			return null;
-		}
-		
-		public DataTypeDef GetDataType(int id, NodeIterator itPtr = null)
-		{
-			var t = GetType(id,itPtr);
-			if (t != null && t is DataTypeDef d) return d;
-			return null;
-		}
-		public DataTypeDef GetDataType(MSText name, NodeIterator itPtr = null)
-		{
-			var t = GetType(name,itPtr);
-			if (t != null && t is DataTypeDef d) return d;
-			return null;
-		}
-		public StructDef GetStructDefType(int i, NodeIterator itPtr = null)
-		{
-			return null; // TODO
-		}
-		public StructDef GetStructDefType(MSText name, NodeIterator itPtr = null)
-		{
-			return null; // TODO
-		}
-
 		public bool InGlobal()
 		{
 			return currentContext == contexts[0];
 		}
 
-		public int GetTextID(MSText text)
-		{
-			return tree.GetTextID(text);
-		}
-
-		public MSText GetText(int id)
-		{
-			return tree.GetTextByID(id);
-		}
-
 		public Context FindContext(MSText name)
 		{
-			int textID = GetTextID(name);
+			int textID = texts.GetTextID(name);
 			if (textID < 0) return null;
 			for (int i = 1; i < maxContexts; i++)
 			{
@@ -134,13 +51,12 @@ namespace Meanscript
 			}
 			return null;
 		}
-
+		
 		public bool IsNameValidAndAvailable(string name)
 		{
 			MSText n = new MSText(name);
 			return IsNameValidAndAvailable(n);
 		}
-
 		public bool IsNameValidAndAvailable(MSText name)
 		{
 			// check it has valid characters
@@ -167,7 +83,7 @@ namespace Meanscript
 				return false;
 			}
 
-			int nameID = GetTextID(name);
+			int nameID = texts.GetTextID(name);
 			if (nameID >= 0)
 			{
 				// name is saved: check if it's used in contexts
@@ -197,12 +113,6 @@ namespace Meanscript
 			}
 			return true;
 		}
-
-		internal void AddCallback(TypeDef type, StructDef sd, MS.MCallbackAction act)
-		{
-			throw new NotImplementedException();
-		}
-
 		public void Analyze(Common com)
 		{
 			common = com;
@@ -216,6 +126,11 @@ namespace Meanscript
 			NodeIterator it = new NodeIterator(tree.root);
 
 			AnalyzeNode(it.Copy()); // start from the first expression
+
+			foreach(var t in types.Values)
+			{
+				t.Init(this, common);
+			}
 
 			MS.Verbose(HORIZONTAL_LINE);
 			MS.Verbose("CONTEXTS");
@@ -309,7 +224,7 @@ namespace Meanscript
 					MS.Verbose("Create a new function: " + functionName);
 
 					// create new context
-					int functionNameID = tree.AddText(functionName);
+					int functionNameID = texts.AddText(functionName);
 					Context funcContext = new Context(this, functionNameID, numContexts, returnType);
 					contexts[numContexts++] = funcContext;
 
@@ -318,7 +233,6 @@ namespace Meanscript
 					MS.SyntaxAssertion(it.HasNext(), it, "argument definition expected");
 					it.ToNext();
 					CreateStructDef(funcContext.variables, it.Copy());
-					funcContext.variables.ArgsSize = funcContext.variables.StructSize();
 					funcContext.numArgs = funcContext.variables.NumMembers();
 
 					// parse function body
@@ -379,8 +293,8 @@ namespace Meanscript
 
 					// variable name
 					MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
-					MS.Verbose("New variable: " + it.Data() + " <" + GetText(currentContext.variables.nameID) + ">");
-					currentContext.variables.AddMember(tree.AddText(it.Data()), dataType, Arg.DATA);
+					MS.Verbose("New variable: " + it.Data() + " <" + texts.GetText(currentContext.variables.nameID) + ">");
+					currentContext.variables.AddMember(texts.AddText(it.Data()), dataType, Arg.DATA);
 
 					// check if there's an assignment or extra tokens
 					if (it.HasNext())
@@ -429,9 +343,9 @@ namespace Meanscript
 			it.ToNext(NodeType.NAME_TOKEN);
 					
 			MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
-			MS.Verbose("New variable: " + it.Data() + " <" + GetText(currentContext.variables.nameID) + ">");
+			MS.Verbose("New variable: " + it.Data() + " <" + texts.GetText(currentContext.variables.nameID) + ">");
 			var genArgType = CreateGenericVariable(genTypeName, genArgs, it);
-			sd.AddMember(tree.AddText(it.Data()), genArgType);
+			sd.AddMember(texts.AddText(it.Data()), genArgType);
 			
 			if (it.HasNext())
 			{
@@ -446,17 +360,29 @@ namespace Meanscript
 
 		private ArgType CreateGenericVariable(MSText genTypeName, MList<MNode> genArgs, NodeIterator it)
 		{
-			MS.Assertion(HasGenericType(genTypeName));
-			if (genTypeName.Equals("array")) return new ArgType(Arg.DATA, new GenericArrayType(GetNewTypeID(), genArgs, this, common, it));
-			if (genTypeName.Equals("chars")) return new ArgType(Arg.DATA, new GenericCharsType(GetNewTypeID(), genArgs, this, common, it));
-			if (genTypeName.Equals("ptr")) return new ArgType(Arg.DYNAMIC, new PointerType(GetNewTypeID(), genArgs, this, common, it));
-			return null;
+
+			var factory = GetGenericFactory(genTypeName);			
+			MS.Assertion(factory != null);
+			var ot = factory.Create(GetNewTypeID(), genArgs, this, it);
+			AddTypeDef(ot);
+
+			// TODO: smart way to decide ref. type = size
+			if (ot is ObjectType) return new ArgType(Arg.ADDRESS, ot);
+			return new ArgType(Arg.DATA, ot);
 		}
 
 		private bool HasGenericType(MSText name)
 		{
-			// TODO: add more types
-			return name.Equals("array") || name.Equals("chars") || name.Equals("ptr");
+			return GetGenericFactory(name) != null;
+		}
+
+		private GenericFactory GetGenericFactory(MSText name)
+		{
+			foreach(var f in GenericFactory.factories)
+			{
+				if (name.Equals(f.TypeName())) return f;
+			}
+			return null;
 		}
 
 		private void SetParentExpr(NodeIterator it, NodeType nt)
@@ -469,23 +395,22 @@ namespace Meanscript
 		{
 			// add user type
 
-			int nameID = tree.AddText(name);
+			int nameID = texts.AddText(name);
 
 			StructDef sd = new StructDef(this, nameID);
 			
-			// TODO: add it already here to allow ptr references to itself, eg.
-			// currently it would cause stack overflow...
+			// add it already here to allow references ("obj[this type] x") to itself
 			
-			AddStructDef(name, sd);
+			AddStructDef(nameID, sd);
 
 			CreateStructDef(sd, it.Copy());
 			sd.Info(MS.printOut);
 			
 		}
 
-		public void AddStructDef(MSText name, StructDef sd)
+		public void AddStructDef(int nameID, StructDef sd)
 		{
-			AddTypeDef(new StructDefType(GetNewTypeID(), name, sd));
+			AddTypeDef(new StructDefType(GetNewTypeID(), texts.GetText(nameID), sd));
 		}
 
 		public void CreateStructDef(StructDef sd, NodeIterator it)
@@ -513,7 +438,7 @@ namespace Meanscript
 					MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "member name expected");
 					MS.SyntaxAssertion(!sd.HasMember(it.Data()), it, "duplicate name: " + it.Data());
 					MS.Verbose("Add struct member: " + it.Data());
-					sd.AddMember(tree.AddText(it.Data()), dataType, Arg.DATA);
+					sd.AddMember(texts.AddText(it.Data()), dataType, Arg.DATA);
 					MS.SyntaxAssertion(!it.HasNext(), it, "break expected");
 				}
 				
@@ -524,8 +449,34 @@ namespace Meanscript
 
 		public void WriteStructDefs(ByteCode bc)
 		{
-			// TODO: encode StructDefs
+			// encode globals and StructDefs
 			
+			foreach(var tv in types)
+			{
+				if (tv.Value is StructDefType sdt)
+				{
+					sdt.SD.Encode(bc, tv.Key);
+				}
+			}
+			foreach(var tv in types)
+			{
+				if (tv.Value is ObjectType ot)
+				{
+					var factory = GenericFactory.Get(MC.MS_TYPE_GENERIC_OBJECT);
+					factory.Encode(bc, ot);
+				}
+			}
+			foreach(var tv in types)
+			{
+				if (tv.Value is GenericArrayType at)
+				{
+					var factory = GenericFactory.Get(MC.MS_TYPE_GENERIC_ARRAY);
+					factory.Encode(bc, at);
+				}
+			}
+			globalContext.variables.Encode(bc, 0);
+			
+
 			// write globals
 			//StructDef sd = contexts[0].variables;
 			//for (int a = 0; a < sd.codeTop; a++)

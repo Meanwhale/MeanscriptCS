@@ -13,7 +13,7 @@ namespace Meanscript
 			error = err; info = s;
 		}
 		new public string ToString() {
-			return "---------------- EXCEPTION ----------------\n"
+			return "\n---------------- EXCEPTION ----------------\n"
 			     + info
 				 + "\n-------------------------------------------\n"; }
 	}
@@ -23,51 +23,6 @@ namespace Meanscript
 		override public MSOutputPrint Print(string x) { System.Console.Write(x); return this; }
 		override public MSOutputPrint Print(char x) { System.Console.Write(x); return this; }
 	}
-
-	/*public class Printer
-	{
-		// override to implement own printer
-		public virtual Printer print(object o)
-		{
-			Console.Write(o);
-			return this;
-		}
-		public Printer print(int i)
-		{
-			print("" + i);
-			return this;
-		}
-		public Printer print(char c)
-		{
-			print("" + c);
-			return this;
-		}
-		public static string[] hexs = new string[] {
-			"0","1","2","3",
-			"4","5","6","7",
-			"8","9","a","b",
-			"c","d","e","f",
-			};
-		public Printer printHex(int h)
-		{
-			print("0x");
-			for (int i = 28; i >= 0; i -= 4)
-			{
-				int index = (h >> i); // TODO: zero fill?
-				index &= 0x0000000f;
-				print(hexs[index]);
-			}
-			return this;
-		}
-	}
-
-	public class NullPrinter : Printer
-	{
-		override public Printer print(object o)
-		{
-			return this;
-		}
-	}*/
 
 	public class MSError
 	{
@@ -92,7 +47,7 @@ namespace Meanscript
 		public static MSOutputPrint printOut = new Printer();
 		public static MSOutputPrint errorOut = new Printer();
 		public static MSOutputPrint userOut = new Printer();
-		public static MSGlobal globalConfig = new MSGlobal();
+		public static MSConfig globalConfig = new MSConfig();
 
 		public static System.Collections.Generic.IEqualityComparer<MSText> textComparer = new TextComparer();
 
