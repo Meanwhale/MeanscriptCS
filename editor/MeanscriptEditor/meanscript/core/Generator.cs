@@ -397,7 +397,7 @@ namespace Meanscript
 			else
 			{
 				var retVal = GenerateExpression(it, false);
-				MS.SyntaxAssertion(retVal.Size() == 1 /*&& retVal.First().Def == trg.Def*/, it, "wrong argument");
+				MS.SyntaxAssertion(retVal.Size() == 1 && retVal.First().Def == trg.Def, it, "wrong argument");
 			}
 		}
 
@@ -545,28 +545,9 @@ namespace Meanscript
 					assignTarget = tmp;
 
 					MS.SyntaxAssertion(arrayType.ValidIndex(args), it, "wrong array index");
-					
-					// now there should be the array address and the index in stack
-					// so let's get the array item address by array's callback
-					
-					args.AddFirst(ArgType.Void(MC.basics.genericGetAtCallName));
-					args.AddFirst(ArgType.Addr(arrayType));
 
-					// agrs = arrayType, @getAt, index type
-					// which Matched callback defined in GenericArrayType
-
-					var callback = sem.FindCallback(args);
-
-					if (callback == null)
-					{
-						ArgType.PrintList(args, MS.errorOut);
-						MS.errorOut.EndLine();
-						MS.SyntaxAssertion(false, it, "array getter not found");
-					}
-
-					MS.Verbose("array callback found: ");
-					callback.Print(MS.printOut);
-					bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
+					MS.Verbose("array callback id: " + arrayType.accessorID);
+					bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, arrayType.accessorID);
 
 					// address is in register, so push it to stack
 

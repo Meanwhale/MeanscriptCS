@@ -79,7 +79,8 @@ namespace MeanscriptEditor
 		
 			KeyDown += new KeyEventHandler(MainWindow_KeyDown);
 
-			TextBoxCode.Text = "int a: 3";
+			TextBoxCode.Text = "bool a: true";
+			//TextBoxCode.Text = "int a: 3";
 
 			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
 			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
@@ -125,18 +126,18 @@ namespace MeanscriptEditor
 
 		private void RunUnitTests()
 		{
-			try
+			//try
 			{
 				MeanscriptUnitTest.RunAll();
 				Status("MeanscriptUnitTest DONE!");
 				winOutput.Print("\nTEST DONE!");
 				winOutput.ScrollToEnd();
 			}
-			catch (Exception e)
-			{
-				Status("unit test failed");
-				TextBoxOutput.Text = e.ToString();
-			}
+			//catch (Exception e)
+			//{
+			//	Status("unit test failed");
+			//	TextBoxOutput.Text = e.ToString();
+			//}
 		}
 		private void Command_Parse()
 		{
@@ -161,7 +162,7 @@ namespace MeanscriptEditor
 				code.CompileAndRun(TextBoxCode.Text);
 				
 				//winOutput.Print("\na = " + code.global.GetInt("a"));
-				winOutput.Print("\na = " + code.global.GetInt("a"));
+				//winOutput.Print("\na = " + code.global.GetInt("a"));
 				//var v2 = code.global.GetStruct("vec2", "v");
 				//winOutput.Print("\nv.x = " + v2.GetInt("x"));
 

@@ -13,9 +13,8 @@ namespace Meanscript
 
 		public const string simpleStructs = "struct vec [int x, int y]; struct person [vec pos, text name, int age];";
 		
-		public const string simpleVariableScript = "int a: 5;\nint64 short: -1;\nint64 long: 1234567891234;\ntext b: \"x\";\nchars [12] ch: \"asds\";\nfloat c:-123.456;\nfloat64 d: 12.123456789;\nbool b1: true;\nbool b2: false;\ntext utf: \"A\\xc3\\x84\"";
+		public const string simpleVariableScript = "int a: 5;\nint64 short: -1;\nint64 long: 1234567891234;\ntext b: \"x\";\nchars [12] ch: \"asds\";\nfloat c:-123.456;\nfloat64 d: 12.123456789;\nbool b1 : true;\nbool b2 : false;\ntext utf: \"A\\xc3\\x84\"";
 		
-		public const string simpleArrayScript = "int a:123\narray [int, 5] arr: [10,10,12,13,14]\nint b:456\narr[1]:11";
 		
 		public const string complexStructs = "struct vec [int x, int y, chars[7] name]\nstruct person [chars[32] name, vec [4] corner, vec pos, float age]\nstruct group [text title, person [3] member]";
 		public const string quiteComplexStructs = "struct vec [int x, int y]\nstruct person [array[vec,4] corner, vec pos, float age]\nstruct group [text title, array[person,3] member]" +
@@ -192,15 +191,16 @@ namespace Meanscript
 			MS.Assertion(m.global.GetInt("a") == 8, EC_TEST, "");
 		}
 
-		/*
 		public static void SimpleArray()
 		{
-			// "int a:123\narray [int, 5] arr: [10,10,12,13,14]\nint b:456\narr[1]:11";
+			const string simpleArrayScript = "int a:123\narray [int, 5] arr: [10,10,12,13,14]\nint b:456\narr[1]:11";
 			MSCode m = new MSCode();
 			m.CompileAndRun(simpleArrayScript);
-			MS.Assertion(false); // TODO: src code getters for array
+			MS.Assertion(m.global.GetInt("a") == 123, EC_TEST, "");
+			MS.Assertion(m.global.GetInt("b") == 456, EC_TEST, "");
 		}
-
+		
+		/*
 		private static void StructAssignment()
 		{
 			string s = testStructs;
@@ -382,7 +382,7 @@ namespace Meanscript
 			MS.Printn("TEST " + "simpleReference"); SimpleReference(); MS.Print(": OK");
 			MS.Printn("TEST " + "simpleStruct"); SimpleStruct(); MS.Print(": OK");
 			MS.Printn("TEST " + "crossReferenceStruct"); CrossReferenceStruct(); MS.Print(": OK");
-			//MS.Printn("TEST " + "simpleArray"); SimpleArray(); MS.Print(": OK");
+			MS.Printn("TEST " + "simpleArray"); SimpleArray(); MS.Print(": OK");
 			//MS.Printn("TEST " + "structAssignment"); StructAssignment(); MS.Print(": OK"); ;
 			//MS.Printn("TEST " + "argumentList"); ArgumentList(); MS.Print(": OK"); ;
 			//MS.Printn("TEST " + "simpleFunction"); SimpleFunction(); MS.Print(": OK"); ;

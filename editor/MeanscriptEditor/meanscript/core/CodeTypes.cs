@@ -28,6 +28,21 @@ namespace Meanscript
 					sd,
 					_func
 			);
+			MS.Assertion(!types.ContainsKey(cbTypeDef.ID));
+			types[cbTypeDef.ID] = cbTypeDef;
+			callbacks[id] = cbTypeDef;
+		}
+		public void CreateCallback(int id, ArgType returnType, int argsSize, MS.MCallbackAction _func)
+		{
+			// minimaalinen callback
+
+			var cbTypeDef = 
+				new CallbackType(
+					id,
+					returnType,
+					argsSize,
+					_func
+			);
 			
 			MS.Assertion(!types.ContainsKey(cbTypeDef.ID));
 			types[cbTypeDef.ID] = cbTypeDef;
@@ -150,7 +165,7 @@ namespace Meanscript
 
 			foreach (var cb in callbacks.Values)
 			{
-				if (cb.argStruct.Match(args)) return cb;
+				if (cb.argStruct != null && cb.argStruct.Match(args)) return cb;
 			}
 			return null;
 		}

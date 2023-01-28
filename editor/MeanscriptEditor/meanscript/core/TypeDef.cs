@@ -70,11 +70,20 @@ namespace Meanscript
 		// "type" that defines a list of arguments. list can consist of other types, and must include callname or operator
 		internal readonly MS.MCallbackAction func;
 		internal readonly ArgType returnType;
-		internal /*readonly*/ StructDef argStruct;
+		internal readonly StructDef argStruct;
+		internal readonly int argsSize;
 		public CallbackType(int id, ArgType _returnType, StructDef _argStruct, MS.MCallbackAction _func) : base(id)
 		{
 			returnType = _returnType;
 			argStruct = _argStruct;
+			argsSize = _argStruct.StructSize();
+			func = _func;
+		}
+		public CallbackType(int id, ArgType _returnType, int _argsSize, MS.MCallbackAction _func) : base(id)
+		{
+			returnType = _returnType;
+			argStruct = null;
+			argsSize = _argsSize;
 			func = _func;
 		}
 		public override int SizeOf() { return 0; }
@@ -89,6 +98,7 @@ namespace Meanscript
 		}
 		public override string ToString()
 		{
+			if (argStruct == null) return "internal callback, returns " + returnType.Def;
 			return "callback " + argStruct + ", returns " + returnType.Def + ", args. size: " + argStruct.StructSize();
 		}
 	}

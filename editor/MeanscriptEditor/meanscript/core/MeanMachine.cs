@@ -436,16 +436,16 @@ namespace Meanscript
 				MS.Assertion(codeTypes.HasCallback(callbackIndex), MC.EC_CODE, "unknown callback, id: " + callbackIndex);
 				CallbackType cb = codeTypes.GetCallback(callbackIndex); // bc.common.callbacks[callbackIndex];
 				MS.Assertion(cb != null, MC.EC_INTERNAL, "invalid callback");
-				int argsSize = cb.argStruct.StructSize();
+				//int argsSize = cb.argStruct.StructSize();
 
-				MArgs args = new MArgs(bc, cb.argStruct, stackTop - argsSize);
+				MArgs args = new MArgs(bc, cb.argStruct, stackTop - cb.argsSize);
 
-				MS.Verbose("callback: " + callbackIndex + " argsSize: " + argsSize);
+				MS.Verbose("callback: " + callbackIndex + " argsSize: " + cb.argsSize);
 				PrintStack();
 				cb.func(this, args);
 				MS.Verbose("Clear stack after call");
 				// clear stack after callback is done
-				stackTop -= argsSize;
+				stackTop -= cb.argsSize;
 				PrintStack();
 			}
 			else if (op == OP_FUNCTION_CALL)

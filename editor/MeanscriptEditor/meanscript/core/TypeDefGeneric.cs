@@ -118,12 +118,9 @@
 			SetterID = id;
 			types.CreateCallback(
 				SetterID,
-				ArgType.Void(MC.basics.VoidType),			// return value.
-				new ArgType [] {
-					ArgType.Void(this),
-					ArgType.Void(MC.basics.VoidType),
-					ArgType.Data(itemType) },					// data type
-				Setter											// callback to call when executing the code
+				ArgType.Void(MC.basics.VoidType),	// return value.
+				itemType.SizeOf(),					// data size
+				Setter								// callback to call when executing the code
 			);
 		}
 
@@ -240,12 +237,9 @@
 			// create a callback that generator finds with certain arguments "thisKindOfArray @getAt index"
 			types.CreateCallback(
 				_accessorID,
-				ArgType.Data(itemType),						// return value
-				new ArgType [] {
-					ArgType.Addr(this),						// "thisKindOfArray"
-					ArgType.Void(MC.basics.genericGetAtCallName),	// "get"
-					ArgType.Data(MC.basics.IntType) },	// index type
-					Accessor								// callback to call when executing the code
+				ArgType.Data(itemType),		// return value
+				MC.basics.IntType.SizeOf(),	// index type
+				Accessor					// callback to call when executing the code
 			);
 		}
 
