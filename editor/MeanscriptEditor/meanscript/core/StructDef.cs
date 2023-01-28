@@ -6,7 +6,7 @@ namespace Meanscript
 {
 	public class StructDef
 	{
-		private Types types;
+		private CodeTypes types;
 		internal int nameID; // reference to Semantics' text
 
 		internal MList<Member> members = new MList<Member>();
@@ -33,7 +33,7 @@ namespace Meanscript
 			}
 		}
 
-		public StructDef(Types _types, int _nameID)
+		public StructDef(CodeTypes _types, int _nameID)
 		{
 			types = _types;
 			nameID = _nameID;

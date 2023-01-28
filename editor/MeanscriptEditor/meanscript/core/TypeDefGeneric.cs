@@ -39,7 +39,7 @@
 
 		public abstract int CodeID();
 		public abstract string TypeName();
-		public abstract GenericType Create(int id, MList<MNode> genArgs, Types types, NodeIterator it);
+		public abstract GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it);
 		public abstract GenericType Decode(MeanMachine mm, int [] args);
 		public abstract void Encode(ByteCode bc, GenericType t);
 		public abstract int NumArgs();
@@ -57,6 +57,7 @@
 		{
 			factories.Add(new ObjectType.Factory());
 			factories.Add(new GenericArrayType.Factory());
+			factories.Add(new GenericCharsType.Factory());
 		}
 	}
 
@@ -66,13 +67,14 @@
 		{
 			public override int CodeID()
 			{
-				return MC.MS_TYPE_GENERIC_OBJECT;
+				return MC.BASIC_TYPE_GENERIC_OBJECT;
 			}
-			public override GenericType Create(int id, MList<MNode> genArgs, Types types, NodeIterator it)
+			public override GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it)
 			{
 				// create type on semantic construction
 				MS.SyntaxAssertion(genArgs.Size() == 1, it, "object: 1 argument expected");
 				var itemType = types.GetDataType(genArgs.First().data);
+				MS.SyntaxAssertion(itemType != null, it, "in obj[x], x is of undefined type: " + genArgs.First().data);
 				return new ObjectType(types, id, itemType, types.GetNewTypeID());
 			}
 			public override void Encode(ByteCode bc, GenericType t)
@@ -86,9 +88,9 @@
 			}
 			public override GenericType Decode(MeanMachine mm, int [] args)
 			{
-				var itemType = mm.types.GetDataType(args[1]);
+				var itemType = mm.codeTypes.GetDataType(args[1]);
 				MS.Assertion(itemType != null, MC.EC_CODE, "ObjectType Factory Decode: object's item type not found, type ID " + args[1]);
-				return new ObjectType(mm.types, args[0], itemType, args[2]);
+				return new ObjectType(mm.codeTypes, args[0], itemType, args[2]);
 			}
 			public override string TypeName()
 			{
@@ -103,38 +105,40 @@
 		public readonly DataTypeDef itemType;
 		public int ItemSize { get { return itemType.SizeOf(); } }
 		public int SetterID { get; private set; }
-		public ObjectType(Types types, int id, DataTypeDef _itemType, int setterID) : base(id, null)
+		public ObjectType(CodeTypes types, int id, DataTypeDef _itemType, int setterID) : base(id, null)
 		{
 			itemType = _itemType;
 			CreateSetter(setterID, types);
 		}
 
-		internal void CreateSetter(int id, Types types)
+		internal void CreateSetter(int id, CodeTypes types)
 		{	
 			// NOTE: generator handles the setter call. arg size must be right so that stack is popped for right amount after call
 
 			SetterID = id;
-			types.common.CreateCallback(
+			types.CreateCallback(
 				SetterID,
-				types,
-				ArgType.Void(types.common.VoidType),			// return value.
+				ArgType.Void(MC.basics.VoidType),			// return value.
 				new ArgType [] {
 					ArgType.Void(this),
-					ArgType.Void(types.common.VoidType),
+					ArgType.Void(MC.basics.VoidType),
 					ArgType.Data(itemType) },					// data type
 				Setter											// callback to call when executing the code
 			);
 		}
 
-		public override void Init(Types types, Common common)
+		public override void Init(CodeTypes types)
 		{
-			// TODO: keksi järkevämpi ratkaisu
+			// HUOM!
 			// obj:lle argStructin koko voi olla väärä jos obj tyyppi sama kuin parent structin...
-			var cb = common.callbacks[SetterID];
-			cb.argStruct = new StructDef(types, -1);
-			cb.argStruct.AddMember(-1, ArgType.Void(this));
-			cb.argStruct.AddMember(-1, ArgType.Void(types.common.VoidType));
-			cb.argStruct.AddMember(-1, ArgType.Data(itemType));
+			// MUTTA ei ole tällä hetkellä mahdollista. viitteet structista itseen tarvii isomman remontin.
+			// lisätietoja TODO-docissa.
+
+			//var cb = common.callbacks[SetterID];
+			//cb.argStruct = new StructDef(types, -1);
+			//cb.argStruct.AddMember(-1, ArgType.Void(this));
+			//cb.argStruct.AddMember(-1, ArgType.Void(types.common.VoidType));
+			//cb.argStruct.AddMember(-1, ArgType.Data(itemType));
 		}
 
 		private void Setter(MeanMachine mm, MArgs args)
@@ -180,9 +184,9 @@
 		{
 			public override int CodeID()
 			{
-				return MC.MS_TYPE_GENERIC_ARRAY;
+				return MC.BASIC_TYPE_GENERIC_ARRAY;
 			}
-			public override GenericType Create(int id, MList<MNode> genArgs, Types types, NodeIterator it)
+			public override GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it)
 			{
 				MS.SyntaxAssertion(genArgs.Size() == 2, it, "array: 2 arguments expected");
 				var itemType = types.GetDataType(genArgs.First().data);
@@ -204,9 +208,9 @@
 			}
 			public override GenericType Decode(MeanMachine mm, int [] args)
 			{
-				var itemType = mm.types.GetDataType(args[1]);
+				var itemType = mm.codeTypes.GetDataType(args[1]);
 				MS.Assertion(itemType != null, MC.EC_CODE, "ObjectType Factory Decode: object's item type not found, type ID " + args[1]);
-				return new GenericArrayType(mm.types,
+				return new GenericArrayType(mm.codeTypes,
 					args[0],	// type ID
 					itemType,	// item's type
 					args[2],	// item count
@@ -227,21 +231,20 @@
 		public readonly DataTypeDef itemType;
 		public readonly int itemCount, accessorID;
 		//public GenericArrayType(int id, MList<MNode> genArgs, Semantics sem, NodeIterator it) : base(id, null)
-		public GenericArrayType(Types types, int id, DataTypeDef _itemType, int _itemCount, int _accessorID) : base(id, null)
+		public GenericArrayType(CodeTypes types, int id, DataTypeDef _itemType, int _itemCount, int _accessorID) : base(id, null)
 		{
 			itemType = _itemType;
 			itemCount = _itemCount;
 			accessorID = _accessorID;
 
 			// create a callback that generator finds with certain arguments "thisKindOfArray @getAt index"
-			types.common.CreateCallback(
+			types.CreateCallback(
 				_accessorID,
-				types,
 				ArgType.Data(itemType),						// return value
 				new ArgType [] {
 					ArgType.Addr(this),						// "thisKindOfArray"
-					ArgType.Void(types.common.genericGetAtCallName),	// "get"
-					ArgType.Data(types.common.IntType) },	// index type
+					ArgType.Void(MC.basics.genericGetAtCallName),	// "get"
+					ArgType.Data(MC.basics.IntType) },	// index type
 					Accessor								// callback to call when executing the code
 			);
 		}
@@ -270,7 +273,7 @@
 
 		internal bool ValidIndex(MList<ArgType> args)
 		{
-			return args.Size() == 1 && args.First().Def.ID == MC.MS_TYPE_INT;
+			return args.Size() == 1 && args.First().Def.ID == MC.BASIC_TYPE_INT;
 		}
 		public override string TypeNameString()
 		{
@@ -284,27 +287,67 @@
 
 	public class GenericCharsType : GenericType
 	{
-		public readonly int maxChars;
-		private int size;
-
-		public GenericCharsType(int id, MList<MNode> genArgs, Semantics sem, NodeIterator it) : base(id, null)
+		public class Factory : GenericFactory
 		{
-			MS.SyntaxAssertion(genArgs.Size() == 1, it, "chars: 1 arguments expected");
-			maxChars = MS.ParseInt(genArgs.Last().data.GetString());
-			MS.Assertion(maxChars > 0 && maxChars < 64000, MC.EC_SCRIPT, "chars: unacceptable count: " + maxChars);
+			public override int CodeID()
+			{
+				return MC.BASIC_TYPE_GENERIC_CHARS;
+			}
+
+			public override GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it)
+			{
+				MS.SyntaxAssertion(genArgs.Size() == 1, it, "chars: 1 arguments expected");
+				int maxChars = MS.ParseInt(genArgs.Last().data.GetString());
+				MS.Assertion(maxChars > 0 && maxChars < 64000, MC.EC_SCRIPT, "chars: unacceptable count: " + maxChars);
 			
-			sem.AddTypeDef(this);
+				int size = (maxChars / 4) + 2;
+
+				// eg. "moi!" ->
+				// 0: [4 = numChars]
+				// 1: ['m''o''i''!']
+				// 2: [    '\0'    ]
+
+				return new GenericCharsType(id, maxChars, size);
+			}
 			
-			size = (maxChars / 4) + 2;
-			// eg. "moi!" ->
-			// 0: [4 = numChars]
-			// 1: ['m''o''i''!']
-			// 2: [    '\0'    ]
+			public override void Encode(ByteCode bc, GenericType t)
+			{
+				var ct = (GenericCharsType)t;
+				bc.AddInstruction(MC.OP_GENERIC_TYPE, 3, CodeID());
+				bc.AddWord(ct.ID);
+				bc.AddWord(ct.maxChars);
+				bc.AddWord(ct.size);
+			}
+			public override GenericType Decode(MeanMachine mm, int[] args)
+			{
+				return new GenericCharsType(
+					args[0],	// type ID
+					args[1],	// maxChars
+					args[2]);	// size
+			}
+
+			public override int NumArgs()
+			{
+				return 3;
+			}
+
+			public override string TypeName()
+			{
+				return "chars";
+			}
+		}
+		public readonly int maxChars;
+		public readonly int size;
+
+		public GenericCharsType(int id, int _maxChars, int _size) : base(id, null)
+		{
+			maxChars = _maxChars;
+			size = _size;
 		}
 
 		public override bool TypeMatch(MList<ArgType> args)
 		{
-			return args.Size() == 1 && args.First().Def.ID == MC.MS_TYPE_TEXT;
+			return args.Size() == 1 && args.First().Def.ID == MC.BASIC_TYPE_TEXT;
 		}
 		public override int SizeOf()
 		{

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Meanscript
 {
 
-	public class Semantics : Types
+	public class Semantics : CodeTypes
 	{
 		internal TokenTree tree;
 		internal int maxContexts;
@@ -113,13 +113,11 @@ namespace Meanscript
 			}
 			return true;
 		}
-		public void Analyze(Common com)
+		public void Analyze()
 		{
-			common = com;
-
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			MS.Verbose("SEMANTIC ANALYZE");
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 
 			currentContext = contexts[0];
 
@@ -129,12 +127,12 @@ namespace Meanscript
 
 			foreach(var t in types.Values)
 			{
-				t.Init(this, common);
+				t.Init(this);
 			}
 
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			MS.Verbose("CONTEXTS");
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			for (int i = 0; i < maxContexts; i++)
 			{
 				if (contexts[i] != null)
@@ -143,9 +141,9 @@ namespace Meanscript
 					if (MS._verboseOn) contexts[i].variables.Info(MS.printOut);
 				}
 			}
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			MS.Verbose("TYPEDEFS");
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			if (MS._verboseOn)
 			{
 				foreach(var t in types.Values)
@@ -153,9 +151,9 @@ namespace Meanscript
 					MS.printOut.Print("ID: ").Print(t.ID).Print(" [").PrintHex(t.ID).Print("] ").Print(t.ToString()).EndLine();
 				}
 			}
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			MS.Verbose("END ANALYZING");
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 		}
 
 
@@ -256,7 +254,7 @@ namespace Meanscript
 				}
 				else if (it.Data().Match(MC.KEYWORD_STRUCT.text))
 				{
-					// e.g. "struct Vec [int x, INT y, INT z]"
+					// e.g. "struct Vec2 [int x, int y]"
 					SetParentExpr(it, NodeType.EXPR_STRUCT);
 
 					MS.SyntaxAssertion(it.HasNext(), it, "struct name expected");
@@ -271,22 +269,23 @@ namespace Meanscript
 				}
 				else if (HasGenericType(it.Data()))
 				{
+					//  eg. "array [person,5] players"
 					AddGeneric(it, currentContext.variables);
 				}
 				else if (HasDataType(it.Data()))
 				{
-					// expr. starts with a type name, eg. "int foo" OR "person [5] players"
+					// eg. "int foo" pr "person p"
 					
 					var dataType = GetDataType(it.Data());
 					int typeID = dataType.ID;
 					MS.Assertion( // TODO: clean up?
-						typeID == MS_TYPE_INT ||
-						typeID == MS_TYPE_INT64 ||
-						typeID == MS_TYPE_FLOAT ||
-						typeID == MS_TYPE_FLOAT64 ||
-						typeID == MS_TYPE_BOOL ||
-						typeID == MS_TYPE_TEXT ||
-						typeID >= MAX_MS_TYPES,
+						typeID == MC.BASIC_TYPE_INT ||
+						typeID == MC.BASIC_TYPE_INT64 ||
+						typeID == MC.BASIC_TYPE_FLOAT ||
+						typeID == MC.BASIC_TYPE_FLOAT64 ||
+						typeID == MC.BASIC_TYPE_BOOL ||
+						typeID == MC.BASIC_TYPE_TEXT ||
+						typeID >= MC.FIRST_CUSTOM_TYPE_ID,
 						MC.EC_INTERNAL, "semantics: unknown type: " + typeID);
 
 					it.ToNext();
@@ -310,7 +309,7 @@ namespace Meanscript
 			}
 			else
 			{
-				MS.Assertion(false, EC_PARSE, "unexpected token");
+				MS.Assertion(false, MC.EC_PARSE, "unexpected token");
 			}
 		}
 
@@ -399,11 +398,10 @@ namespace Meanscript
 
 			StructDef sd = new StructDef(this, nameID);
 			
-			// add it already here to allow references ("obj[this type] x") to itself
+			CreateStructDef(sd, it.Copy());
 			
 			AddStructDef(nameID, sd);
 
-			CreateStructDef(sd, it.Copy());
 			sd.Info(MS.printOut);
 			
 		}
@@ -453,28 +451,27 @@ namespace Meanscript
 			
 			foreach(var tv in types)
 			{
+				if (tv.Value is ObjectType ot)
+				{
+					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_OBJECT);
+					factory.Encode(bc, ot);
+				}
 				if (tv.Value is StructDefType sdt)
 				{
 					sdt.SD.Encode(bc, tv.Key);
 				}
-			}
-			foreach(var tv in types)
-			{
-				if (tv.Value is ObjectType ot)
-				{
-					var factory = GenericFactory.Get(MC.MS_TYPE_GENERIC_OBJECT);
-					factory.Encode(bc, ot);
-				}
-			}
-			foreach(var tv in types)
-			{
 				if (tv.Value is GenericArrayType at)
 				{
-					var factory = GenericFactory.Get(MC.MS_TYPE_GENERIC_ARRAY);
+					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_ARRAY);
 					factory.Encode(bc, at);
 				}
+				if (tv.Value is GenericCharsType ct)
+				{
+					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_CHARS);
+					factory.Encode(bc, ct);
+				}
 			}
-			globalContext.variables.Encode(bc, 0);
+			globalContext.variables.Encode(bc, MC.GLOBALS_TYPE_ID);
 			
 
 			// write globals

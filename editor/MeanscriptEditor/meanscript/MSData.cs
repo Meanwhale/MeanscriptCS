@@ -2,70 +2,118 @@ using System;
 
 namespace Meanscript
 {
-
-	public class MSData : MC
+	
+	public abstract class IMSData
 	{
-		readonly MeanMachine mm;
-		private readonly StructDefType dataType;
-		readonly int typeID,
+		// code common for MSData and MSStruct
+		// TODO: accessor for arrays, etc.
+
+		protected readonly MeanMachine mm;
+		protected readonly int typeID,
 			heapID,
 			offset;  // address of the data
 		//readonly IntArray structCode;    // where struct info is
-		readonly IntArray dataCode;  // where actual data is
+		protected readonly IntArray dataCode;  // where actual data is
 
-
-		// TODO: make a map if wanted
-		// MAP_STRING_TO_INT(globalNames);
-
-		//public MSData(MeanMachine _mm, int _typeID, int _dataIndex)
-		//{
-		//	MS.Assertion(_typeID >= 0 && _typeID < MAX_TYPES, MC.EC_INTERNAL, "invalid type ID: " + _typeID);
-
-		//	mm = _mm;
-
-		//	structCode = mm.GetStructCode();
-		//	dataCode = mm.GetDataCode();
-
-		//	mm = _mm;
-		//	typeID = _typeID;
-		//	dataIndex = _dataIndex;
-		//}
-
-		public MSData(MeanMachine mm, int typeID, int heapID, int offset)
+		protected IMSData(MeanMachine mm, int typeID, int heapID, int offset)
 		{
 			this.mm = mm;
 			this.typeID = typeID;
-			this.offset = offset;
 			this.heapID = heapID;
-			dataType = (StructDefType)mm.types.types[typeID];
+			this.offset = offset;
 			dataCode = mm.Heap.GetDataArray(heapID);
+		}
+	}
+
+	public class MSData : IMSData
+	{
+		// accessor to data of any type
+
+		public MSData(MeanMachine mm, int typeID, int heapID, int offset) : base (mm, typeID, heapID, offset)
+		{
+		}
+		public int GetInt()
+		{
+			MS.Assertion(typeID == MC.BASIC_TYPE_INT, MC.EC_DATA, "not an int");
+			return dataCode[offset];
+		}
+
+		internal MSStruct GetStruct()
+		{
+			TypeDef memberType = mm.codeTypes.GetType(typeID);
+			MS.Assertion(memberType is StructDefType, MC.EC_DATA, "data not a struct");
+			return new MSStruct(mm, memberType.ID, heapID, offset);
+		}
+		// TODO: add getters for all basic types
+	}
+
+	public class MSStruct : IMSData
+	{
+		public readonly StructDefType structType;
+
+		public MSStruct(MeanMachine mm, int typeID, int heapID, int offset) : base (mm, typeID, heapID, offset)
+		{
+			var type = mm.codeTypes.GetType(typeID);
+			MS.Assertion(type != null, MC.EC_DATA, "type not found, id: " + typeID);
+			MS.Assertion(type is StructDefType, MC.EC_DATA, "not a struct, id: " + typeID);
+			structType = (StructDefType)type;
 		}
 
 		public int DataType()
 		{
 			return typeID;
 		}
-		public int GetInt(string name)
+		public StructDef.Member GetMember(string name, int typeID = -1)
 		{
-			var member = GetMember(name, MC.MS_TYPE_INT);
-			return dataCode[member.Address + offset];
-		}
-		public StructDef.Member GetMember(string name, int typeID)
-		{
-			var member = dataType.SD.GetMember(new MSText(name));
+			var member = structType.SD.GetMember(new MSText(name));
 			MS.Assertion(member != null, MC.EC_DATA, "member not found: " + name);
-			MS.Assertion(member.Type.ID == typeID, MC.EC_DATA, "type mismatch");
+			MS.Assertion(typeID < 0 || member.Type.ID == typeID, MC.EC_DATA, "type mismatch");
 			return member;
 		}
-		public MSData GetStruct(string typename, string name)
+		public int GetMemberAddress(string name, int typeID)
 		{
-			var sd = mm.types.GetType(new MSText(typename));
-			MS.Assertion(sd != null, MC.EC_DATA, "struct not found: " + name);
-			var member = GetMember(name, sd.ID);
-			MS.Assertion (member.Type.ID == sd.ID);
-			return new MSData(mm, sd.ID, heapID, member.Address);
-			// TODO: MSDatassa pitää olla myös offset, joka pitää lisätä dataa hakiessa
-			// TODO: palauta uusi MSData joka osoittaa samaan data arrayhyn kuin tämä ja lisäksi memberin offset (address) ja tyyppi.
+			var member = structType.SD.GetMember(new MSText(name));
+			MS.Assertion(member != null, MC.EC_DATA, "member not found: " + name);
+			MS.Assertion(member.Type.ID == typeID, MC.EC_DATA, "type mismatch");
+			return member.Address + offset;
+		}
+		//public MSStruct GetStruct(string typename, string name)
+		//{
+		//	var sd = mm.types.GetType(new MSText(typename));
+		//	MS.Assertion(sd != null, MC.EC_DATA, "struct not found: " + name);
+		//	var member = GetMember(name, sd.ID);
+		//	MS.Assertion (member.Type.ID == sd.ID);
+		//	return new MSStruct(mm, sd.ID, heapID, member.Address + offset);
+		//}
+		internal MSStruct GetStruct(string name)
+		{
+			var member = structType.SD.GetMember(new MSText(name));
+			MS.Assertion(member != null, MC.EC_DATA, "member not found: " + name);
+			TypeDef memberType = mm.codeTypes.GetType(member.Type.ID);
+			MS.Assertion(memberType is StructDefType, MC.EC_DATA, "member is not a struct: " + name);
+			return new MSStruct(mm, memberType.ID, heapID, member.Address + offset);
+		}
+		
+		internal MSData GetData(string name)
+		{
+			var member = structType.SD.GetMember(new MSText(name));
+			MS.Assertion(member != null, MC.EC_DATA, "member not found: " + name);
+			return new MSData(mm, member.Type.ID, heapID, member.Address + offset);
+		}
+		internal MSData GetRef(string name)
+		{
+			// get data of ObjectType (obj[x])
+			// read the tag address (defined in MHeap) of the variable
+			// and get data object
+
+			var member = structType.SD.GetMember(new MSText(name));
+			MS.Assertion(member != null, MC.EC_DATA, "member not found: " + name);
+			MS.Assertion(member.Type is ObjectType, MC.EC_DATA, "not an object reference: " + name);
+			int tag = dataCode[member.Address + offset];
+			int heapID = MHeap.TagIndex(tag);
+			int typeID = MHeap.TagType(tag);
+			MS.Assertion(mm.Heap.HasObject(heapID), MC.EC_DATA, "invalid reference: " + tag + ", heap ID " + heapID);
+			return new MSData(mm, typeID, heapID, 0);
 		}
 		/*
 		public bool IsStruct()
@@ -149,12 +197,6 @@ namespace Meanscript
 			return MS.IntFormatToFloat(dataCode[dataIndex]);
 		}
 
-		public float GetFloat(string name)
-		{
-			int address = GetMemberAddress(name, MS_TYPE_FLOAT);
-			MS.Assertion(address >= 0, EC_DATA, "unknown name");
-			return MS.IntFormatToFloat(dataCode[address]);
-		}
 
 		public int GetInt()
 		{
@@ -163,46 +205,39 @@ namespace Meanscript
 		}
 		*/
 
-		/*
-		public bool GetBool()
+		
+		public int GetInt(string name)
 		{
-			MS.Assertion(DataType() >= MS_TYPE_BOOL, MC.EC_INTERNAL, "not a bool integer");
-			return dataCode[dataIndex] != 0;
+			var member = GetMember(name, MC.BASIC_TYPE_INT);
+			return dataCode[member.Address + offset];
 		}
-
 		public bool GetBool(string name)
 		{
-			int address = GetMemberAddress(name, MS_TYPE_BOOL);
-			MS.Assertion(address >= 0, EC_DATA, "unknown name");
+			int address = GetMemberAddress(name, MC.BASIC_TYPE_BOOL);
+			MS.Assertion(address >= 0, MC.EC_DATA, "unknown name");
 			return dataCode[address] != 0;
 		}
-
-		public long GetInt64()
-		{
-			return GetInt64At(dataIndex);
-		}
-
 		public long GetInt64(string name)
 		{
-			int address = GetMemberAddress(name, MS_TYPE_INT64);
+			int address = GetMemberAddress(name, MC.BASIC_TYPE_INT64);
 			return GetInt64At(address);
 		}
 		public long GetInt64At(int address)
 		{
 			int a = dataCode[address];
 			int b = dataCode[address + 1];
-			long i64 = IntsToInt64(a, b);
+			long i64 = MC.IntsToInt64(a, b);
 			return i64;
 		}
-
-		public double GetFloat64()
+		public float GetFloat(string name)
 		{
-			return GetFloat64At(dataIndex);
+			int address = GetMemberAddress(name, MC.BASIC_TYPE_FLOAT);
+			MS.Assertion(address >= 0, MC.EC_DATA, "unknown name");
+			return MS.IntFormatToFloat(dataCode[address]);
 		}
-
 		public double GetFloat64(string name)
 		{
-			int address = GetMemberAddress(name, MS_TYPE_FLOAT64);
+			int address = GetMemberAddress(name, MC.BASIC_TYPE_FLOAT64);
 			return GetFloat64At(address);
 		}
 		public double GetFloat64At(int address)
@@ -210,7 +245,23 @@ namespace Meanscript
 			long i64 = GetInt64At(address);
 			return MS.Int64FormatToFloat64(i64);
 		}
-
+		public string GetChars(string name)
+		{
+			var member = GetMember(name);
+			MS.Assertion(member.Type is GenericCharsType, MC.EC_DATA, "not a chars[n]: " + name);
+			int address = offset + member.Address;
+			int numChars = dataCode[address];
+			return System.Text.Encoding.UTF8.GetString(MS.IntsToBytes(dataCode, address + 1, numChars));
+		}
+		public string GetText(string name)
+		{
+			var member = GetMember(name);
+			MS.Assertion(member.Type.ID == MC.BASIC_TYPE_TEXT, MC.EC_DATA, "not a text " + name);
+			int address = offset + member.Address;
+			int textID = dataCode[address];
+			return mm.GetText(textID);
+		}
+		/*
 		public MSDataArray GetArray(string name)
 		{
 			int arrayTagAddress = GetMemberTagAddress(name, true);
@@ -517,10 +568,6 @@ namespace Meanscript
 		//	}
 		//}
 
-		internal MSData GetData(string v)
-		{
-			throw new NotImplementedException();
-		}
 
 		//;
 

@@ -45,6 +45,8 @@ namespace Meanscript
 
 	public class MC
 	{
+		public static BasicTypes basics = new BasicTypes();
+
 		public static MList<Keyword> keywords = new MList<Keyword>();
 		// node types
 
@@ -123,29 +125,33 @@ namespace Meanscript
 		public static readonly Keyword KEYWORD_ARRAY	= new Keyword("array", 0);
 		
 		// primitive types
-		public const int MS_TYPE_INT = 1;
-		public const int MS_TYPE_INT64 = 2;
-		public const int MS_TYPE_FLOAT = 3;
-		public const int MS_TYPE_FLOAT64 = 4;
-		public const int MS_TYPE_TEXT = 5;
-		public const int MS_TYPE_BOOL = 6;
-		public const int MS_TYPE_CODE_ADDRESS = 7;
-		public const int MS_TYPE_TEXT_DATA = 8; // internal: array of text size + chars
-		public const int MS_TYPE_PLUS = 9;
-		public const int MS_TYPE_MINUS = 10;
-		public const int MS_TYPE_MUL = 11;
-		public const int MS_TYPE_DIV = 12;
-		public const int MS_TYPE_NULL = 13;
-		public const int MS_TYPE_GET = 14;
-		public const int MS_TYPE_SET = 15;
+		public const int BASIC_TYPE_INT = 1;
+		public const int BASIC_TYPE_INT64 = 2;
+		public const int BASIC_TYPE_FLOAT = 3;
+		public const int BASIC_TYPE_FLOAT64 = 4;
+		public const int BASIC_TYPE_TEXT = 5;
+		public const int BASIC_TYPE_BOOL = 6;
+		public const int BASIC_TYPE_CODE_ADDRESS = 7;
+		public const int BASIC_TYPE_TEXT_DATA = 8; // internal: array of text size + chars
+		public const int BASIC_TYPE_PLUS = 9;
+		public const int BASIC_TYPE_MINUS = 10;
+		public const int BASIC_TYPE_MUL = 11;
+		public const int BASIC_TYPE_DIV = 12;
+		public const int BASIC_TYPE_NULL = 13;
+		public const int BASIC_TYPE_GET = 14;
+		public const int BASIC_TYPE_SET = 15;
 		
-		public const int MS_TYPE_VOID = 16;
-		public const int MS_TYPE_GENERIC_OBJECT = 17;
-		public const int MS_TYPE_GENERIC_ARRAY = 18;
-		public const int MS_TYPE_GENERIC_CHARS = 19;
+		public const int BASIC_TYPE_VOID = 16;
+		public const int BASIC_TYPE_GENERIC_OBJECT = 17;
+		public const int BASIC_TYPE_GENERIC_ARRAY = 18;
+		public const int BASIC_TYPE_GENERIC_CHARS = 19;
 		
-		public const int MAX_MS_TYPES = 32;
-		public const int MAX_TYPES = 256;
+		public const int FIRST_BASIC_CALLBACK = 32;
+		
+		public const int MAX_BASIC_TYPES = 64;
+		public const int GLOBALS_TYPE_ID = 65;
+		public const int FIRST_CUSTOM_TYPE_ID = 66;
+		public const int MAX_TYPES = 1024;
 
 		public static readonly MSText[] primitiveNames = new MSText[] {
 			new MSText("void"),

@@ -24,7 +24,7 @@ namespace Meanscript
 		internal IntArray functions;
 		internal IntArray registerData;
 		public IntArray texts;
-		public Types types;
+		public CodeTypes codeTypes;
 		public ByteCode byteCode;
 
 		internal MHeap Heap = new MHeap();
@@ -36,13 +36,12 @@ namespace Meanscript
 			byteCode = bc;
 
 			// INodeType.ARRAY_RESETtexts;
-			types = new Types(new Texts());
-			types.common = byteCode.common;
+			codeTypes = new CodeTypes(new Texts());
 			
 			// add common things to types
 			// TODO: voiko jotenkin optimoida ettei tarvi aina lisätä näitä?
 			//       ainakin jos on compile & run niin types pitäisi olla sama.
-			bc.common.Initialize(types);
+			//bc.common.Initialize();
 
 			registerType = -1;
 			byteCodeType = -1;
@@ -193,9 +192,9 @@ namespace Meanscript
 			MS.Verbose("INITIALIZING FINISHED");
 			MS.Verbose(HORIZONTAL_LINE);
 			
-			foreach(var t in types.types.Values)
+			foreach(var t in codeTypes.types.Values)
 			{
-				t.Init(types, byteCode.common);
+				t.Init(codeTypes);
 			}
 			initialized = true;
 		}
@@ -233,7 +232,7 @@ namespace Meanscript
 				int textID = (int)(instruction & AUX_DATA_MASK);
 				texts[textID] = instructionPointer;
 				var s = GetText(textID);
-				types.texts.AddText(textID, s);
+				codeTypes.texts.AddText(textID, s);
 				MS.Verbose("new text [" + textID + "] " + s);
 			}
 			else if (op == OP_FUNCTION)
@@ -253,9 +252,9 @@ namespace Meanscript
 				int structID = (int)(instruction & VALUE_TYPE_MASK);
 				int nameID = bc.code[instructionPointer + 1];
 				MS.Verbose("new struct def: " + GetText(nameID));
-				var sd = new StructDef(types, nameID);
-				currentStructDef = new StructDefType(structID, types.texts.GetText(nameID), sd);
-				types.AddTypeDef(currentStructDef);
+				var sd = new StructDef(codeTypes, nameID);
+				currentStructDef = new StructDefType(structID, codeTypes.texts.GetText(nameID), sd);
+				codeTypes.AddTypeDef(currentStructDef);
 			}
 			else if (op == OP_STRUCT_MEMBER)
 			{
@@ -277,7 +276,7 @@ namespace Meanscript
 					"\nsize:  " + datasize + 
 					"\nindex: " + index);
 
-				var td = types.GetType(typeID);
+				var td = codeTypes.GetType(typeID);
 				MS.Assertion(td != null, MC.EC_CODE, "type not found by ID " + typeID);
 				currentStructDef.SD.AddMember(nameID, td, refID, address, datasize, index);
 			}
@@ -296,7 +295,7 @@ namespace Meanscript
 					args[i] = bc.code[instructionPointer + i + 1];
 					MS.Verbose("    " + args[i]);
 				}				
-				types.AddTypeDef(fac.Decode(this, args));
+				codeTypes.AddTypeDef(fac.Decode(this, args));
 			}
 			else if (op == OP_INIT_GLOBALS)
 			{
@@ -456,7 +455,8 @@ namespace Meanscript
 			{
 				//public MeanMachine (ByteCode _byteCode, StructDef _structDef, int _base)
 				int callbackIndex = (int)(instruction & VALUE_TYPE_MASK);
-				CallbackType cb = bc.common.callbacks[callbackIndex];
+				MS.Assertion(codeTypes.HasCallback(callbackIndex), MC.EC_CODE, "unknown callback, id: " + callbackIndex);
+				CallbackType cb = codeTypes.GetCallback(callbackIndex); // bc.common.callbacks[callbackIndex];
 				MS.Assertion(cb != null, MC.EC_INTERNAL, "invalid callback");
 				int argsSize = cb.argStruct.StructSize();
 

@@ -79,11 +79,11 @@ namespace MeanscriptEditor
 		
 			KeyDown += new KeyEventHandler(MainWindow_KeyDown);
 
-			//TextBoxCode.Text = "int a: 3";
+			TextBoxCode.Text = "int a: 3";
 
 			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
 			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
-			TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p\np: 5";
+			//TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p\np: 5";
 
 			//TextBoxCode.Text = "struct vec2 [int x, int y]\nstruct person [text name, obj [vec2] point]\n"
 			//				  + "array [int, 9] arr\nint a: 5\nperson p: \"JANE\", (56,78)\np.name: \"JONE\"\np.point: (12,34)\nint b: 6\nprint a\nprint b";
@@ -102,6 +102,7 @@ namespace MeanscriptEditor
 			//				  + "array [person, 3] arr\n"
 			//				  + "arr[1].boss: (\"j\", (123,234), null)\n";
 			//TextBoxCode.Text = MeanscriptUnitTest.simpleArrayScript;
+			//TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p: 5";
 		}
 
 		void MainWindow_KeyDown(object sender, KeyEventArgs e)
@@ -118,9 +119,7 @@ namespace MeanscriptEditor
 			}
 			if (e.Key == Key.F9)
 			{
-				TextBoxCode.Text = MeanscriptUnitTest.structAssign;
-				//TextBoxCode.Text = MeanscriptUnitTest.quiteComplexStructs;
-				//MeanscriptUnitTest.SimpleVariable();
+				RunUnitTests();
 			}
 		}
 
@@ -162,7 +161,7 @@ namespace MeanscriptEditor
 				code.CompileAndRun(TextBoxCode.Text);
 				
 				//winOutput.Print("\na = " + code.global.GetInt("a"));
-				winOutput.Print("\nb = " + code.global.GetInt("b"));
+				winOutput.Print("\na = " + code.global.GetInt("a"));
 				//var v2 = code.global.GetStruct("vec2", "v");
 				//winOutput.Print("\nv.x = " + v2.GetInt("x"));
 

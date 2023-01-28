@@ -7,17 +7,14 @@ namespace Meanscript
 		//  - compiling and running code
 		//  - access data in MeanMachine
 
-		readonly Common common;
-
 		MeanMachine mm;
 
 		bool initialized;
 
-		public MSData global;
+		public MSStruct global;
 
 		public MSCode()
 		{
-			common = new Common();
 			mm = null;
 			initialized = false;
 
@@ -27,7 +24,6 @@ namespace Meanscript
 		{
 			MS.Assertion(streamType >= MS.globalConfig.STREAM_TYPE_FIRST && streamType <= MS.globalConfig.STREAM_TYPE_LAST, MC.EC_INTERNAL, "unknown stream type");
 
-			common = new Common();
 			mm = null;
 			initialized = false;
 
@@ -72,7 +68,7 @@ namespace Meanscript
 		{
 			Reset();
 
-			ByteCode byteCode = new ByteCode(common, input);
+			ByteCode byteCode = new ByteCode(input);
 			mm = new MeanMachine(byteCode);
 
 			initialized = true;
@@ -197,9 +193,8 @@ namespace Meanscript
 
 			TokenTree tree = Parser.Parse(input);
 			Semantics semantics = new Semantics(tree);
-			common.Initialize(semantics);
-			semantics.Analyze(common);
-			ByteCode bc = Generator.Generate(tree, semantics, common);
+			semantics.Analyze();
+			ByteCode bc = Generator.Generate(tree, semantics);
 			initialized = true;
 
 
@@ -224,7 +219,7 @@ namespace Meanscript
 			ByteCode bc = Compile(ia);
 			mm = new MeanMachine(bc);
 			
-			global = new MSData(mm, 0, 1 ,0);
+			global = new MSStruct(mm, MC.GLOBALS_TYPE_ID, 1 ,0);
 
 			Run();
 		}

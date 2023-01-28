@@ -8,21 +8,18 @@ namespace Meanscript
 	{
 		public int codeTop;
 		public IntArray code;
-		internal Common common;
 
 		// save parsed nodes for debugging
 		public Dictionary<int, MNode> nodes = new Dictionary<int, MNode>();
 
-		public ByteCode(Common _common)
+		public ByteCode()
 		{
-			common = _common;
 			code = new IntArray(MS.globalConfig.codeSize);
 			codeTop = 0;
 		}
 
-		public ByteCode(Common _common, MSInputStream input)
+		public ByteCode(MSInputStream input)
 		{
-			common = _common;
 			int byteCount = input.GetByteCount();
 			MS.Assertion(byteCount % 4 == 0, MC.EC_INTERNAL, "bytecode file size not divisible by 4");
 			int size = byteCount / 4;
@@ -34,7 +31,6 @@ namespace Meanscript
 		public ByteCode(ByteCode bc)
 		{
 			codeTop = bc.codeTop;
-			common = bc.common;
 
 			code = new IntArray(codeTop);
 

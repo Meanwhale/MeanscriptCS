@@ -7,14 +7,12 @@ namespace Meanscript
 		Context currentContext;
 		readonly TokenTree tree;
 		readonly Semantics sem;
-		readonly Common common;
 		readonly ByteCode bc;
 
-		public Generator(TokenTree _tree, Semantics _sem, Common _common)
+		public Generator(TokenTree _tree, Semantics _sem)
 		{
 			sem = _sem;
-			common = _common;
-			bc = new ByteCode(common);
+			bc = new ByteCode();
 			tree = _tree;
 			currentContext = null;
 		}
@@ -26,9 +24,9 @@ namespace Meanscript
 			return currentContext == sem.contexts[0];
 		}
 
-		public static ByteCode Generate(TokenTree _tree, Semantics _sem, Common _common)
+		public static ByteCode Generate(TokenTree _tree, Semantics _sem)
 		{
-			Generator gen = new Generator(_tree, _sem, _common);
+			Generator gen = new Generator(_tree, _sem);
 			gen.Generate();
 			return gen.bc;
 		}
@@ -143,6 +141,10 @@ namespace Meanscript
 				{
 					MS.Verbose("skip struct");
 				}
+				else if (exprType == NodeType.EXPR_FUNCTION)
+				{
+					MS.Verbose("skip function");
+				}
 				else if (exprType == NodeType.EXPR_ASSIGN)
 				{
 					MS.Verbose("EXPR_ASSIGN");
@@ -154,11 +156,6 @@ namespace Meanscript
 				{
 					MS.Verbose("EXPR_INIT_AND_ASSIGN");
 					GenerateAssignWithInit(it.Copy());
-				}
-				else if (exprType != NodeType.EXPR_STRUCT)
-				{
-					MS.SyntaxAssertion(false, it, "expression expected");
-					return;
 				}
 				else
 				{
@@ -186,7 +183,7 @@ namespace Meanscript
 
 			// try to find a callback
 
-			var callback = common.FindCallback(args);
+			var callback = sem.FindCallback(args);
 			if (callback != null)
 			{
 				MS.Verbose("callback found: ");
@@ -194,7 +191,7 @@ namespace Meanscript
 				bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
 				if (callback.returnType.Def.SizeOf() > 0)
 				{
-					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.MS_TYPE_VOID, callback.returnType.Def.SizeOf());
+					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, callback.returnType.Def.SizeOf());
 				}
 				args = new MList<ArgType>();
 				args.Add(callback.returnType);
@@ -206,7 +203,57 @@ namespace Meanscript
 
 			return args;
 		}
-		
+		/*
+		 * aikaisemmin singleargumentpushissa:
+		...else if (it.Type() == NT_NAME_TOKEN)
+		{
+			Context functionContext = sem.FindContext(it.Data());
+			if (functionContext != null)
+			{
+				// PUSH A FUNCTION ARGUMENT
+
+				GenerateFunctionCall(it.Copy(), functionContext);
+				StructDef returnData = sem.GetType(functionContext.returnType, it);
+				MS.SyntaxAssertion(targetType == returnData.typeID, it, "type mismatch");
+				bc.AddInstructionWithData(OP_PUSH_REG_TO_STACK, 1, MS_TYPE_VOID, returnData.structSize);
+				return;
+			}
+		...
+		public void GenerateFunctionCall(NodeIterator it, Context funcContext)
+		{
+			MS.Verbose("Generate a function call");
+
+			bc.AddInstruction(OP_SAVE_BASE, 0, 0);
+
+			if (funcContext.numArgs != 0)
+			{
+				MS.SyntaxAssertion(it.HasNext(), it, "function arguments expected");
+				it.ToNext();
+				CallArgumentPush(it.Copy(), funcContext.variables, funcContext.numArgs);
+			}
+			bc.AddInstructionWithData(OP_FUNCTION_CALL, 1, 0, funcContext.functionID);
+			bc.AddInstruction(OP_LOAD_BASE, 0, 0);
+		}
+		...
+		public void CallArgumentPush(NodeIterator it, StructDef sd, int numArgs)
+		{
+			if ((it.Type() == NT_PARENTHESIS && !it.HasNext()))
+			{
+				// F2 (a1, a2)
+
+				it.ToChild();
+				ArgumentStructPush(it, sd, numArgs, true);
+			}
+			else
+			{
+				// F1 a1
+				// F2 a1 a2
+				// F2 (F3 x) a2
+
+				ArgumentStructPush(it, sd, numArgs, false);
+			}
+		}
+		*/
 		private void GenerateAssignWithInit(NodeIterator it)
 		{
 			MS.Verbose("------------ GenerateInitAndAssign ------------");
@@ -252,17 +299,17 @@ namespace Meanscript
 
 			if (assignTarget.Ref == Arg.ADDRESS)
 			{
-				bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, assignTarget.Def.SizeOf());
+				bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, assignTarget.Def.SizeOf());
 				
 				if (assignTarget.Def is ObjectType)
 				{
 					// stack: ... [target: address to heap tag][           data           ][size] top
-					bc.AddInstruction(MC.OP_POP_STACK_TO_OBJECT_TAG, 0, MC.MS_TYPE_VOID);
+					bc.AddInstruction(MC.OP_POP_STACK_TO_OBJECT_TAG, 0, MC.BASIC_TYPE_VOID);
 				}
 				else
 				{
 					// stack: ... [target: heap ID + offset][           data           ][size] top
-					bc.AddInstruction(MC.OP_POP_STACK_TO_OBJECT, 0, MC.MS_TYPE_VOID);
+					bc.AddInstruction(MC.OP_POP_STACK_TO_OBJECT, 0, MC.BASIC_TYPE_VOID);
 				}
 			}
 			else
@@ -329,7 +376,7 @@ namespace Meanscript
 				{
 					MS.SyntaxAssertion(it.GetChild().next == null, it, "extra tokens after null");
 					MS.Verbose("NULL!!!");
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, 0);
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, 0);
 					return;
 				}
 			
@@ -345,7 +392,7 @@ namespace Meanscript
 				bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, obj.SetterID);
 
 				// save dynamic address to reg.
-				bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.MS_TYPE_VOID, 1);
+				bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, 1);
 			}
 			else
 			{
@@ -405,10 +452,10 @@ namespace Meanscript
 
 					if (arg.Ref == Arg.ADDRESS)
 					{
-						bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, arg.Def.SizeOf());
+						bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, arg.Def.SizeOf());
 						// OP_PUSH_GLOBAL/LOCAL gets address and size from stack and push to the stack
 						MS.Assertion(InGlobal());
-						bc.AddInstruction(MC.OP_PUSH_OBJECT_DATA, 0, MC.MS_TYPE_INT);
+						bc.AddInstruction(MC.OP_PUSH_OBJECT_DATA, 0, MC.BASIC_TYPE_INT);
 					}
 					else
 					{
@@ -434,7 +481,7 @@ namespace Meanscript
 			MS.SyntaxAssertion(member != null, it, "unknown: " + it.Data()); 
 			var varType = member.Type;
 			int offset = member.Address;
-			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, MC.MakeAddress(1, offset)); // global heap ID = 1
+			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, MC.MakeAddress(1, offset)); // global heap ID = 1
 
 			while(true)
 			{
@@ -502,13 +549,13 @@ namespace Meanscript
 					// now there should be the array address and the index in stack
 					// so let's get the array item address by array's callback
 					
-					args.AddFirst(ArgType.Void(common.genericGetAtCallName));
+					args.AddFirst(ArgType.Void(MC.basics.genericGetAtCallName));
 					args.AddFirst(ArgType.Addr(arrayType));
 
 					// agrs = arrayType, @getAt, index type
 					// which Matched callback defined in GenericArrayType
 
-					var callback = common.FindCallback(args);
+					var callback = sem.FindCallback(args);
 
 					if (callback == null)
 					{
@@ -523,7 +570,7 @@ namespace Meanscript
 
 					// address is in register, so push it to stack
 
-					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.MS_TYPE_VOID, 1);
+					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, 1);
 
 					varType = arrayType.itemType;
 					continue;
@@ -562,8 +609,8 @@ namespace Meanscript
 				//if (targetType == MS_TYPE_INT)
 				//{
 					long number = MC.ParseHex(it.Data().GetString(), 8);
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, MC.Int64lowBits(number));
-					return ArgType.Data(common.IntType);
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, MC.Int64lowBits(number));
+					return ArgType.Data(MC.basics.IntType);
 				//}
 				//else if (targetType == MS_TYPE_INT64)
 				//{
@@ -580,32 +627,32 @@ namespace Meanscript
 			}
 			else if (it.Type() == NodeType.NUMBER_TOKEN)
 			{
-				if (assignTarget == null || assignTarget.ID == MC.MS_TYPE_INT)
+				if (assignTarget == null || assignTarget.ID == MC.BASIC_TYPE_INT)
 				{
 					int number = MS.ParseInt(it.Data().GetString());
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_INT, number);
-					return ArgType.Data(common.IntType);
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, number);
+					return ArgType.Data(MC.basics.IntType);
 				}
-				else if (assignTarget.ID == MC.MS_TYPE_INT64)
+				else if (assignTarget.ID == MC.BASIC_TYPE_INT64)
 				{
 					long number = MS.ParseInt64(it.Data().GetString());
-					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.MS_TYPE_INT64);
+					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.BASIC_TYPE_INT64);
 					bc.AddWord(MC.Int64highBits(number));
 					bc.AddWord(MC.Int64lowBits(number));
 					return ArgType.Data(assignTarget);
 				}
-				else if (assignTarget.ID == MC.MS_TYPE_FLOAT)
+				else if (assignTarget.ID == MC.BASIC_TYPE_FLOAT)
 				{
 					float f = MS.ParseFloat32(it.Data().GetString());
 					int floatToInt = MS.FloatToIntFormat(f);
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_FLOAT, floatToInt);
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_FLOAT, floatToInt);
 					return ArgType.Data(assignTarget);
 				}
-				else if (assignTarget.ID == MC.MS_TYPE_FLOAT64)
+				else if (assignTarget.ID == MC.BASIC_TYPE_FLOAT64)
 				{
 					double f = MS.ParseFloat64(it.Data().GetString());
 					long number = MS.Float64ToInt64Format(f);
-					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.MS_TYPE_FLOAT64);
+					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.BASIC_TYPE_FLOAT64);
 					bc.AddWord(MC.Int64highBits(number));
 					bc.AddWord(MC.Int64lowBits(number));
 					return ArgType.Data(assignTarget);
@@ -628,7 +675,7 @@ namespace Meanscript
 
 					// copy chars
 					// chars.maxChars == eg. 7 if "chars[7] x"
-					bc.AddInstructionWithData(MC.OP_PUSH_CHARS, 3, MC.MS_TYPE_TEXT, textID);
+					bc.AddInstructionWithData(MC.OP_PUSH_CHARS, 3, MC.BASIC_TYPE_TEXT, textID);
 					bc.AddWord(chars.maxChars);
 					bc.AddWord(chars.SizeOf()); // sizeOf in ints. characters + size.
 					return ArgType.Data(assignTarget);
@@ -636,8 +683,8 @@ namespace Meanscript
 				else
 				{
 					// assign text id
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_TEXT, textID);
-					return ArgType.Data(common.TextType);
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_TEXT, textID);
+					return ArgType.Data(MC.basics.TextType);
 				}
 			}
 			else if (it.Type() == NodeType.NAME_TOKEN)
@@ -646,7 +693,7 @@ namespace Meanscript
 			}
 			else if (it.Type() == NodeType.PLUS)
 			{
-				return ArgType.Void(common.PlusOperatorType);
+				return ArgType.Void(MC.basics.PlusOperatorType);
 			}
 
 			MS.SyntaxAssertion(false, it, "argument error");

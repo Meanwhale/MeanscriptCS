@@ -87,7 +87,7 @@
   <ItemGroup>
     <Compile Include="meanscript\core\ByteAutomata.cs" />
     <Compile Include="meanscript\core\ByteCode.cs" />
-    <Compile Include="meanscript\core\Common.cs" />
+    <Compile Include="meanscript\core\BasicTypes.cs" />
     <Compile Include="meanscript\core\Context.cs" />
     <Compile Include="meanscript\core\Generator.cs" />
     <Compile Include="meanscript\core\TypeDefGeneric.cs" />
@@ -104,7 +104,7 @@
     <Compile Include="meanscript\core\Texts.cs" />
     <Compile Include="meanscript\core\TokenTree.cs" />
     <Compile Include="meanscript\core\TypeDef.cs" />
-    <Compile Include="meanscript\core\Types.cs" />
+    <Compile Include="meanscript\core\CodeTypes.cs" />
     <Compile Include="meanscript\MSCode.cs" />
     <Compile Include="meanscript\MSData.cs" />
     <Compile Include="meanscript\MSConfig.cs" />
