@@ -102,7 +102,14 @@ namespace Meanscript
 	public class PrimitiveType : DataTypeDef
 	{
 		private int _size;
-		public PrimitiveType(int id, int size) : base(id) { _size=size; }
+		private string typeName;
+		private MSText textName;
+		public PrimitiveType(int id, int size, string _name) : base(id)
+		{
+			_size=size;
+			typeName = _name;
+			textName = new MSText(_name);
+		}
 
 		public override bool TypeMatch(MList<ArgType> args)
 		{
@@ -110,11 +117,8 @@ namespace Meanscript
 		}
 
 		public override int SizeOf() { return _size; }
-		public override MSText TypeName() { return MC.primitiveNames[ID]; }
-		public override string ToString()
-		{
-			return MC.primitiveNames[ID].ToString();
-		}
+		public override MSText TypeName() { return textName; }
+		public override string ToString() { return typeName; }
 	}
 	public class StructDefType : DataTypeDef
 	{

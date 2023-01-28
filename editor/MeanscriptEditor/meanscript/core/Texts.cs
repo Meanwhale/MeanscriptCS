@@ -28,7 +28,6 @@ namespace Meanscript
 
 		public void AddText(int id, string data)
 		{
-			// add a new text
 			texts[new MSText(data)] = id;
 		}
 

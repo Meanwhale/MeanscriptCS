@@ -32,13 +32,13 @@ namespace Meanscript
 			MS.Assertion(!initialized);
 			initialized = true;
 
-			VoidType = AddElementaryType(MC.BASIC_TYPE_VOID, 0);
-			IntType = AddElementaryType(MC.BASIC_TYPE_INT, 1);
-			Int64Type = AddElementaryType(MC.BASIC_TYPE_INT64, 2);
-			FloatType = AddElementaryType(MC.BASIC_TYPE_FLOAT, 1);
-			Float64Type = AddElementaryType(MC.BASIC_TYPE_FLOAT64, 2);
-			TextType = AddElementaryType(MC.BASIC_TYPE_TEXT, 1);
-			BoolType = AddElementaryType(MC.BASIC_TYPE_BOOL, 1);
+			VoidType = AddElementaryType(MC.BASIC_TYPE_VOID, 0, "void");
+			IntType = AddElementaryType(MC.BASIC_TYPE_INT, 1, "int");
+			Int64Type = AddElementaryType(MC.BASIC_TYPE_INT64, 2, "int64");
+			FloatType = AddElementaryType(MC.BASIC_TYPE_FLOAT, 1, "float");
+			Float64Type = AddElementaryType(MC.BASIC_TYPE_FLOAT64, 2, "float64");
+			TextType = AddElementaryType(MC.BASIC_TYPE_TEXT, 1, "text");
+			BoolType = AddElementaryType(MC.BASIC_TYPE_BOOL, 1, "bool");
 			
 			PlusOperatorType = AddOperatorType(MC.BASIC_TYPE_PLUS, new MSText("+"));
 			MinusOperatorType = AddOperatorType(MC.BASIC_TYPE_MINUS, new MSText("-"));
@@ -63,9 +63,9 @@ namespace Meanscript
 			return nextCallbackID++;
 		}
 
-		public TypeDef AddElementaryType(int typeID, int size)
+		public TypeDef AddElementaryType(int typeID, int size, string name)
 		{
-			return AddBasicTypeDef(new PrimitiveType(typeID, size));
+			return AddBasicTypeDef(new PrimitiveType(typeID, size, name));
 		}
 		public TypeDef AddOperatorType(int typeID, MSText name)
 		{

@@ -157,15 +157,6 @@ namespace Meanscript
 			}
 		}
 
-		public int GetTextID(MSText text)
-		{
-			for (int i = 0; i < numTexts; i++)
-			{
-				if (IntStringsWithSizeEquals(text.GetData(), 0, byteCode.code, texts[i] + 1)) return i;
-			}
-			return -1;
-		}
-
 		public void Init()
 		{
 			MS.Assertion(!initialized, EC_CODE, "Code is already initialized.");
@@ -422,19 +413,6 @@ namespace Meanscript
 				// pop address and check everything went fine
 				MS.Assertion(address == PopStack(), EC_CODE, "OP_POP_STACK_TO_x failed");
 			}
-			/*else if (op == OP_POP_STACK_TO_DYNAMIC)
-			{
-				// stack: ... [dynamic target offset][           data           ][size]
-
-				// write from stack to dynamic target
-
-				int size = PopStack();
-				int offset = stack[stackTop - size - 1];
-				PopStackToTarget(Heap.Target.data, size, offset);
-				// pop address and check everything went fine
-				MS.Assertion(offset == PopStack(), EC_CODE, "OP_POP_STACK_TO_DYNAMIC failed");
-				Heap.ClearTarget();
-			}*/
 			else if (op == OP_SET_DYNAMIC_OBJECT)
 			{
 				// pop the dynamic object HEAP address from the stack top
@@ -553,9 +531,6 @@ namespace Meanscript
 			{
 				throw new MException(MC.EC_INTERNAL, "unknown operation code");
 			}
-
-			//{if (MS.debug) {MS.verbose("STACK: base " + stackBase + ", top " + stackTop);}};
-			//{if (MS.debug) {printData(stack, stackTop, stackBase, false);}};
 
 			if (!jumped)
 			{

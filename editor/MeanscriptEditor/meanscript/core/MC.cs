@@ -153,25 +153,8 @@ namespace Meanscript
 		public const int FIRST_CUSTOM_TYPE_ID = 66;
 		public const int MAX_TYPES = 1024;
 
-		public static readonly MSText[] primitiveNames = new MSText[] {
-			new MSText("void"),
-			new MSText("int"),
-			new MSText("int64"),
-			new MSText("float"),
-			new MSText("float64"),
-			new MSText("text"),
-			new MSText("bool"),
-			MSText.Empty(),
-			MSText.Empty(),
-			MSText.Empty(),
-			MSText.Empty(),
-			MSText.Empty(),
-			MSText.Empty(),
-			MSText.Empty(),
-			MSText.Empty(),
-			MSText.Empty(),
-			new MSText("void"),
-		};
+
+
 
 		public const string HORIZONTAL_LINE = "------------------------------------------";
 
