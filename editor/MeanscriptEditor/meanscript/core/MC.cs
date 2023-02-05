@@ -31,44 +31,34 @@ namespace Meanscript
 	public class Keyword
 	{
 		public readonly string name;
-		public readonly int id;
 		public readonly MSText text;
 
-		public Keyword(string name, int id)
+		public Keyword(string name)
 		{
 			this.name = name;
-			this.id = id;
 			text = new MSText(name);
 			MC.keywords.AddLast(this);
 		}
 	}
 
-	public class MC
+	public sealed class MC
 	{
 		public static BasicTypes basics = new BasicTypes();
 
 		public static MList<Keyword> keywords = new MList<Keyword>();
-		// node types
-
-
-		// bytecode types
-
-		public const int BYTECODE_READ_ONLY = 0x101;
-		public const int BYTECODE_EXECUTABLE = 0x102;
-
 
 		// instructions
 
 		public const int OP_SYSTEM = 0x00000001; // system calls (ERROR, assert, exception, etc. TBD)
 		public const int OP_CALLBACK_CALL = 0x03000000;
 		public const int OP_JUMP = 0x04000000;
-		public const int OP_GO_BACK = 0x05000000; // return to previous block. named to be less confusing
+		public const int OP_RETURN_FUNCTION = 0x05000000; // return to previous block. named to be less confusing
 		public const int OP_GO_END = 0x06000000; // go to end of the function (context's end address)
 												 //public const int OP_CHARS_DEF				= 0x07000000;
 		public const int OP_STRUCT_DEF = 0x08000000;
 		public const int OP_STRUCT_MEMBER = 0x09000000;
-		public const int OP_SAVE_BASE = 0x0a000000; // save/load stack base index
-		public const int OP_LOAD_BASE = 0x0b000000;
+		//public const int OP_SAVE_BASE = 0x0a000000; // save/load stack base index
+		//public const int OP_LOAD_BASE = 0x0b000000;
 		public const int OP_NOOP = 0x0c000000;
 		public const int OP_ADD_TEXT = 0x10000000; // add immutable text to text map and add index to register
 		public const int OP_PUSH_IMMEDIATE = 0x11000000; // push immediate value to stack
@@ -78,7 +68,7 @@ namespace Meanscript
 		public const int OP_START_INIT = 0x15000000;
 		public const int OP_END_INIT = 0x16000000;
 		public const int OP_FUNCTION_CALL = 0x17000000;
-		public const int OP_PUSH_LOCAL = 0x18000000;
+		public const int OP_PUSH_CONTEXT_ADDRESS = 0x18000000;
 		public const int OP_PUSH_OBJECT_DATA = 0x19000000;
 		
 		public const int OP_POP_STACK_TO_OBJECT = 0x1a000000;
@@ -88,7 +78,8 @@ namespace Meanscript
 		//public const int OP_POP_STACK_TO_DYNAMIC = 0x1d000000;
 		public const int OP_POP_STACK_TO_REG = 0x1c000000;
 		
-		public const int OP_INIT_GLOBALS = 0x1e000000;
+		public const int OP_END_DATA_INIT = 0x1d000000;
+		public const int OP_WRITE_HEAP_OBJECT = 0x1e000000;
 		public const int OP_GENERIC_TYPE = 0x1f000000;
 		
 		public const int OP_SET_DYNAMIC_OBJECT = 0x20000000;
@@ -104,13 +95,13 @@ namespace Meanscript
 
 		public static readonly string[] opName = new string[] {
 			"---OLD---",            "system",               "---OLD---",            "call",
-			"jump",                 "go back",              "go end",               "---OLD---",
-			"struct definition",    "struct member",        "save base",            "load base",
+			"jump",                 "return function",      "go end",               "---OLD---",
+			"struct definition",    "struct member",        "---OLD---",            "---OLD---",
 			"no operation",         "---OLD---",            "---OLD---",            "---OLD---",
 			"text",                 "push immediate",       "add top",	            "push from reg.",
 			"function data",        "start init",           "end init",             "function call",
-			"push local",           "push object data",     "pop to object",        "pop to object tag",
-			"pop to register",      "---OLD---",            "init globals",         "generic type",
+			"push context address", "push object data",     "pop to object",        "pop to object tag",
+			"pop to register",      "end data init",        "write heap object",    "generic type",
 			"set dynamic object",   "---OLD---",            "---OLD---",            "---OLD---",
 			"---OLD---",            "push chars",           "---ERROR---",          "---ERROR---",
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
@@ -118,11 +109,11 @@ namespace Meanscript
 			};
 
 
-		public static readonly Keyword KEYWORD_FUNC		= new Keyword("func", 0);
-		public static readonly Keyword KEYWORD_STRUCT	= new Keyword("struct", 0);
-		public static readonly Keyword KEYWORD_RETURN	= new Keyword("return", 0);
-		public static readonly Keyword KEYWORD_GLOBAL	= new Keyword("global", 0);
-		public static readonly Keyword KEYWORD_ARRAY	= new Keyword("array", 0);
+		public static readonly Keyword KEYWORD_FUNC		= new Keyword("func");
+		public static readonly Keyword KEYWORD_STRUCT	= new Keyword("struct");
+		public static readonly Keyword KEYWORD_RETURN	= new Keyword("return");
+		public static readonly Keyword KEYWORD_GLOBAL	= new Keyword("global");
+		public static readonly Keyword KEYWORD_ARRAY	= new Keyword("array");
 		
 		// primitive types
 		public const int BASIC_TYPE_INT = 1;
@@ -284,21 +275,37 @@ namespace Meanscript
 			return t.Write(code, top);
 		}
 
-		public static bool IntStringsWithSizeEquals(IntArray a, int aOffset, IntArray b, int bOffset)
+		public static int CompareIntStringsWithSizeEquals(IntArray a, IntArray b)
 		{
-			// first check that sizes match
-			if (a[aOffset] == b[bOffset])
+			// TODO: index offset, if needed
+			// returns -1 (less), 1 (greater), or 0 (equal)
+
+			if (a.Length != b.Length)
 			{
-				// check that ints match
-				int numChars = a[aOffset];
-				int size = (numChars / 4) + 1;
-				for (int i = 1; i <= size; i++)
-				{
-					if (a[aOffset + i] != b[bOffset + i]) return false;
-				}
-				return true;
+				return a.Length > b.Length ? 1 : -1;
 			}
-			return false;
+
+			for (int i = 0; i < a.Length; i++)
+			{
+				if (a[i] != b[i])
+				{
+					return a[i] > b[i] ? 1 : -1;
+				}
+			}
+			return 0;
+			// first check that sizes match
+			//if (a[aOffset] == b[bOffset])
+			//{
+			//	// check that ints match
+			//	int numChars = a[aOffset];
+			//	int size = (numChars / 4) + 1;
+			//	for (int i = 1; i <= size; i++)
+			//	{
+			//		if (a[aOffset + i] != b[bOffset + i]) return false;
+			//	}
+			//	return true;
+			//}
+			//return false;
 		}
 
 		public static void IntsToBytes(IntArray ints, int intsOffset, byte[] bytes, int bytesOffset, int bytesLength)

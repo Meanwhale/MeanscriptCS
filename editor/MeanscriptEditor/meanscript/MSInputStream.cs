@@ -1,7 +1,7 @@
 namespace Meanscript
 {
 
-	public abstract class MSInputStream : MC
+	public abstract class MSInputStream
 	{
 
 
@@ -17,7 +17,7 @@ namespace Meanscript
 		public int ReadByteWithCheck()
 		{
 			int i = ReadByte();
-			MS.Assertion(i != -1, EC_DATA, "input error (readByteWithCheck)");
+			MS.Assertion(i != -1, MC.EC_DATA, "input error (readByteWithCheck)");
 			return i;
 		}
 
@@ -36,7 +36,7 @@ namespace Meanscript
 
 		public void ReadArray(IntArray trg, int numInts)
 		{
-			MS.Assertion(numInts <= (GetByteCount() * 4) + 1, EC_DATA, "readArray: buffer overflow");
+			MS.Assertion(numInts <= (GetByteCount() * 4) + 1, MC.EC_DATA, "readArray: buffer overflow");
 			for (int i = 0; i < numInts; i++)
 			{
 				trg[i] = ReadInt();

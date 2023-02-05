@@ -4,16 +4,6 @@ namespace Meanscript
 {
 	public class IntArray
 	{
-		// TODO: testaa olisiko tämä optimoituna nopeampi:
-		// public int Get(int key)
-		// {
-		// 	unsafe {
-		// 	fixed (int* p = &data[0]){
-		// 		return *(p+key);
-		// 	}}
-		// }
-		// HUOM! int* p ei voi olla member koska pitää olla fixedin sisällä.
-
 		private readonly int [] data;
 		public IntArray()
 		{

@@ -1,7 +1,7 @@
 namespace Meanscript
 {
 
-	public class MArgs : MC
+	public class MArgs
 	{
 		internal ByteCode byteCode;
 		internal StructDef structDef;
@@ -15,6 +15,5 @@ namespace Meanscript
 			baseIndex = _base;
 			valid = true;
 		}
-
 	}
 }

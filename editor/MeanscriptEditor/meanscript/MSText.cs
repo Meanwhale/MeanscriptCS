@@ -13,7 +13,7 @@ namespace Meanscript
 		// Number of ints after the first int 'i' is '(int)i / 4 + 1' if 'i > 0', and 0 otherwise.
 		// Can't be modified. TODO: C++ reference counter for smart memory handling.
 
-		IntArray data;
+		private IntArray data;
 
 		private static readonly MSText _empty = new MSText("");
 		public static MSText Empty() {return _empty;}
@@ -38,19 +38,13 @@ namespace Meanscript
 
 		public MSText(MSText src)
 		{
-			MakeCopy(src.data, 0);
+			Copy(src.data);
 		}
 
 		public MSText(IntArray src)
 		{
-			MakeCopy(src, 0);
+			Copy(src);
 		}
-
-		public MSText(IntArray src, int start)
-		{
-			MakeCopy(src, start);
-		}
-
 
 		public bool Match(MSText t)
 		{
@@ -89,33 +83,14 @@ namespace Meanscript
 			}
 			return start + data.Length;
 		}
-		public void MakeCopy(IntArray src, int start)
+		public void Copy(IntArray src)
 		{
-			int numChars = src[start];
-			int size32 = (numChars / 4) + 2;
-			data = new IntArray(size32);
-			for (int i = 0; i < size32; i++)
-			{
-				data[i] = src[i + start];
-			}
+			data = new IntArray(src.Length);
+			IntArray.Copy(src, data, src.Length);
 		}
 		public int Compare(MSText text)
 		{
-			// returns -1 (less), 1 (greater), or 0 (equal)
-
-			if (data.Length != text.data.Length)
-			{
-				return data.Length > text.data.Length ? 1 : -1;
-			}
-
-			for (int i = 0; i < data.Length; i++)
-			{
-				if (data[i] != text.data[i])
-				{
-					return data[i] > text.data[i] ? 1 : -1;
-				}
-			}
-			return 0; // equals
+			return MC.CompareIntStringsWithSizeEquals(data, text.data);
 		}
 		public void Check()
 		{

@@ -1,7 +1,7 @@
 namespace Meanscript
 {
 
-	public class MSConfig : MC
+	public class MSConfig
 	{
 
 		// configuration parameters
@@ -19,27 +19,5 @@ namespace Meanscript
 		public readonly int builderValuesSize = 65536;
 		public readonly int outputArraySize = 65536;
 		public readonly int maxCallbacks = 256;
-
-		// bool verbose = true; // --> native
-
-		// stream types
-
-		public readonly int STREAM_TYPE_FIRST = 100001;
-		public readonly int STREAM_BYTECODE = 100001;
-		public readonly int STREAM_SCRIPT = 100002;
-		public readonly int STREAM_BYTECODE_READ_ONLY = 100003;
-		public readonly int STREAM_TYPE_LAST = 100003;
-
-		// public void setVerbose (bool b)
-		// {
-		// verbose = b;
-		// }
-		// #ifndef CPP
-		// public bool verboseOn ()
-		// {
-		// return verbose;
-		// }
-		// #endif
-
 	}
 }

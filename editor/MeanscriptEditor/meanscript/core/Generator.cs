@@ -39,7 +39,7 @@ namespace Meanscript
 			currentContext = sem.contexts[0];
 
 			// start
-			bc.AddInstructionWithData(MC.OP_START_INIT, 2, MC.BYTECODE_EXECUTABLE, sem.texts.TextCount());
+			bc.AddInstructionWithData(MC.OP_START_INIT, 2, 0, sem.texts.TextCount());
 			bc.AddWord(currentContext.variables.StructSize()); // globals size
 
 			// add texts (0 = empty)
@@ -49,8 +49,9 @@ namespace Meanscript
 				bc.codeTop = MC.AddTextInstruction(textEntry.Key, MC.OP_ADD_TEXT, bc.code, bc.codeTop, textEntry.Value);
 			}
 
-			// define structure types
-			sem.WriteStructDefs(bc);
+			sem.WriteTypes(bc);
+			
+			bc.AddInstruction(MC.OP_END_DATA_INIT, 0, 0);
 
 			// introduce functions
 			for (int i = 0; i < sem.maxContexts; i++)
@@ -62,7 +63,7 @@ namespace Meanscript
 					bc.AddWord(sem.contexts[i].functionID);
 					bc.AddWord(-1); // add start address later
 					bc.AddWord(-1); // add struct size later (temp. variables may be added)
-					bc.AddWord(sem.contexts[i].variables.StructSize()); // args part of stack
+					bc.AddWord(sem.contexts[i].argsSize); // sizeof the args part of stack
 					bc.AddWord(-1); // add end address later...
 									// ...where the 'go back' instruction is, or in the future
 									// some local un-initialization or something.
@@ -79,7 +80,7 @@ namespace Meanscript
 			GenerateCodeBlock(it.Copy());
 
 			currentContext.codeEndAddress = bc.codeTop;
-			bc.AddInstruction(MC.OP_GO_BACK, 0, 0); // end of global code
+			bc.AddInstruction(MC.OP_RETURN_FUNCTION, 0, 0); // end of global code
 
 			for (int i = 1; i < sem.maxContexts; i++)
 			{
@@ -112,7 +113,7 @@ namespace Meanscript
 			currentContext.codeStartAddress = bc.codeTop;
 			GenerateCodeBlock(it);
 			currentContext.codeEndAddress = bc.codeTop;
-			bc.AddInstruction(MC.OP_GO_BACK, 0, 0);
+			bc.AddInstruction(MC.OP_RETURN_FUNCTION, 0, 0);
 		}
 
 		private void GenerateCodeBlock(NodeIterator it)
@@ -165,6 +166,22 @@ namespace Meanscript
 				it.ToNext();
 			}
 		}
+		/*
+		else if ((it.data()).match(keywords[KEYWORD_RETURN_ID]))
+		{
+			MS.verbose("Generate a return call");
+			MS.syntaxAssertion(it.hasNext(),it,  "'return' is missing a value"); // TODO: return from a void context
+			it.toNext();
+			MS.syntaxAssertion(!it.hasNext(),it,  "'return' can take only one value");
+			MS.syntaxAssertion(currentContext.returnType >= 0,it,  "can't return");
+			
+			// TODO: return value could be an array, a reference, etc.
+			singleArgumentPush(currentContext.returnType, it, -1);
+			
+			bc.addInstruction(OP_POP_STACK_TO_REG, 1, currentContext.returnType);
+			bc.addWord(sem.getType(currentContext.returnType, it).structSize);
+			bc.addInstruction(OP_GO_END, 0 , 0);
+		}*/
 
 		private MList<ArgType> GenerateExpression(NodeIterator it, bool call)
 		{
@@ -177,83 +194,70 @@ namespace Meanscript
 
 			// get list of arguments and find a call that match the list.
 
-			// TODO: check if it's "return"
+			// check if it's "return"
+
+			if (it.Data().Match(MC.KEYWORD_RETURN.text))
+			{
+				// push return value to stack, write it to register,
+				// and go to function end to go back where the function was called from.
+
+				MS.SyntaxAssertion(currentContext.functionID != 0, it, "return can be called only inside a function");
+				MS.SyntaxAssertion(it.HasNext(),it,  "'return' is missing a value");
+				it.ToNext();
+				var returnArgs = PushArgs(it);
+				
+				// check that args match current function
+				MS.SyntaxAssertion(returnArgs.Size() == 1, it, "function can return only a single value.");
+				MS.SyntaxAssertion(returnArgs.First().Def == currentContext.returnType, it, "wrong argument");
+			
+				// write pushed return args from stack to register
+				bc.AddInstruction(MC.OP_POP_STACK_TO_REG, 1, currentContext.returnType.ID);
+				bc.AddWord(currentContext.returnType.SizeOf());
+				bc.AddInstruction(MC.OP_RETURN_FUNCTION, 0, 0);
+
+				return null;
+			}
 
 			var args = PushArgs(it);
-
-			// try to find a callback
-
-			var callback = sem.FindCallback(args);
-			if (callback != null)
+			
+			if (args.First().Def is ScriptedFunctionNameType sc)
 			{
-				MS.Verbose("callback found: ");
-				callback.Print(MS.printOut);
-				bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
-				if (callback.returnType.Def.SizeOf() > 0)
-				{
-					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, callback.returnType.Def.SizeOf());
-				}
+				// scripted function
+				var funcContext = sc.FuncContext;
+
+				bc.AddInstructionWithData(MC.OP_FUNCTION_CALL, 1, 0, funcContext.functionID);
+				
+				//MS.SyntaxAssertion(targetType == returnData.typeID, it, "type mismatch");
+				bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, funcContext.returnType.SizeOf());
+
 				args = new MList<ArgType>();
-				args.Add(callback.returnType);
+				args.Add(new ArgType(Arg.DATA, funcContext.returnType));
 			}
-			else if (call)
+			else
 			{
-				MS.SyntaxAssertion(false, it, "no function found with given arguments");
+				// callback
+
+				var callback = sem.FindCallback(args);
+				if (callback != null)
+				{
+					MS.Verbose("callback found: ");
+					callback.Print(MS.printOut);
+					bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
+					if (callback.returnType.Def.SizeOf() > 0)
+					{
+						bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, callback.returnType.Def.SizeOf());
+					}
+					args = new MList<ArgType>();
+					args.Add(callback.returnType);
+				}
+				else if (call)
+				{
+					MS.SyntaxAssertion(false, it, "no function found with given arguments");
+				}
 			}
 
 			return args;
 		}
-		/*
-		 * aikaisemmin singleargumentpushissa:
-		...else if (it.Type() == NT_NAME_TOKEN)
-		{
-			Context functionContext = sem.FindContext(it.Data());
-			if (functionContext != null)
-			{
-				// PUSH A FUNCTION ARGUMENT
-
-				GenerateFunctionCall(it.Copy(), functionContext);
-				StructDef returnData = sem.GetType(functionContext.returnType, it);
-				MS.SyntaxAssertion(targetType == returnData.typeID, it, "type mismatch");
-				bc.AddInstructionWithData(OP_PUSH_REG_TO_STACK, 1, MS_TYPE_VOID, returnData.structSize);
-				return;
-			}
-		...
-		public void GenerateFunctionCall(NodeIterator it, Context funcContext)
-		{
-			MS.Verbose("Generate a function call");
-
-			bc.AddInstruction(OP_SAVE_BASE, 0, 0);
-
-			if (funcContext.numArgs != 0)
-			{
-				MS.SyntaxAssertion(it.HasNext(), it, "function arguments expected");
-				it.ToNext();
-				CallArgumentPush(it.Copy(), funcContext.variables, funcContext.numArgs);
-			}
-			bc.AddInstructionWithData(OP_FUNCTION_CALL, 1, 0, funcContext.functionID);
-			bc.AddInstruction(OP_LOAD_BASE, 0, 0);
-		}
-		...
-		public void CallArgumentPush(NodeIterator it, StructDef sd, int numArgs)
-		{
-			if ((it.Type() == NT_PARENTHESIS && !it.HasNext()))
-			{
-				// F2 (a1, a2)
-
-				it.ToChild();
-				ArgumentStructPush(it, sd, numArgs, true);
-			}
-			else
-			{
-				// F1 a1
-				// F2 a1 a2
-				// F2 (F3 x) a2
-
-				ArgumentStructPush(it, sd, numArgs, false);
-			}
-		}
-		*/
 		private void GenerateAssignWithInit(NodeIterator it)
 		{
 			MS.Verbose("------------ GenerateInitAndAssign ------------");
@@ -281,7 +285,6 @@ namespace Meanscript
 			if (MS._verboseOn) it.PrintTree(false);
 			// eg. "a: 5"
 
-			//var member = sem.currentContext.variables.GetMember(it.Data()); // eg. "a"
 			if (it.Type() == NodeType.SQUARE_BRACKETS && it.GetParent().type == NodeType.EXPR_INIT_AND_ASSIGN)
 			{
 				it.ToNext(); // generic init & assign
@@ -421,7 +424,7 @@ namespace Meanscript
 			}
 			return args;
 		}
-
+		
 		private ArgType ResolveAndPushArgument(NodeIterator it, bool first)
 		{
 			// move the iterator forward inside the expression
@@ -436,52 +439,52 @@ namespace Meanscript
 						MS.SyntaxAssertion(first, it, "unexpected function name");
 						return ArgType.Void(cn);
 					}
-					
-					// is NULL needed here? 
-
-					//else if (typeArg is NullType nt)
-					//{
-					
-					//	bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.MS_TYPE_NULL, 0);
-					//	return ArgType.Dynamic(nt);
-					//}
-				}
-				else
-				{
-					var arg = ResolveAndPushVariableAddress(it);
-
-					if (arg.Ref == Arg.ADDRESS)
+					else if (typeArg is ScriptedFunctionNameType sc)
 					{
-						bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, arg.Def.SizeOf());
-						// OP_PUSH_GLOBAL/LOCAL gets address and size from stack and push to the stack
-						MS.Assertion(InGlobal());
-						bc.AddInstruction(MC.OP_PUSH_OBJECT_DATA, 0, MC.BASIC_TYPE_INT);
+						MS.SyntaxAssertion(first, it, "unexpected scripted function name");
+						MS.Assertion(sem.FindContext(it.Data()) != null);
+						return ArgType.Void(sc);
 					}
 					else
 					{
-						MS.Assertion(false, MC.EC_INTERNAL, "address expected");
+						MS.SyntaxAssertion(false, it, "unexpected type name");
+						return null;
 					}
-
-					return new ArgType(Arg.DATA, arg.Def); // return info what's on the stack now
 				}
+				var arg = ResolveAndPushVariableAddress(it);
+
+				if (arg.Ref == Arg.ADDRESS)
+				{
+					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, arg.Def.SizeOf());
+					// OP_PUSH_GLOBAL/LOCAL gets address and size from stack and push to the stack
+					//MS.Assertion(InGlobal());
+					bc.AddInstruction(MC.OP_PUSH_OBJECT_DATA, 0, MC.BASIC_TYPE_INT);
+				}
+				else
+				{
+					MS.Assertion(false, MC.EC_INTERNAL, "address expected");
+				}
+				return new ArgType(Arg.DATA, arg.Def); // return info what's on the stack now
 			}
 			else
 			{
 				return SinglePrimitivePush(it);
 			}
-			MS.SyntaxAssertion(false, it, "unexpected argument");
-			return null;
+			//MS.SyntaxAssertion(false, it, "unexpected argument");
+			//return null;
 		}
 
 		private ArgType ResolveAndPushVariableAddress(NodeIterator it)
 		{	
 			// muutujan osoite (head id + offset) pinon p‰‰limm‰iseksi
 
-			var member = sem.currentContext.variables.GetMember(it.Data());
+			var member = currentContext.variables.GetMember(it.Data());
 			MS.SyntaxAssertion(member != null, it, "unknown: " + it.Data()); 
 			var varType = member.Type;
 			int offset = member.Address;
-			bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, MC.MakeAddress(1, offset)); // global heap ID = 1
+
+			// push offset. heap ID will be added in MM according to current (function) context.
+			bc.AddInstructionWithData(MC.OP_PUSH_CONTEXT_ADDRESS, 1, MC.BASIC_TYPE_INT, offset);
 
 			while(true)
 			{

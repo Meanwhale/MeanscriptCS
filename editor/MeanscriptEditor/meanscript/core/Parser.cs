@@ -2,7 +2,7 @@ using System.Linq;
 namespace Meanscript
 {
 
-	public class Parser : MC
+	public class Parser
 	{
 
 		public const string letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
@@ -58,7 +58,7 @@ namespace Meanscript
 		{
 			int start = lastStart;
 			int length = index - start;
-			MS.Assertion(length < MS.globalConfig.maxNameLength, EC_PARSE, "name is too long");
+			MS.Assertion(length < MS.globalConfig.maxNameLength, MC.EC_PARSE, "name is too long");
 
 			int i = 0;
 			for (; i < length; i++)
@@ -122,7 +122,7 @@ namespace Meanscript
 		private static void EndBlock(NodeType blockType)
 		{
 			// check that block-end character is the right one
-			MS.Assertion((currentBlock != null && currentBlock.type == blockType), EC_PARSE, "invalid block end");
+			MS.Assertion((currentBlock != null && currentBlock.type == blockType), MC.EC_PARSE, "invalid block end");
 
 			lastStart = -1;
 			currentToken = currentBlock;
@@ -135,7 +135,7 @@ namespace Meanscript
 			// check that comma is used properly
 			if (automata.currentInput == ',')
 			{
-				MS.Assertion(currentBlock != null && (currentBlock.type == NodeType.ASSIGNMENT_BLOCK || currentBlock.type == NodeType.SQUARE_BRACKETS || currentBlock.type == NodeType.PARENTHESIS), EC_PARSE, "unexpected comma");
+				MS.Assertion(currentBlock != null && (currentBlock.type == NodeType.ASSIGNMENT_BLOCK || currentBlock.type == NodeType.SQUARE_BRACKETS || currentBlock.type == NodeType.PARENTHESIS), MC.EC_PARSE, "unexpected comma");
 			}
 
 			if (currentBlock != null) currentBlock.numChildren++;
@@ -226,7 +226,7 @@ namespace Meanscript
 			//       ^lastStart
 			byte high = buffer[lastStart + 1];
 			byte low = buffer[lastStart + 2];
-			byte b = (byte)(((HexCharToByte(high) << 4) & 0xf0) | HexCharToByte(low));
+			byte b = (byte)(((MC.HexCharToByte(high) << 4) & 0xf0) | MC.HexCharToByte(low));
 			AddQuoteByte(b);
 		}
 
@@ -507,7 +507,7 @@ namespace Meanscript
 				automata = null;
 				root = null;
 				tokenTree = null;
-				MS.Assertion(false, EC_PARSE, null);
+				MS.Assertion(false, MC.EC_PARSE, null);
 			}
 
 			if (MS._verboseOn)

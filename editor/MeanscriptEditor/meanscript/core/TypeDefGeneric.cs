@@ -20,16 +20,16 @@
 		protected DynamicType(int id, MSText name) : base(id, name) { }
 	}
 
-	public class NullType : DynamicType
-	{
-		// TODO: poista jos turha
-		public NullType(int id) : base(id, new MSText("null")) { }
-		public override int SizeOf() { return 1; }
-		public override bool TypeMatch(MList<ArgType> args)
-		{
-			return args.Size() == 1 && args.First().Ref == Arg.ADDRESS && (args.First().Def is DynamicType);
-		}
-	}
+	//public class NullType : DynamicType
+	//{
+	//	// TODO: poista jos turha
+	//	public NullType(int id) : base(id, new MSText("null")) { }
+	//	public override int SizeOf() { return 1; }
+	//	public override bool TypeMatch(MList<ArgType> args)
+	//	{
+	//		return args.Size() == 1 && args.First().Ref == Arg.ADDRESS && (args.First().Def is DynamicType);
+	//	}
+	//}
 
 	public abstract class GenericFactory
 	{
@@ -149,7 +149,7 @@
 
 			var data = new IntArray(ItemSize);
 			IntArray.Copy(mm.stack, mm.stackTop - ItemSize, data, 0, itemType.SizeOf());
-			int tag = mm.Heap.Alloc(itemType.ID, data);
+			int tag = mm.Heap.AllocObject(itemType.ID, data);
 			//mm.stackTop -= ItemSize + 1; // args size is item size + address size (1)
 			mm.CallbackReturn(ID, tag);
 		}
@@ -238,14 +238,14 @@
 			types.CreateCallback(
 				_accessorID,
 				ArgType.Data(itemType),		// return value
-				MC.basics.IntType.SizeOf(),	// index type
+				2,							// (internal) arguments are address and index (int)
 				Accessor					// callback to call when executing the code
 			);
 		}
 
 		private void Accessor(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("GenericArrayType.Getter");
+			MS.Verbose("GenericArrayType.Accessor");
 			// read args from stack and push item address
 			int arrayAddress = mm.stack[mm.stackTop - 2];
 			int index = mm.stack[mm.stackTop - 1];

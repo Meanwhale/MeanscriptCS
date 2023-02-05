@@ -1,7 +1,7 @@
 namespace Meanscript
 {
 
-	public class ByteAutomata : MC
+	public class ByteAutomata
 	{
 		internal bool ok;
 		internal byte[] tr;

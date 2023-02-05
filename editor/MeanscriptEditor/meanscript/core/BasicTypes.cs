@@ -45,7 +45,7 @@ namespace Meanscript
 			DivOperatorType = AddOperatorType(MC.BASIC_TYPE_DIV, new MSText("/"));
 			MulOperatorType = AddOperatorType(MC.BASIC_TYPE_MUL, new MSText("*"));
 
-			AddBasicTypeDef(new NullType(MC.BASIC_TYPE_NULL));
+			//AddBasicTypeDef(new NullType(MC.BASIC_TYPE_NULL));
 
 			genericGetAtCallName = new CallNameType(MC.BASIC_TYPE_GET, new MSText("get"));
 			genericSetAtCallName = new CallNameType(MC.BASIC_TYPE_SET, new MSText("set"));

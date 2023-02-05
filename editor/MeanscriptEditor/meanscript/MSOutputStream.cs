@@ -1,7 +1,9 @@
+using System;
+
 namespace Meanscript
 {
 
-	public abstract class MSOutputStream : MC
+	public abstract class MSOutputStream
 	{
 
 		public MSOutputStream()
@@ -16,6 +18,14 @@ namespace Meanscript
 			WriteByte((byte)((i >> 16) & 0xff));
 			WriteByte((byte)((i >> 8) & 0xff));
 			WriteByte((byte)(i & 0xff));
+		}
+
+		public void Write(IntArray code, int firstIndex, int length)
+		{
+			for (int i = firstIndex; i < firstIndex + length; i++)
+			{
+				WriteInt(code[i]);
+			}
 		}
 	}
 }

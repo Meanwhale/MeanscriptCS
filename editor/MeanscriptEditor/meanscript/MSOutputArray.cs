@@ -21,8 +21,8 @@ namespace Meanscript
 		
 		override public void WriteByte(byte b)
 		{
-			MS.Assertion(index != -1, EC_DATA, "output closed");
-			MS.Assertion(index < maxSize, EC_DATA, "output: buffer overflow");
+			MS.Assertion(index != -1, MC.EC_DATA, "output closed");
+			MS.Assertion(index < maxSize, MC.EC_DATA, "output: buffer overflow");
 			buffer[index++] = b;
 		}
 	}

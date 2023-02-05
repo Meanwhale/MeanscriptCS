@@ -4,16 +4,39 @@ namespace Meanscript
 {
 	public class DData
 	{
+		public enum Role
+		{
+			GLOBAL,
+			CONTEXT,
+			OBJECT
+		}
+
 		// dynamic data
+		public Role role;
 		public int tag;
 		public IntArray data;
 
-		public DData(int tag, IntArray data)
+		public DData(Role role, int tag, IntArray data)
 		{
+			this.role = role;
 			this.tag = tag;
 			this.data = data;
 		}
 
+		public DData(Role role, int tag, IntArray src, int startIndex, int dataLength) :
+			this(role, tag, new IntArray(dataLength))
+		{
+			IntArray.Copy(src, startIndex, data, 0, dataLength);
+		}
+
+		public int HeapID()
+		{
+			return MHeap.TagIndex(tag);
+		}
+		public int DataTypeID()
+		{
+			return MHeap.TagType(tag);
+		}
 		internal void Print(MSOutputPrint o)
 		{
 			o.PrintHex(tag).Print(" ");
@@ -27,31 +50,31 @@ namespace Meanscript
 	}
 	public class MHeap
 	{
-		private int capacity = 16;
-		private DData [] array;
+		internal int capacity = 16;
+		internal DData [] array;
 		
-		private DData Target; // { private set; private get; }
+		//private DData Target; // { private set; private get; }
 
 		public MHeap ()
 		{
 			array = new DData[capacity];
 		}
-		public void SetTarget(int tag)
-		{
-			MS.Assertion(tag != 0, MC.EC_CODE, "null pointer exception");
-			int index = TagIndex(tag);
-			Target = array[index];
-			MS.Assertion(tag == Target.tag, MC.EC_CODE, "pointer mismatch");
-			MS.Verbose("HEAP set target index: " + index);
-		}
-		public void ClearTarget()
-		{
-			Target = null;
-		}
+		//public void SetTarget(int tag)
+		//{
+		//	MS.Assertion(tag != 0, MC.EC_CODE, "null pointer exception");
+		//	int index = TagIndex(tag);
+		//	Target = array[index];
+		//	MS.Assertion(tag == Target.tag, MC.EC_CODE, "pointer mismatch");
+		//	MS.Verbose("HEAP set target index: " + index);
+		//}
+		//public void ClearTarget()
+		//{
+		//	Target = null;
+		//}
 		internal DData AllocGlobal(int size)
 		{
 			MS.Assertion(array[1] == null);
-			array[1] = new DData(0, new IntArray(size));
+			array[1] = new DData(DData.Role.GLOBAL, MakeTag(0, 1, 0), new IntArray(size));
 			return array[1];
 		}
 		private int FindFreeSlot()
@@ -61,17 +84,49 @@ namespace Meanscript
 				if (array[i] == null) return i;
 			throw new MException(MC.EC_INTERNAL, "heap full");
 		}
-		public int Alloc(int type, IntArray data)
+		public DData AllocContext(int size)
+		{
+			int index = FindFreeSlot();
+			int tag = MakeTag(0, index, 0);
+			array[index] = new DData(DData.Role.CONTEXT, tag, new IntArray(size));
+			return array[index];
+		}
+		public int AllocObject(int type, IntArray data)
 		{
 			// create a new object and return tag
 			int index = FindFreeSlot();
 			int tag = MakeTag(type,index,1);
-			array[index] = new DData(tag, data);
+			array[index] = new DData(DData.Role.OBJECT, tag, data);
 
 			if (MS._verboseOn)
 			{
 				MS.printOut.Print("HEAP alloc [").Print(index).Print("] tag: ").PrintHex(tag).Print(" data:");
 				data.Print(MS.printOut); MS.printOut.EndLine();
+			}
+
+			return tag;
+		}
+		public int Write(DData.Role role, int heapID, int type, IntArray data, int startIndex, int dataLength)
+		{
+			// create a new object and return tag
+			
+			int tag = MakeTag(type,heapID,1);
+			
+			if (array[heapID] == null)
+			{
+				array[heapID] = new DData(role, tag, data, startIndex, dataLength);
+			}
+			else
+			{
+				// when serializing, global data could have been created already. check it's size matches.
+				MS.Assertion(heapID == 1 && array[1].data.Length == dataLength);
+				IntArray.Copy(data, startIndex, array[1].data, 0, dataLength);
+			}
+
+			if (MS._verboseOn)
+			{
+				MS.printOut.Print("HEAP WriteObject [").Print(heapID).Print("] tag: ").PrintHex(tag).Print(" data:");
+				array[heapID].Print(MS.printOut); MS.printOut.EndLine();
 			}
 
 			return tag;
@@ -92,7 +147,12 @@ namespace Meanscript
 			array[index] = null;
 			MS.Verbose("Heap free @ " + index);
 		}
-
+		internal void FreeContext(DData context)
+		{
+			int index = context.HeapID();
+			array[index] = null;
+			MS.Verbose("Heap free context @ " + index);
+		}
 		internal IntArray GetDataArray(int heapID)
 		{
 			return array[heapID].data;
@@ -159,6 +219,5 @@ namespace Meanscript
 				MS.printOut.EndLine();
 			}
 		}
-
 	}
 }

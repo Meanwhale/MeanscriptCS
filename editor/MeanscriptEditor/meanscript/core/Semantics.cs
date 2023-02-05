@@ -20,7 +20,7 @@ namespace Meanscript
 			maxContexts = MS.globalConfig.maxFunctions;
 			contexts = new Context[maxContexts];
 
-			contexts[0] = new Context(this, -1, 0, -1); // global context
+			contexts[0] = new Context(this, -1, 0, null); // global context
 			globalContext = contexts[0];
 			currentContext = globalContext;
 			for (int i = 1; i < maxContexts; i++)
@@ -208,7 +208,7 @@ namespace Meanscript
 					MS.SyntaxAssertion(it.HasNext(), it, "function return type expected");
 					it.ToNext();
 					MS.SyntaxAssertion(HasDataType(it.Data()), it, "unknown return type");
-					int returnType = GetDataType(it.Data()).ID;
+					var returnType = GetDataType(it.Data());
 
 					// function name
 
@@ -225,13 +225,15 @@ namespace Meanscript
 					int functionNameID = texts.AddText(functionName);
 					Context funcContext = new Context(this, functionNameID, numContexts, returnType);
 					contexts[numContexts++] = funcContext;
+					
+					AddTypeDef(new ScriptedFunctionNameType(GetNewTypeID(), functionName, funcContext));
 
 					// argument definition
 
 					MS.SyntaxAssertion(it.HasNext(), it, "argument definition expected");
 					it.ToNext();
 					CreateStructDef(funcContext.variables, it.Copy());
-					funcContext.numArgs = funcContext.variables.NumMembers();
+					funcContext.argsSize = funcContext.variables.StructSize();
 
 					// parse function body
 
@@ -445,7 +447,7 @@ namespace Meanscript
 			while (it.ToNextOrFalse());
 		}
 
-		public void WriteStructDefs(ByteCode bc)
+		public void WriteTypes(ByteCode bc)
 		{
 			// encode globals and StructDefs
 			

@@ -79,11 +79,13 @@ namespace MeanscriptEditor
 		
 			KeyDown += new KeyEventHandler(MainWindow_KeyDown);
 
-			TextBoxCode.Text = "bool a: true";
+			
+			
+			//TextBoxCode.Text = "bool a: true";
 			//TextBoxCode.Text = "int a: 3";
 
 			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
-			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
+			TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
 			//TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p\np: 5";
 
 			//TextBoxCode.Text = "struct vec2 [int x, int y]\nstruct person [text name, obj [vec2] point]\n"
@@ -158,8 +160,7 @@ namespace MeanscriptEditor
 				//mm = new MeanMachine(bc);
 				//mm.CallFunction(0);
 				
-				MSCode code = new MSCode();
-				code.CompileAndRun(TextBoxCode.Text);
+				MSCode code = new MSCode(TextBoxCode.Text);
 				
 				//winOutput.Print("\na = " + code.global.GetInt("a"));
 				//winOutput.Print("\na = " + code.global.GetInt("a"));
@@ -176,10 +177,10 @@ namespace MeanscriptEditor
 					mm.Heap.Print();
 				}
 			}
-			catch (Exception e)
-			{
-				winOutput.Print("\n" + e.ToString());
-			}
+			//catch (Exception e)
+			//{
+			//	winOutput.Print("\n" + e.ToString());
+			//}
 		}
 
 		public void Status(string s)

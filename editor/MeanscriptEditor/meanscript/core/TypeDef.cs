@@ -65,6 +65,28 @@ namespace Meanscript
 			return Name.ToString();
 		}
 	}
+	public class ScriptedFunctionNameType : TypeDef
+	{
+		// for code generation. no need to be saved to bytecode.
+		public MSText Name { get; }
+		public Context FuncContext { get; private set; }
+
+		public ScriptedFunctionNameType(int id, MSText name, Context funcContext) : base(id)
+		{
+			Name = name;
+			FuncContext = funcContext;
+		}
+		public override int SizeOf() { return 0; }
+
+		public override MSText TypeName()
+		{
+			return Name;
+		}
+		public override string ToString()
+		{
+			return Name.ToString();
+		}
+	}
 	public class CallbackType : TypeDef
 	{
 		// "type" that defines a list of arguments. list can consist of other types, and must include callname or operator

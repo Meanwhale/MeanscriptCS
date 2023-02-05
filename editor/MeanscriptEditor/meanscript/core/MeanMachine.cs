@@ -3,24 +3,29 @@ using System;
 namespace Meanscript
 {
 
-	public class MeanMachine : MC
+	public class MeanMachine
 	{
+		internal class CallBase
+		{
+			public CallBase(DData heapObject) { HeapObject = heapObject; }
+			public DData HeapObject;
+		}
+
 		internal int stackTop;
 		internal int ipStackTop;
-		internal int baseStackTop;
-		internal DData globalData;
-		internal int stackBase;
+		internal DData currentContextData;
+		//internal int stackBase;
 		internal int instructionPointer;
 		internal int globalsSize;
 		internal int numTexts;
 		internal int registerType;
-		internal int byteCodeType;
+		private int dataInitEnd;
 		internal bool initialized;
 		internal bool done;
 		internal bool jumped;
 		public IntArray stack;
 		internal IntArray ipStack;
-		internal IntArray baseStack;
+		internal MList<CallBase> contextStack = new MList<CallBase>();
 		internal IntArray functions;
 		internal IntArray registerData;
 		public IntArray texts;
@@ -44,15 +49,15 @@ namespace Meanscript
 			//bc.common.Initialize();
 
 			registerType = -1;
-			byteCodeType = -1;
 			ipStackTop = 0;
-			baseStackTop = 0;
-			stackBase = 0;
+			dataInitEnd = -1;
 			globalsSize = -1;
 			instructionPointer = 0; // instruction pointer
 			initialized = false;
 			done = false;
 			jumped = false;
+			
+			InitVMArrays();
 
 			Init();
 		}
@@ -76,7 +81,6 @@ namespace Meanscript
 
 			stack = new IntArray(MS.globalConfig.stackSize);
 			ipStack = new IntArray(MS.globalConfig.ipStackSize);
-			baseStack = new IntArray(MS.globalConfig.baseStackSize);
 			functions = new IntArray(MS.globalConfig.maxFunctions);
 			registerData = new IntArray(MS.globalConfig.registerSize);
 		}
@@ -93,7 +97,7 @@ namespace Meanscript
 		public void Gosub(int address)
 		{
 			int instruction = byteCode.code[address];
-			MS.Assertion((instruction & OPERATION_MASK) == OP_NOOP, MC.EC_INTERNAL, "gosub: wrong address");
+			MS.Assertion((instruction & MC.OPERATION_MASK) == MC.OP_NOOP, MC.EC_INTERNAL, "gosub: wrong address");
 			PushIP(-instructionPointer); // gosub addresses (like when executing if's body) negative
 			instructionPointer = address;
 			jumped = true;
@@ -138,10 +142,11 @@ namespace Meanscript
 
 		public void InitFunctionCall(int id)
 		{
-			MS.Assertion(initialized, EC_CODE, "Code not initialized.");
+			MS.Assertion(initialized, MC.EC_CODE, "Code not initialized.");
 			MS.Verbose("Initialize a user's function call");
 			ByteCode bc = byteCode;
 			int tagAddress = functions[id];
+			MS.Assertion(tagAddress != 0, MC.EC_CODE, "no function with ID " + id);
 			instructionPointer = bc.code[tagAddress + 2];
 			//stackBase = globalsSize;
 			done = false;
@@ -149,7 +154,6 @@ namespace Meanscript
 
 		public void CallFunction(int id)
 		{
-			MS.Assertion(byteCodeType == BYTECODE_EXECUTABLE, MC.EC_INTERNAL, "bytecode is not executable");
 			InitFunctionCall(id);
 			while (Running())
 			{
@@ -159,29 +163,28 @@ namespace Meanscript
 
 		public void Init()
 		{
-			MS.Assertion(!initialized, EC_CODE, "Code is already initialized.");
-			MS.Assertion(byteCode.codeTop != 0, EC_CODE, "ByteCode is empty...");
+			MS.Assertion(!initialized, MC.EC_CODE, "Code is already initialized.");
+			MS.Assertion(byteCode.codeTop != 0, MC.EC_CODE, "ByteCode is empty...");
 
-			stackBase = 0;
 			stackTop = 0;
 			currentStructDef = null;
 			done = false;
 
 			if (MS._verboseOn)
 			{
-				MS.Print(HORIZONTAL_LINE);
+				MS.Print(MC.HORIZONTAL_LINE);
 				MS.Print("START INITIALIZING");
-				MS.Print(HORIZONTAL_LINE);
-				PrintBytecode(byteCode.code, byteCode.codeTop, -1, true);
+				MS.Print(MC.HORIZONTAL_LINE);
+				MC.PrintBytecode(byteCode.code, byteCode.codeTop, -1, true);
 			}
 
 			while (Running())
 			{
 				InitStep();
 			}
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			MS.Verbose("INITIALIZING FINISHED");
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			
 			foreach(var t in codeTypes.types.Values)
 			{
@@ -198,58 +201,54 @@ namespace Meanscript
 			// read instruction
 
 			int instruction = bc.code[instructionPointer];
-			MS.Verbose("INIT [" + GetOpName(instruction) + "]");
+			MS.Verbose("INIT [" + MC.GetOpName(instruction) + "]");
 			//jumped = false;
 
-			int op = (int)(instruction & OPERATION_MASK);
+			int op = (int)(instruction & MC.OPERATION_MASK);
 
 			if (instructionPointer == 0)
 			{
-				MS.Assertion(op == OP_START_INIT, EC_CODE, "bytecode starting tag missing");
-				byteCodeType = (int)(instruction & AUX_DATA_MASK);
-				MS.Assertion(byteCodeType == BYTECODE_READ_ONLY || byteCodeType == BYTECODE_EXECUTABLE, EC_CODE, "unknown bytecode type");
+				MS.Assertion(op == MC.OP_START_INIT, MC.EC_CODE, "bytecode starting tag missing");
 				numTexts = bc.code[instructionPointer + 1];
 				globalsSize = bc.code[instructionPointer + 2];
 				MS.Verbose("start init! " + numTexts + " texts");
 				texts = new IntArray(numTexts + 1);
 				
-				globalData = Heap.AllocGlobal(globalsSize);
-
-				if (byteCodeType == BYTECODE_EXECUTABLE) InitVMArrays();
+				currentContextData = Heap.AllocGlobal(globalsSize);
 			}
-			else if (op == OP_ADD_TEXT)
+			else if (op == MC.OP_ADD_TEXT)
 			{
 				// save address to this tag so the text can be found by its ID
-				int textID = (int)(instruction & AUX_DATA_MASK);
+				int textID = (int)(instruction & MC.AUX_DATA_MASK);
 				texts[textID] = instructionPointer;
 				var s = GetText(textID);
 				codeTypes.texts.AddText(textID, s);
 				MS.Verbose("new text [" + textID + "] " + s);
 			}
-			else if (op == OP_FUNCTION)
+			else if (op == MC.OP_FUNCTION)
 			{
-				// FORMAT: | OP_FUNCTION | type | code address |
+				// FORMAT: | MC.OP_FUNCTION | type | code address |
 				int id = bc.code[instructionPointer + 1];
 				functions[id] = instructionPointer; // save address to this tag 
 			}
-			//else if (op == OP_CHARS_DEF)
+			//else if (op == MC.OP_CHARS_DEF)
 			//{
 			//	currentStructID = (int)(instruction & VALUE_TYPE_MASK);
 			//	types[currentStructID] = instructionPointer;
 			//}
-			else if (op == OP_STRUCT_DEF)
+			else if (op == MC.OP_STRUCT_DEF)
 			{
 				// add a struct and set it current for coming members (next op.)
-				int structID = (int)(instruction & VALUE_TYPE_MASK);
+				int structID = (int)(instruction & MC.VALUE_TYPE_MASK);
 				int nameID = bc.code[instructionPointer + 1];
 				MS.Verbose("new struct def: " + GetText(nameID));
 				var sd = new StructDef(codeTypes, nameID);
 				currentStructDef = new StructDefType(structID, codeTypes.texts.GetText(nameID), sd);
 				codeTypes.AddTypeDef(currentStructDef);
 			}
-			else if (op == OP_STRUCT_MEMBER)
+			else if (op == MC.OP_STRUCT_MEMBER)
 			{
-				int structID = (int)(instruction & VALUE_TYPE_MASK);
+				int structID = (int)(instruction & MC.VALUE_TYPE_MASK);
 				MS.Assertion(structID == currentStructDef.ID);
 
 				int nameID   = bc.code[instructionPointer + 1];
@@ -271,11 +270,11 @@ namespace Meanscript
 				MS.Assertion(td != null, MC.EC_CODE, "type not found by ID " + typeID);
 				currentStructDef.SD.AddMember(nameID, td, refID, address, datasize, index);
 			}
-			else if (op == OP_GENERIC_TYPE)
+			else if (op == MC.OP_GENERIC_TYPE)
 			{
 				MS.Verbose("new generic type");
-				int genCodeID = (int)(instruction & VALUE_TYPE_MASK);
-				int numArgs = InstrSize(instruction);
+				int genCodeID = (int)(instruction & MC.VALUE_TYPE_MASK);
+				int numArgs = MC.InstrSize(instruction);
 				MS.Verbose("code: " + genCodeID + " args: " + numArgs);
 				var fac = GenericFactory.Get(genCodeID);
 				var args = new int[numArgs];
@@ -288,32 +287,39 @@ namespace Meanscript
 				}				
 				codeTypes.AddTypeDef(fac.Decode(this, args));
 			}
-			else if (op == OP_INIT_GLOBALS)
+			else if (op == MC.OP_WRITE_HEAP_OBJECT)
 			{
-				int size = InstrSize(instruction);
+				// [ OP > HeapID > ... data ... ] size = data size + 1 (heapID)
 
-				if (byteCodeType == BYTECODE_EXECUTABLE)
-				{
-					// if read-only then the data is in bytecode, not stack
-					stackBase = 0;
-					stackTop = 0;
-					globalData = Heap.AllocGlobal(size);
-				}
-				else
-				{
-					MS.Assertion(false);
-				}
+				int dataSize = MC.InstrSize(instruction) - 1;
+				int typeID = (int)(instruction & MC.VALUE_TYPE_MASK);
+				int heapID = bc.code[instructionPointer + 1];
+				
+				// copy data from instruction's bytecode to heap
+
+				Heap.Write(
+					heapID == 1 ? DData.Role.GLOBAL : DData.Role.OBJECT,
+					heapID,
+					typeID,
+					bc.code,
+					instructionPointer + 2, // data starts after the op. and heap ID
+					dataSize);
 			}
-			else if (op == OP_END_INIT)
+			else if (op == MC.OP_END_DATA_INIT)
+			{
+				MS.Verbose("DATA INIT DONE!");
+				dataInitEnd = instructionPointer;
+			}
+			else if (op == MC.OP_END_INIT)
 			{
 				MS.Verbose("INIT DONE!");
 				done = true;
 			}
 			else
 			{
-				MS.Assertion(false, EC_CODE, "unknown op. code");
+				MS.Assertion(false, MC.EC_CODE, "unknown op. code");
 			}
-			instructionPointer += 1 + InstrSize(instruction);
+			instructionPointer += 1 + MC.InstrSize(instruction);
 		}
 
 
@@ -330,21 +336,26 @@ namespace Meanscript
 			}
 
 			int instruction = bc.code[instructionPointer];
-			MS.Verbose("EXECUTE [" + GetOpName(instruction) + "]");
+			MS.Verbose("EXECUTE [" + MC.GetOpName(instruction) + "]");
 			jumped = false;
 
-			int op = (int)(instruction & OPERATION_MASK);
+			int op = (int)(instruction & MC.OPERATION_MASK);
 
-			if (op == OP_PUSH_IMMEDIATE)
+			if (op == MC.OP_PUSH_IMMEDIATE)
 			{
-				int size = InstrSize(instruction);
+				int size = MC.InstrSize(instruction);
 				// push words after the instruction to stack 
 				for (int i = 1; i <= size; i++)
 				{
 					Push(bc.code[instructionPointer + i]);
 				}
 			}
-			else if (op == OP_PUSH_OBJECT_DATA)
+			else if (op == MC.OP_PUSH_CONTEXT_ADDRESS)
+			{
+				int offset = bc.code[instructionPointer + 1];
+				Push(MC.MakeAddress(currentContextData.HeapID(), offset));
+			}
+			else if (op == MC.OP_PUSH_OBJECT_DATA)
 			{
 				int size = PopStack();
 				int address = PopStack();
@@ -354,21 +365,14 @@ namespace Meanscript
 				// PushData(stack, address, size);
 				PushData(Heap.GetDataArray(MC.AddressHeapID(address)), MC.AddressOffset(address), size);
 			}
-			else if (op == OP_PUSH_LOCAL)
-			{
-				MS.Assertion(false, MC.EC_INTERNAL, "functions will have own objects");
-				//int size = PopStack();
-				//int address = PopStack();
-				//PushData(stack, stackBase + address, size);
-			}
-			else if (op == OP_ADD_STACK_TOP_ADDRESS_OFFSET)
+			else if (op == MC.OP_ADD_STACK_TOP_ADDRESS_OFFSET)
 			{
 				int val = PopStack();
 				int address = stack[stackTop - 1];
 				address = MC.MakeAddress(MC.AddressHeapID(address), MC.AddressOffset(address + val));
 				stack[stackTop - 1] = address;
 			}
-			else if (op == OP_PUSH_CHARS)
+			else if (op == MC.OP_PUSH_CHARS)
 			{
 				int textID = bc.code[instructionPointer + 1];
 				int maxChars = bc.code[instructionPointer + 2];
@@ -378,9 +382,9 @@ namespace Meanscript
 				{
 					int textIndex = texts[textID];
 					int textChars = bc.code[textIndex + 1];
-					textDataSize = InstrSize(bc.code[textIndex]);
-					MS.Assertion(textChars <= maxChars, EC_CODE, "text too long");
-					MS.Assertion(textDataSize <= structSize, EC_CODE, "text data too long");
+					textDataSize = MC.InstrSize(bc.code[textIndex]);
+					MS.Assertion(textChars <= maxChars, MC.EC_CODE, "text too long");
+					MS.Assertion(textDataSize <= structSize, MC.EC_CODE, "text data too long");
 					//MS.verbose("SIZE: " + textChars + " MAX: " + maxChars);
 
 					PushData(bc.code, textIndex + 1, textDataSize);
@@ -388,7 +392,7 @@ namespace Meanscript
 				// fill the rest
 				for (int i = 0; i < (structSize - textDataSize); i++) Push(0);
 			}
-			else if (op == OP_POP_STACK_TO_OBJECT || op == OP_POP_STACK_TO_OBJECT_TAG)
+			else if (op == MC.OP_POP_STACK_TO_OBJECT || op == MC.OP_POP_STACK_TO_OBJECT_TAG)
 			{
 				// stack: ... [target address][           data           ][size]
 
@@ -400,7 +404,7 @@ namespace Meanscript
 				int offset = MC.AddressOffset(address);
 				MS.Assertion(Heap.HasObject(heapID), MC.EC_CODE, "address' heap ID error: " + heapID);
 				
-				if (op == OP_POP_STACK_TO_OBJECT_TAG)
+				if (op == MC.OP_POP_STACK_TO_OBJECT_TAG)
 				{
 					int tag = Heap.GetAt(heapID, offset);
 					if (MS._verboseOn) MS.printOut.Print("object tag: ").PrintHex(tag).EndLine();
@@ -408,12 +412,12 @@ namespace Meanscript
 				}
 
 				var targetArray = Heap.GetDataArray(heapID);
-				MS.Assertion(targetArray.Length >= offset + size, MC.EC_CODE, "writing over bounds. object size: " + targetArray.Length + ", offset: " + offset + ", size: " + size);
+				MS.Assertion(targetArray.Length >= offset + size, MC.EC_CODE, "writing over bounds. targetArray size: " + targetArray.Length + ", offset: " + offset + ", data size: " + size);
 				PopStackToTarget(targetArray, size, offset);
 				// pop address and check everything went fine
-				MS.Assertion(address == PopStack(), EC_CODE, "OP_POP_STACK_TO_x failed");
+				MS.Assertion(address == PopStack(), MC.EC_CODE, "MC.OP_PMC.OP_STACK_TO_x failed");
 			}
-			else if (op == OP_SET_DYNAMIC_OBJECT)
+			else if (op == MC.OP_SET_DYNAMIC_OBJECT)
 			{
 				// pop the dynamic object HEAP address from the stack top
 				// and push it's address (head ID + offset 0) to top of the stack
@@ -429,10 +433,10 @@ namespace Meanscript
 
 				MS.Verbose("set dynamic object address, newHeapID: " + newHeapID + ", offset: " + offset);
 			}
-			else if (op == OP_CALLBACK_CALL)
+			else if (op == MC.OP_CALLBACK_CALL)
 			{
 				//public MeanMachine (ByteCode _byteCode, StructDef _structDef, int _base)
-				int callbackIndex = (int)(instruction & VALUE_TYPE_MASK);
+				int callbackIndex = (int)(instruction & MC.VALUE_TYPE_MASK);
 				MS.Assertion(codeTypes.HasCallback(callbackIndex), MC.EC_CODE, "unknown callback, id: " + callbackIndex);
 				CallbackType cb = codeTypes.GetCallback(callbackIndex); // bc.common.callbacks[callbackIndex];
 				MS.Assertion(cb != null, MC.EC_INTERNAL, "invalid callback");
@@ -448,7 +452,7 @@ namespace Meanscript
 				stackTop -= cb.argsSize;
 				PrintStack();
 			}
-			else if (op == OP_FUNCTION_CALL)
+			else if (op == MC.OP_FUNCTION_CALL)
 			{
 				int functionID = bc.code[instructionPointer + 1];
 				int tagAddress = functions[functionID];
@@ -459,82 +463,91 @@ namespace Meanscript
 				// args are already in stack. make room for locals
 				int functionContextStructSize = bc.code[tagAddress + 3];
 				int argsSize = bc.code[tagAddress + 4];
-				int delta = functionContextStructSize - argsSize;
-				for (int i = 0; i < delta; i++) stack[stackTop + i] = -1;
+				//int delta = functionContextStructSize - argsSize;
+				//for (int i = 0; i < delta; i++) stack[stackTop + i] = -1;
+				//stackTop += delta;
 
-				stackTop += delta;
-				stackBase = stackTop - functionContextStructSize;
+				// luo data function contextille (heap object) ja tall. vanha pinoon
 
-				MS.Verbose("-------- function call! ID " + functionID + ", jump to " + instructionPointer);
+				contextStack.AddFirst(new CallBase(currentContextData));
+				currentContextData = Heap.AllocContext(functionContextStructSize);
+
+				// poppaa argsit heap objectiin. object datan alkupää on varattu function argumenteille.
+				PopStackToTarget(currentContextData.data, argsSize, 0);
+
+				MS.Verbose("-------- function call! ID " + functionID + ", jump to " + instructionPointer + ", function context heap ID " + currentContextData.HeapID());
 				jumped = true;
 
 			}
-			else if (op == OP_SAVE_BASE)
-			{
-				MS.Verbose("-------- OP_PUSH_STACK_BASE");
-				baseStack[baseStackTop++] = stackBase;
-			}
-			else if (op == OP_LOAD_BASE)
-			{
-				MS.Verbose("-------- OP_POP_STACK_BASE");
-				baseStackTop--;
-				stackTop = stackBase;
-				stackBase = baseStack[baseStackTop];
-			}
-			else if (op == OP_PUSH_REG_TO_STACK)
-			{
-				MS.Assertion(registerType != -1, MC.EC_INTERNAL, "register empty");
-				int size = bc.code[instructionPointer + 1];
-				MS.Verbose("push register content to stack, size " + size);
-				for (int i = 0; i < size; i++) Push(registerData[i]);
-				registerType = -1;
-			}
-			else if (op == OP_JUMP)
-			{
-				int address = bc.code[instructionPointer + 1];
-				MS.Verbose("jump: " + address);
-				instructionPointer = address;
-				jumped = true;
-			}
-			else if (op == OP_GO_BACK)
+			else if (op == MC.OP_RETURN_FUNCTION)
 			{
 				if (ipStackTop == 0)
 				{
 					MS.Verbose("DONE!");
 					if (MS._verboseOn) Heap.Print();
 					done = true;
+					//MS.Assertion(stackTop == 0); // TODO: pitäisikö olla?
 				}
 				else
 				{
-					MS.Verbose("Return from go-sub");
 					// get the old IP and make a jump to the next instruction
+					
 					instructionPointer = PopIP();
 					instruction = bc.code[instructionPointer];
-					instructionPointer += 1 + InstrSize(instruction);
+					instructionPointer += 1 + MC.InstrSize(instruction);
+					
+					// free current and get previous function context
+
+					Heap.FreeContext(currentContextData);
+					currentContextData = contextStack.First().HeapObject;
+					contextStack.RemoveFirst();
 				}
 				PrintStack();
 				jumped = true;
 			}
-			else if (op == OP_GO_END)
+			else if (op == MC.OP_GO_END)
 			{
-				MS.Verbose("Go to end of function");
 				instructionPointer = PopEndIP();
 				instruction = bc.code[instructionPointer];
-				instructionPointer += 1 + InstrSize(instruction);
+				instructionPointer += 1 + MC.InstrSize(instruction);
+				MS.Verbose("Go to end of function, instructionPointer: " + instructionPointer);
 				jumped = true;
 			}
-			else if (op == OP_NOOP)
+			else if (op == MC.OP_POP_STACK_TO_REG)
+			{
+				// when 'return' is called
+				int size = bc.code[instructionPointer + 1];
+				PopStackToTarget(registerData, size, 0);
+				registerType = (int)(instruction & MC.VALUE_TYPE_MASK);
+			}
+			else if (op == MC.OP_PUSH_REG_TO_STACK)
+			{
+				MS.Assertion(registerType != -1, MC.EC_INTERNAL, "register empty: return value was expected");
+				int size = bc.code[instructionPointer + 1];
+				MS.Verbose("push register content to stack, size " + size);
+				for (int i = 0; i < size; i++) Push(registerData[i]);
+				registerType = -1;
+			}
+			else if (op == MC.OP_JUMP)
+			{
+				int address = bc.code[instructionPointer + 1];
+				MS.Verbose("jump: " + address);
+				instructionPointer = address;
+				jumped = true;
+			}
+			else if (op == MC.OP_NOOP)
 			{
 				MS.Verbose(" . . . ");
 			}
 			else
 			{
-				throw new MException(MC.EC_INTERNAL, "unknown operation code");
+				MS.errorOut.Print("operation code: ").PrintHex(op);
+				throw new MException(MC.EC_INTERNAL, "unknown operation");
 			}
 
 			if (!jumped)
 			{
-				instructionPointer += 1 + InstrSize(instruction);
+				instructionPointer += 1 + MC.InstrSize(instruction);
 			}
 		}
 
@@ -579,8 +592,7 @@ namespace Meanscript
 			{
 				MS.Printn("<base>");
 				for(int i=0; i<stackTop; i++)
-					if (i == stackBase) MS.printOut.Print("/[").PrintHex(stack[i]).Print("]");
-					else MS.printOut.Print("/").PrintHex(stack[i]);
+					MS.printOut.Print("/").PrintHex(stack[i]);
 				MS.Printn("/<top>");
 			}
 			MS.Print("");
@@ -588,9 +600,9 @@ namespace Meanscript
 
 		public void CallbackReturn(int type, int value)
 		{
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			MS.Verbose("        return " + value);
-			MS.Verbose(HORIZONTAL_LINE);
+			MS.Verbose(MC.HORIZONTAL_LINE);
 			// return value from a callback
 			// parameter for some other function or call
 			SaveReg(type, value);
@@ -602,27 +614,34 @@ namespace Meanscript
 			registerData[0] = value;
 		}
 
-
-		public void WriteCode(MSOutputStream output)
+		public void GenerateDataCode(MSOutputStream output)
 		{
-			byteCode.WriteCode(output);
-		}
+			// TODO: write structs, texts, and types
+			MS.Assertion(dataInitEnd > 0);
+			output.Write(byteCode.code, 0, dataInitEnd);
 
-		public void WriteReadOnlyData(MSOutputStream output)
-		{
-			// write struct definitions
-			byteCode.WriteStructInit(output);
-			output.WriteInt(MakeInstruction(OP_INIT_GLOBALS, globalsSize, 0));
-			for (int i = 0; i < globalsSize; i++)
+			// write heap data
+			for(int i=0; i < Heap.capacity; i++)
 			{
-				output.WriteInt(globalData.data[i]);
+				if (Heap.array[i] != null)
+				{
+					// [ OP > HeapID > ... data ... ] size = data size + 1 (heapID)
+
+					MS.Assertion(Heap.array[i].HeapID() == i);
+					output.WriteInt(MC.MakeInstruction(MC.OP_WRITE_HEAP_OBJECT, Heap.array[i].data.Length + 1, Heap.array[i].DataTypeID()));
+					output.WriteInt(Heap.array[i].HeapID());
+					output.Write(Heap.array[i].data, 0, Heap.array[i].data.Length);
+				}
 			}
-			output.WriteInt(MakeInstruction(OP_END_INIT, 0, 0));
+
+			// TODO: write special type data, eg. 'map'
+			
+			output.WriteInt(MC.MakeInstruction(MC.OP_END_INIT, 0, 0));
 		}
 
-		public void PrintGlobals()
+		public void PrintCurrentContext()
 		{
-			MS.Print("GLOBALS: ");
+			MS.Print("CurrentContext: ");
 			if (globalsSize == 0)
 			{
 				MS.Print("    <none>");
@@ -631,7 +650,7 @@ namespace Meanscript
 			{
 				for (int i = 0; i < globalsSize; i++)
 				{
-					MS.Print("    " + i + ":    " + globalData.data[i]);
+					MS.Print("    " + i + ":    " + currentContextData.data[i]);
 				}
 				MS.Print("");
 			}
@@ -640,25 +659,23 @@ namespace Meanscript
 		public void PrintDetails()
 		{
 			MS.Print("DETAILS");
-			MS.Print(HORIZONTAL_LINE);
+			MS.Print(MC.HORIZONTAL_LINE);
 			MS.Print("globals size: " + globalsSize);
-			MS.Print("stack base:   " + stackBase);
 			MS.Print("stack top:    " + stackTop);
-			MS.Print("call depth:   " + baseStackTop);
 			MS.Print("instruction pointer: " + instructionPointer);
 
 			MS.Print("\nSTACK");
-			MS.Print(HORIZONTAL_LINE);
-			PrintBytecode(stack, stackTop, -1, false);
+			MS.Print(MC.HORIZONTAL_LINE);
+			MC.PrintBytecode(stack, stackTop, -1, false);
 		}
 
 		public void PrintCode()
 		{
 			MS.Print("BYTECODE CONTENTS");
-			MS.Print(HORIZONTAL_LINE);
+			MS.Print(MC.HORIZONTAL_LINE);
 			MS.Print("index     code/data (32 bits)");
-			MS.Print(HORIZONTAL_LINE);
-			PrintBytecode(byteCode.code, byteCode.codeTop, instructionPointer, true);
+			MS.Print(MC.HORIZONTAL_LINE);
+			MC.PrintBytecode(byteCode.code, byteCode.codeTop, instructionPointer, true);
 		}
 	}
 }
