@@ -1,5 +1,4 @@
-using System.Linq;
-namespace Meanscript
+namespace Meanscript.Core
 {
 
 	public class Parser
@@ -204,7 +203,7 @@ namespace Meanscript
 
 		private static void ParseError(string msg)
 		{
-			MS.Printn("Parse error: ");
+			MS.Printn("parse error: ");
 			MS.Print(msg);
 			automata.ok = false;
 			running = false;
@@ -425,7 +424,7 @@ namespace Meanscript
 
 		public static TokenTree Parse(MSInputStream input)
 		{
-			MS.Verbose("------------------------ START PARSING");
+			MS.Verbose(MS.Title("START PARSING"));
 
 			tokenTree = new TokenTree();
 
@@ -491,8 +490,8 @@ namespace Meanscript
 
 			if (!running || !(ba.ok))
 			{
-				MS.errorOut.Print("Parser state [" + ba.stateNames[(int)ba.currentState] + "]\n");
-				MS.errorOut.Print("Line " + lineNumber + ": \n        ");
+				MS.errorOut.Print("parser state [" + ba.stateNames[(int)ba.currentState] + "]\n");
+				MS.errorOut.Print("line " + lineNumber + ": \n        ");
 
 				// print nearby code
 				int start = index - 1;
@@ -512,9 +511,9 @@ namespace Meanscript
 
 			if (MS._verboseOn)
 			{
-				MS.Print("------------------------ TOKEN TREE:");
+				MS.Print(MS.Title("TOKEN TREE:"));
 				root.PrintTree(true);
-				MS.Print("------------------------ END PARSING");
+				MS.Print(MS.Title("END PARSING"));
 			}
 			automata = null;
 

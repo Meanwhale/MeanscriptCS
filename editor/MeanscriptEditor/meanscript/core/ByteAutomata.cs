@@ -1,4 +1,4 @@
-namespace Meanscript
+namespace Meanscript.Core
 {
 
 	public class ByteAutomata
@@ -67,7 +67,7 @@ namespace Meanscript
 		public byte AddState(string stateName)
 		{
 			stateCounter++;
-			stateNames[(int)stateCounter] = stateName;
+			stateNames[stateCounter] = stateName;
 			return stateCounter;
 		}
 
@@ -87,7 +87,6 @@ namespace Meanscript
 				tr[(state * 256) + bytes[i]] = actionIndex;
 				i++;
 			}
-			//{if (MS.debug) {MS.verbose("New Transition added: id " + actionIndex);}};
 		}
 
 		public void FillTransition(byte state, MS.MAction action)
@@ -98,8 +97,7 @@ namespace Meanscript
 			for (int i = 0; i < 256; i++)
 			{
 				tr[(state * 256) + i] = actionIndex;
-			}
-			//{if (MS.debug) {MS.verbose("New Transition filled: id " + actionIndex);}};
+			}			//{if (MS.debug) {MS.verbose("New Transition filled: id " + actionIndex);}};
 		}
 
 		public byte AddAction(MS.MAction action)
@@ -114,7 +112,7 @@ namespace Meanscript
 		{
 			currentState = nextState;
 
-			{ if (MS._debug) { MS.Verbose("Next state: " + stateNames[(int)currentState]); } };
+			{ if (MS._debug) { MS.Verbose("next state: " + stateNames[(int)currentState]); } };
 		}
 
 		// NOTE: don't use exceptions. On error, use error print and set ok = false
@@ -204,7 +202,7 @@ namespace Meanscript
 		public void PrintError()
 		{
 			MS.errorOut.Print("ERROR: parser state [" + stateNames[(int)currentState] + "]");
-			MS.errorOut.Print("Line " + lineNumber + ": \"");
+			MS.errorOut.Print("line " + lineNumber + ": \"");
 
 			// print nearby code
 			int start = index - 1;

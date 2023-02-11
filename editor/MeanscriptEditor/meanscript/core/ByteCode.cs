@@ -1,7 +1,6 @@
-using System;
 using System.Collections.Generic;
 
-namespace Meanscript
+namespace Meanscript.Core
 {
 
 	public class ByteCode
@@ -40,13 +39,13 @@ namespace Meanscript
 			int instruction = MC.MakeInstruction(operation, size, valueType);
 			code[codeTop++] = instruction;
 			AddWord(data);
-			MS.Verbose("Add instruction with data: [" + MC.GetOpName(instruction) + "] [" + data + "]");
+			MS.Verbose("add instruction with data: [" + MC.GetOpName(instruction) + "] [" + data + "]");
 		}
 
 		public void AddInstruction(int operation, int size, int valueType)
 		{
 			int instruction = MC.MakeInstruction(operation, size, valueType);
-			MS.Verbose("Add instruction: [" + MC.GetOpName(instruction) + "]");
+			MS.Verbose("add instruction: [" + MC.GetOpName(instruction) + "]");
 			code[codeTop++] = instruction;
 		}
 
@@ -55,44 +54,5 @@ namespace Meanscript
 			//{if (MS.debug) {MS.print("data: " + data);}};
 			code[codeTop++] = data;
 		}
-
-		/*public void WriteStructInit(MSOutputStream output)
-		{
-			int i = 0;
-
-			// change init tag
-
-			int op = (int)((code[i]) & MC.OPERATION_MASK);
-			MS.Assertion(op == MC.OP_START_INIT, MC.EC_INTERNAL, "writeStructInit: bytecode error");
-			output.WriteInt(MC.MakeInstruction(MC.OP_START_INIT, 1, MC.BYTECODE_READ_ONLY));
-			i++;
-			output.WriteInt(code[i]);
-			i++;
-
-			int tagIndex = i;
-
-			// copy necessary tags
-
-			for (; i < codeTop; i++)
-			{
-				if (i == tagIndex)
-				{
-					tagIndex += MC.InstrSize(code[i]) + 1;
-					op = (int)((code[i]) & MC.OPERATION_MASK);
-					if (op == MC.OP_FUNCTION)
-					{
-						// skip function inits
-						i += MC.InstrSize(code[i]);
-						continue;
-					}
-					else if (op == MC.OP_END_INIT)
-					{
-						return;
-					}
-				}
-				output.WriteInt(code[i]);
-			}
-			MS.Assertion(false, MC.EC_INTERNAL, "bytecode init end tag not found");
-		}*/
 	}
 }

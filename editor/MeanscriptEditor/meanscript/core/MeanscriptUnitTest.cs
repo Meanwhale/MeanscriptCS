@@ -1,9 +1,7 @@
-namespace Meanscript
+namespace Meanscript.Core
 {
-
 	public class MeanscriptUnitTest
 	{
-
 
 		// code: struct vec [int x, int y]
 		public static readonly int[] vecStructCode = new int[] {
@@ -325,7 +323,7 @@ namespace Meanscript
 			m.DataOutputPrint(output); // write only data, not structs
 
 			// debug:
-			MS.Print("\n----------SCRIPT OUTPUT TEST\n");
+			MS.Print("SCRIPT OUTPUT TEST");
 			m.DataOutputPrint(MS.printOut);
 
 			s = complexStructs;
@@ -340,23 +338,23 @@ namespace Meanscript
 
 			SimpleVariableCheck(m);
 
-			MS.Print("\n----------SCRIPT OUTPUT TEST ENDS\n");
+			MS.Print("SCRIPT OUTPUT TEST ENDS");
 		}
 		
 		*/
 
 		private static void WriteCodeState()
 		{
-			MSCode m = new MSCode("int a: 5");
-			Assertion(m.global.GetInt("a") == 5);
+			MSCode m1 = new MSCode(simpleVariableScript);
+			Assertion(m1.global.GetInt("a") == 5);
 
 			MSOutputArray output = new MSOutputArray();
-			m.GenerateDataCode(output);
+			m1.GenerateDataCode(output);
 			
 			var input = new MSInputArray(output);
-			m = new MSCode(input, MSCode.StreamType.BYTECODE);
+			MSCode m2 = new MSCode(input, MSCode.StreamType.BYTECODE);
 			// m.Run(); <- there's no function to run
-			Assertion(m.global.GetInt("a") == 5);
+			Assertion(m2.global.Match(m1.global));
 		}
 
 		private static bool ParseError()

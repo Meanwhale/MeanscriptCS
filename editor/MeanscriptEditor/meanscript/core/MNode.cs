@@ -1,4 +1,4 @@
-namespace Meanscript
+namespace Meanscript.Core
 {
 
 	public class MNode

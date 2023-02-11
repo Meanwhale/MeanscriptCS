@@ -1,6 +1,5 @@
-namespace Meanscript
+namespace Meanscript.Core
 {
-
 	public class TokenTree
 	{
 		internal MNode root = null;

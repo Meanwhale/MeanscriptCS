@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-
-namespace Meanscript
+namespace Meanscript.Core
 {
 
 	public class Semantics : CodeTypes
@@ -115,9 +112,7 @@ namespace Meanscript
 		}
 		public void Analyze()
 		{
-			MS.Verbose(MC.HORIZONTAL_LINE);
-			MS.Verbose("SEMANTIC ANALYZE");
-			MS.Verbose(MC.HORIZONTAL_LINE);
+			MS.Verbose(MS.Title("SEMANTIC ANALYZE"));
 
 			currentContext = contexts[0];
 
@@ -130,20 +125,16 @@ namespace Meanscript
 				t.Init(this);
 			}
 
-			MS.Verbose(MC.HORIZONTAL_LINE);
-			MS.Verbose("CONTEXTS");
-			MS.Verbose(MC.HORIZONTAL_LINE);
+			MS.Verbose(MS.Title("CONTEXTS"));
 			for (int i = 0; i < maxContexts; i++)
 			{
 				if (contexts[i] != null)
 				{
-					MS.Verbose("-------- context ID: " + i);
+					MS.Verbose(MS.Title("context ID: " + i));
 					if (MS._verboseOn) contexts[i].variables.Info(MS.printOut);
 				}
 			}
-			MS.Verbose(MC.HORIZONTAL_LINE);
-			MS.Verbose("TYPEDEFS");
-			MS.Verbose(MC.HORIZONTAL_LINE);
+			MS.Verbose(MS.Title("TYPEDEFS"));
 			if (MS._verboseOn)
 			{
 				foreach(var t in types.Values)
@@ -151,9 +142,7 @@ namespace Meanscript
 					MS.printOut.Print("ID: ").Print(t.ID).Print(" [").PrintHex(t.ID).Print("] ").Print(t.ToString()).EndLine();
 				}
 			}
-			MS.Verbose(MC.HORIZONTAL_LINE);
-			MS.Verbose("END ANALYZING");
-			MS.Verbose(MC.HORIZONTAL_LINE);
+			MS.Verbose(MS.Title("END ANALYZING"));
 		}
 
 
@@ -197,7 +186,7 @@ namespace Meanscript
 
 				if (context != null)
 				{
-					MS.Verbose("-------- function call!!!");
+					MS.Verbose(MS.Title("function call"));
 				}
 				else if (it.Data().Match(MC.KEYWORD_FUNC.text))
 				{
@@ -219,7 +208,7 @@ namespace Meanscript
 
 					MS.SyntaxAssertion(IsNameValidAndAvailable(functionName), it, "variable name error");
 
-					MS.Verbose("Create a new function: " + functionName);
+					MS.Verbose("create a new function: " + functionName);
 
 					// create new context
 					int functionNameID = texts.AddText(functionName);
@@ -245,11 +234,11 @@ namespace Meanscript
 					funcContext.codeNode = it.node;
 
 					it.ToChild();
-					MS.Verbose("-------- ANALYZE FUNCTION");
+					MS.Verbose(MS.Title("ANALYZE FUNCTION"));
 					currentContext = funcContext;
 					AnalyzeNode(it.Copy());
 					currentContext = contexts[0];
-					MS.Verbose("-------- END ANALYZE FUNCTION");
+					MS.Verbose(MS.Title("END ANALYZE FUNCTION"));
 					it.ToParent();
 
 					MS.SyntaxAssertion(!it.HasNext(), it, "unexpected token after code block");
@@ -266,7 +255,7 @@ namespace Meanscript
 					MS.SyntaxAssertion(it.HasNext(), it, "struct definition expected");
 					it.ToNext();
 					MS.SyntaxAssertion(!it.HasNext(), it, "unexpected token after struct definition");
-					MS.Verbose("Create a new struct: " + structName);
+					MS.Verbose("create a new struct: " + structName);
 					AddStructDef(structName, it.Copy());
 				}
 				else if (HasGenericType(it.Data()))
@@ -294,7 +283,7 @@ namespace Meanscript
 
 					// variable name
 					MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
-					MS.Verbose("New variable: " + it.Data() + " <" + texts.GetText(currentContext.variables.nameID) + ">");
+					MS.Verbose("new variable: " + dataType.TypeNameString() + " " + it.Data());
 					currentContext.variables.AddMember(texts.AddText(it.Data()), dataType, Arg.DATA);
 
 					// check if there's an assignment or extra tokens
@@ -344,7 +333,7 @@ namespace Meanscript
 			it.ToNext(NodeType.NAME_TOKEN);
 					
 			MS.SyntaxAssertion(IsNameValidAndAvailable(it.Data()), it, "variable name error");
-			MS.Verbose("New variable: " + it.Data() + " <" + texts.GetText(currentContext.variables.nameID) + ">");
+			MS.Verbose("new variable: " + it.Data() + " <" + texts.GetText(currentContext.variables.nameID) + ">");
 			var genArgType = CreateGenericVariable(genTypeName, genArgs, it);
 			sd.AddMember(texts.AddText(it.Data()), genArgType);
 			
@@ -437,7 +426,7 @@ namespace Meanscript
 
 					MS.SyntaxAssertion(it.Type() == NodeType.NAME_TOKEN, it, "member name expected");
 					MS.SyntaxAssertion(!sd.HasMember(it.Data()), it, "duplicate name: " + it.Data());
-					MS.Verbose("Add struct member: " + it.Data());
+					MS.Verbose("add struct member: " + it.Data());
 					sd.AddMember(texts.AddText(it.Data()), dataType, Arg.DATA);
 					MS.SyntaxAssertion(!it.HasNext(), it, "break expected");
 				}

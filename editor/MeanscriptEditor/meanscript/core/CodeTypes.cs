@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
-namespace Meanscript
+namespace Meanscript.Core
 {
 	public abstract class ITypes
 	{
@@ -120,8 +116,7 @@ namespace Meanscript
 				}
 			}
 			return null;
-		}
-		
+		}		
 		public DataTypeDef GetDataType(int id, NodeIterator it = null)
 		{
 			var t = GetType(id,it);
@@ -134,26 +129,11 @@ namespace Meanscript
 			if (t != null && t is DataTypeDef d) return d;
 			return null;
 		}
-		public StructDef GetStructDefType(int i, NodeIterator it = null)
-		{
-			return null; // TODO
-		}
-		public StructDef GetStructDefType(MSText name, NodeIterator it = null)
-		{
-			return null; // TODO
-		}
-		
-		//internal void AddCallback(TypeDef type, StructDef sd, MS.MCallbackAction act)
-		//{
-		//	throw new NotImplementedException();
-		//}
-
 		internal CallbackType GetCallback(int id)
 		{
 			if (id < MC.MAX_BASIC_TYPES) return MC.basics.callbacks[id];
 			return callbacks[id];
 		}
-
 		internal bool HasCallback(int id)
 		{
 			return MC.basics.callbacks.ContainsKey(id) || callbacks.ContainsKey(id);

@@ -1,8 +1,5 @@
-using System;
-
-namespace Meanscript
+namespace Meanscript.Core
 {
-
 	public class Context
 	{
 		internal int functionID;
@@ -25,7 +22,6 @@ namespace Meanscript
 			codeStartAddress = -1;
 			codeEndAddress = -1;
 		}
-
 		internal void Info(MSOutputPrint o)
 		{
 			variables.Info(o);

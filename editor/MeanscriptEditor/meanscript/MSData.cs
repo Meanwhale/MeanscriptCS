@@ -1,8 +1,7 @@
-using System;
-
 namespace Meanscript
 {
-	
+	using Core;
+
 	public abstract class IMSData
 	{
 		// code common for MSData and MSStruct
@@ -44,6 +43,14 @@ namespace Meanscript
 			MS.Assertion(memberType is StructDefType, MC.EC_DATA, "data not a struct");
 			return new MSStruct(mm, memberType.ID, heapID, offset);
 		}
+
+		internal bool Match(MSData x)
+		{
+			if (typeID != x.typeID) return false;
+			TypeDef memberType = mm.codeTypes.GetType(typeID);
+			// compare 'raw' data in data arrays
+			return IntArray.Match(dataCode, offset, x.dataCode, x.offset, memberType.SizeOf());
+		}
 		// TODO: add getters for all basic types
 	}
 
@@ -62,6 +69,14 @@ namespace Meanscript
 		public int DataType()
 		{
 			return typeID;
+		}
+		public int NumMembers()
+		{
+			return structType.SD.NumMembers();
+		}
+		public StructDef.Member GetMemberAt(int index)
+		{
+			return structType.SD.GetMemberByIndex(index);
 		}
 		public StructDef.Member GetMember(string name, int typeID = -1)
 		{
@@ -98,6 +113,11 @@ namespace Meanscript
 		{
 			var member = structType.SD.GetMember(new MSText(name));
 			MS.Assertion(member != null, MC.EC_DATA, "member not found: " + name);
+			return GetData(member);
+		}
+		internal MSData GetData(StructDef.Member member)
+		{
+			MS.Assertion(!(member.Type is StructDefType), MC.EC_DATA, "member is a struct: " + mm.GetText(member.NameID));
 			return new MSData(mm, member.Type.ID, heapID, member.Address + offset);
 		}
 		internal MSData GetRef(string name)
@@ -114,6 +134,23 @@ namespace Meanscript
 			int typeID = MHeap.TagType(tag);
 			MS.Assertion(mm.Heap.HasObject(heapID), MC.EC_DATA, "invalid reference: " + tag + ", heap ID " + heapID);
 			return new MSData(mm, typeID, heapID, 0);
+		}
+		internal bool Match(MSStruct x)
+		{
+			if (NumMembers() != x.NumMembers()) return false;
+			for(int i = 0; i < NumMembers(); i++)
+			{
+				// TODO: tämä testaa hyvin structin toimivuutta, mutta
+				// nopeampaa on verrata vain suoraan dataa niinkuin MSDatassa.
+				var a = GetMemberAt(i);
+				var b = x.GetMemberAt(i);
+				if (a.Type.ID != b.Type.ID) return false;
+				// TODO: check if struct (virtual Match()?)
+				var aData = GetData(a);
+				var bData = GetData(b);
+				if (!aData.Match(bData)) return false;
+			}
+			return true;
 		}
 		/*
 		public bool IsStruct()
@@ -262,100 +299,100 @@ namespace Meanscript
 			return mm.GetText(textID);
 		}
 		/*
-		public MSDataArray GetArray(string name)
-		{
-			int arrayTagAddress = GetMemberTagAddress(name, true);
-			MS.Assertion(arrayTagAddress >= 0, EC_DATA, "not found: " + name);
-			int arrayTag = structCode[arrayTagAddress];
-			MS.Assertion(IsArrayTag(arrayTag), EC_DATA, "not an array");
-			int dataAddress = dataIndex + structCode[arrayTagAddress + 2];
-			int itemType = structCode[arrayTagAddress + 4];
-			int itemCount = structCode[arrayTagAddress + 5];
-			int itemDataSize = structCode[arrayTagAddress + 3] / itemCount; // == "sizeof" / itemCount
-			return new MSDataArray(mm, itemType, itemCount, itemDataSize, dataAddress);
-		}
+public MSDataArray GetArray(string name)
+{
+	int arrayTagAddress = GetMemberTagAddress(name, true);
+	MS.Assertion(arrayTagAddress >= 0, EC_DATA, "not found: " + name);
+	int arrayTag = structCode[arrayTagAddress];
+	MS.Assertion(IsArrayTag(arrayTag), EC_DATA, "not an array");
+	int dataAddress = dataIndex + structCode[arrayTagAddress + 2];
+	int itemType = structCode[arrayTagAddress + 4];
+	int itemCount = structCode[arrayTagAddress + 5];
+	int itemDataSize = structCode[arrayTagAddress + 3] / itemCount; // == "sizeof" / itemCount
+	return new MSDataArray(mm, itemType, itemCount, itemDataSize, dataAddress);
+}
 
-		public MSData GetMember(string name)
-		{
-			int memberTagAddress = GetMemberTagAddress(name, false);
-			MS.Assertion(memberTagAddress >= 0, EC_DATA, "not found: " + name);
-			int dataAddress = dataIndex + structCode[memberTagAddress + 2];
-			int _typeID = InstrValueTypeID(structCode[memberTagAddress]);
-			return new MSData(mm, _typeID, dataAddress);
-		}
+public MSData GetMember(string name)
+{
+	int memberTagAddress = GetMemberTagAddress(name, false);
+	MS.Assertion(memberTagAddress >= 0, EC_DATA, "not found: " + name);
+	int dataAddress = dataIndex + structCode[memberTagAddress + 2];
+	int _typeID = InstrValueTypeID(structCode[memberTagAddress]);
+	return new MSData(mm, _typeID, dataAddress);
+}
 
-		public int GetMemberAddress(string name, int type)
-		{
-			int memberTagAddress = GetMemberTagAddress(name, false);
-			MS.Assertion(memberTagAddress >= 0, EC_DATA, "not found: " + name);
-			MS.Assertion(((structCode[memberTagAddress]) & VALUE_TYPE_MASK) == type, EC_DATA, "wrong type");
-			return dataIndex + structCode[memberTagAddress + 2];
-		}
+public int GetMemberAddress(string name, int type)
+{
+	int memberTagAddress = GetMemberTagAddress(name, false);
+	MS.Assertion(memberTagAddress >= 0, EC_DATA, "not found: " + name);
+	MS.Assertion(((structCode[memberTagAddress]) & VALUE_TYPE_MASK) == type, EC_DATA, "wrong type");
+	return dataIndex + structCode[memberTagAddress + 2];
+}
 
-		public int GetMemberAddress(string name)
-		{
-			int memberTagAddress = GetMemberTagAddress(name, false);
-			MS.Assertion(memberTagAddress >= 0, EC_DATA, "not found: " + name);
-			// address of this data + offset of the member
-			return dataIndex + structCode[memberTagAddress + 2];
-		}
+public int GetMemberAddress(string name)
+{
+	int memberTagAddress = GetMemberTagAddress(name, false);
+	MS.Assertion(memberTagAddress >= 0, EC_DATA, "not found: " + name);
+	// address of this data + offset of the member
+	return dataIndex + structCode[memberTagAddress + 2];
+}
 
-		public int GetMemberTagAddress(string name, bool isArray)
-		{
-			MSText t = new MSText(name);
-			return GetMemberTagAddress(t, isArray);
-		}
+public int GetMemberTagAddress(string name, bool isArray)
+{
+	MSText t = new MSText(name);
+	return GetMemberTagAddress(t, isArray);
+}
 
-		public int GetMemberTagAddress(MSText name, bool isArray)
-		{
-			int nameID = mm.GetTextID(name);
-			if (nameID < 0) return -1;
-			return GetMemberTagAddress(nameID, isArray);
-		}
+public int GetMemberTagAddress(MSText name, bool isArray)
+{
+	int nameID = mm.GetTextID(name);
+	if (nameID < 0) return -1;
+	return GetMemberTagAddress(nameID, isArray);
+}
 
-		public int GetMemberTagAddress(int nameID, bool isArray)
-		{
-			//MS.Assertion(IsStruct(), MC.EC_INTERNAL, "struct expected");
+public int GetMemberTagAddress(int nameID, bool isArray)
+{
+	//MS.Assertion(IsStruct(), MC.EC_INTERNAL, "struct expected");
 
-			//int i = mm.types[DataType()];
-			//int code = structCode[i];
-			//MS.Assertion((code & OPERATION_MASK) == OP_STRUCT_DEF, MC.EC_INTERNAL, "struct def. expected");
-			//i += InstrSize(code) + 1;
-			//code = structCode[i];
+	//int i = mm.types[DataType()];
+	//int code = structCode[i];
+	//MS.Assertion((code & OPERATION_MASK) == OP_STRUCT_DEF, MC.EC_INTERNAL, "struct def. expected");
+	//i += InstrSize(code) + 1;
+	//code = structCode[i];
 
 
-			//while ((code & OPERATION_MASK) == OP_STRUCT_MEMBER || (code & OPERATION_MASK) == OP_GENERIC_MEMBER)
-			//{
-			//	if (nameID == structCode[i + 1])
-			//		return i; // name ID is immediately after the operator
+	//while ((code & OPERATION_MASK) == OP_STRUCT_MEMBER || (code & OPERATION_MASK) == OP_GENERIC_MEMBER)
+	//{
+	//	if (nameID == structCode[i + 1])
+	//		return i; // name ID is immediately after the operator
 
-			//	i += InstrSize(code) + 1;
-			//	code = structCode[i];
-			//}
-			return -1;
-		}
+	//	i += InstrSize(code) + 1;
+	//	code = structCode[i];
+	//}
+	return -1;
+}
 
-		public void PrintType(MSOutputPrint op, int typeID)
-		{
-			//if (typeID < MAX_MS_TYPES) op.Print(primitiveNames[typeID]);
-			//else
-			//{
-			//	int charsSizeOrNegative = GetCharsSize(typeID);
-			//	if (charsSizeOrNegative >= 0)
-			//	{
-			//		op.Print("chars[");
-			//		op.Print(charsSizeOrNegative);
-			//		op.Print("]");
-			//	}
-			//	else
-			//	{
-			//		int index = mm.types[typeID];
-			//		MSText typeName = new MSText(structCode, index + 1);
-			//		op.Print(typeName);
-			//	}
-			//}
-		}
-		*/
+public void PrintType(MSOutputPrint op, int typeID)
+{
+	//if (typeID < MAX_MS_TYPES) op.Print(primitiveNames[typeID]);
+	//else
+	//{
+	//	int charsSizeOrNegative = GetCharsSize(typeID);
+	//	if (charsSizeOrNegative >= 0)
+	//	{
+	//		op.Print("chars[");
+	//		op.Print(charsSizeOrNegative);
+	//		op.Print("]");
+	//	}
+	//	else
+	//	{
+	//		int index = mm.types[typeID];
+	//		MSText typeName = new MSText(structCode, index + 1);
+	//		op.Print(typeName);
+	//	}
+	//}
+}
+*/
 		//public void PrintData(MSOutputPrint op, int depth, string name)
 		//{
 		//	//for (int x=0; x<depth; x++) op.print("    ");
@@ -406,7 +443,7 @@ namespace Meanscript
 
 		//		op.Print("TODO\n");
 
-		//		/*
+		//		/*F
 
 		//		INT i = R(mm).types[getType()];
 

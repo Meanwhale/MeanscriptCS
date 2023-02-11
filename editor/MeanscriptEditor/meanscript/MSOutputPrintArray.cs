@@ -1,5 +1,6 @@
 namespace Meanscript
 {
+	using Core;
 
 	public class MSOutputPrintArray : MSOutputPrint
 	{

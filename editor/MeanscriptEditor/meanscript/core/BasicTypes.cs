@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Meanscript
+namespace Meanscript.Core
 {
 	public class BasicTypes : ITypes
 	{
@@ -102,7 +102,7 @@ namespace Meanscript
 		
 		public void PrintCallbacks()
 		{
-			MS.Verbose("-------- CALLBACKS:");
+			MS.Verbose(MS.Title("CALLBACKS"));
 			foreach (var cb in callbacks.Values)
 			{
 				MS.Print("callback id: " + cb.ID);
@@ -116,24 +116,24 @@ namespace Meanscript
 		}
 		private static void SumCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("//////////////// SUM ////////////////");
+			MS.Verbose(MS.Title("SUM"));
 			mm.CallbackReturn(MC.BASIC_TYPE_INT, mm.stack[args.baseIndex] + mm.stack[args.baseIndex + 1]);
 		}
 		private static void Sum2Callback(MeanMachine mm, MArgs args)
 		{
 			int result = mm.stack[args.baseIndex] + mm.stack[args.baseIndex + 1];
-			MS.Verbose("//////////////// SUM2="+result+" ////////////////");
+			MS.Verbose(MS.Title("SUM2="+result+""));
 			mm.CallbackReturn(MC.BASIC_TYPE_INT, result);
 		}
 		private static void Sum3Callback(MeanMachine mm, MArgs args)
 		{
 			int result = mm.stack[args.baseIndex] + mm.stack[args.baseIndex + 1] + mm.stack[args.baseIndex + 2];
-			MS.Verbose("//////////////// SUM3="+result+" ////////////////");
+			MS.Verbose(MS.Title("SUM3="+result+""));
 			mm.CallbackReturn(MC.BASIC_TYPE_INT, result);
 		}
 		private static void EqCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("//////////////// EQ ////////////////");
+			MS.Verbose(MS.Title("EQ"));
 
 			MS.Verbose("compare " + mm.stack[args.baseIndex] + " and " + mm.stack[args.baseIndex + 1]);
 			bool result = (mm.stack[args.baseIndex] == mm.stack[args.baseIndex + 1]);
@@ -142,7 +142,7 @@ namespace Meanscript
 		}
 		private static void IfCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("//////////////// IF ////////////////");
+			MS.Verbose(MS.Title("IF"));
 
 			if (mm.stack[args.baseIndex] != 0)
 			{
@@ -153,7 +153,7 @@ namespace Meanscript
 		}
 		private static void SubCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("//////////////// SUBTRACTION ////////////////");
+			MS.Verbose(MS.Title("SUBTRACTION"));
 			int a = mm.stack[args.baseIndex];
 			int b = mm.stack[args.baseIndex + 1];
 			MS.Verbose("calculate " + a + " - " + b + " = " + (a - b));
@@ -162,13 +162,13 @@ namespace Meanscript
 
 		private static void PrintIntCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("//////////////// PRINT ////////////////");
+			MS.Verbose(MS.Title("PRINT"));
 			MS.userOut.Print(mm.stack[args.baseIndex]).EndLine();
 		}
 
 		private static void PrintTextCallback(MeanMachine mm, MArgs args)
 		{
-			//MS.Verbose("//////////////// PRINT TEXT ////////////////");
+			//MS.Verbose(MS.Title("PRINT TEXT"));
 
 			//int address = mm.texts[mm.stack[args.baseIndex]];
 			//int numChars = mm.GetStructCode()[address + 1];
@@ -177,25 +177,17 @@ namespace Meanscript
 
 		private static void PrintCharsCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("//////////////// PRINT CHARS  ////////////////");
+			MS.Verbose(MS.Title("PRINT CHARS "));
 			int numChars = mm.stack[args.baseIndex];
 			MS.userOut.Print("").PrintIntsToChars(mm.stack, args.baseIndex + 1, numChars, false);
 		}
 
 		private static void PrintFloatCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("//////////////// PRINT FLOAT ////////////////");
+			MS.Verbose(MS.Title("PRINT FLOAT"));
 			MS.userOut.Print(MS.IntFormatToFloat(mm.stack[args.baseIndex]));
 		}
 
-		//public int CreateCallback(Semantics sem, int nameID, MS.MCallbackAction func, int returnType, StructDef argStruct)
-		//{
-		//	MS.Verbose("Add callback: " + sem.tree.GetTextByID(nameID));
-		//
-		//	MCallback cb = new MCallback(func, returnType, argStruct);
-		//	callbacks[sem.GetNewTypeID()] = cb;
-		//}
-		
 		public int CreateBasicCallback(ArgType returnType, ArgType [] args, MS.MCallbackAction _func)
 		{
 			int cbTypeID = NewCallbackID();

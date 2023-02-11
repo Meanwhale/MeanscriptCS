@@ -1,10 +1,9 @@
 namespace Meanscript
 {
+	using Core;
 
 	public abstract class MSInputStream
 	{
-
-
 		public MSInputStream()
 		{
 		}

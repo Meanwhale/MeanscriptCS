@@ -1,6 +1,5 @@
 namespace Meanscript
 {
-
 	public class MSConfig
 	{
 

@@ -1,5 +1,4 @@
-﻿
-namespace Meanscript
+﻿namespace Meanscript.Core
 {
 	public class Texts
 	{
@@ -29,6 +28,11 @@ namespace Meanscript
 		public void AddText(int id, string data)
 		{
 			texts[new MSText(data)] = id;
+		}
+
+		public void AddText(int id, MSText data)
+		{
+			texts[data] = id;
 		}
 
 		public MSText GetText(int id)

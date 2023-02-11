@@ -1,4 +1,4 @@
-namespace Meanscript
+namespace Meanscript.Core
 {
 	public enum NodeType
 	{
@@ -83,11 +83,6 @@ namespace Meanscript
 		public const int OP_GENERIC_TYPE = 0x1f000000;
 		
 		public const int OP_SET_DYNAMIC_OBJECT = 0x20000000;
-		
-		//public const int OP_POP_STACK_TO_LOCAL_REF = 0x21000000;
-		//public const int OP_POP_STACK_TO_GLOBAL_REF = 0x22000000;
-		//public const int OP_PUSH_LOCAL_REF = 0x23000000;
-		//public const int OP_PUSH_GLOBAL_REF = 0x24000000;
 		public const int OP_PUSH_CHARS = 0x25000000;
 
 		public const int OP_MAX = 0x30000000;
@@ -143,11 +138,6 @@ namespace Meanscript
 		public const int GLOBALS_TYPE_ID = 65;
 		public const int FIRST_CUSTOM_TYPE_ID = 66;
 		public const int MAX_TYPES = 1024;
-
-
-
-
-		public const string HORIZONTAL_LINE = "------------------------------------------";
 
 		public const uint OPERATION_MASK = 0xff000000;
 		public const uint SIZE_MASK = 0x00ff0000; // NOTE: erikoistapauksissa voisi käyttää 0x00FFFFFF
@@ -353,7 +343,7 @@ namespace Meanscript
 
 		public static int AddTextInstruction(MSText text, int instructionCode, IntArray code, int top, int textID)
 		{
-			//MS.verbose("Add text: " + size32 + " x 4 bytes, " + numChars + " characters");
+			//MS.verbose("add text: " + size32 + " x 4 bytes, " + numChars + " characters");
 			int instruction = MakeInstruction(instructionCode, text.DataSize(), textID);
 			code[top++] = instruction;
 			return text.Write(code, top);

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Meanscript
+﻿namespace Meanscript.Core
 {
 	public class DData
 	{
@@ -141,17 +139,17 @@ namespace Meanscript
 			MS.Assertion(datatype < 0 || type == datatype);
 			if (array[index] == null)
 			{
-				MS.Verbose("Heap free: was empty");
+				MS.Verbose("heap free: was empty");
 			}
 			MS.Assertion(array[index].tag == tag);
 			array[index] = null;
-			MS.Verbose("Heap free @ " + index);
+			MS.Verbose("heap free @ " + index);
 		}
 		internal void FreeContext(DData context)
 		{
 			int index = context.HeapID();
 			array[index] = null;
-			MS.Verbose("Heap free context @ " + index);
+			MS.Verbose("heap free context @ " + index);
 		}
 		internal IntArray GetDataArray(int heapID)
 		{
@@ -210,11 +208,11 @@ namespace Meanscript
 
 		internal void Print()
 		{
-			MS.printOut.Print("HEAP!!! capacity: ").Print(capacity).EndLine();
+			MS.printOut.Print("HEAP. capacity: ").Print(capacity).Print(", objects:").EndLine();
 			for(int i=0; i<capacity; i++)
 			{
 				if (array[i] == null) continue;
-				MS.printOut.Print(i).Print(": ");
+				MS.printOut.Print("[").Print(i).Print("] ");
 				array[i].Print(MS.printOut);
 				MS.printOut.EndLine();
 			}

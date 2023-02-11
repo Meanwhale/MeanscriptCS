@@ -1,4 +1,4 @@
-﻿namespace Meanscript
+﻿namespace Meanscript.Core
 {
 	public abstract class GenericType : DataTypeDef
 	{
@@ -245,7 +245,7 @@
 
 		private void Accessor(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose("GenericArrayType.Accessor");
+			MS.Verbose("called GenericArrayType.Accessor");
 			// read args from stack and push item address
 			int arrayAddress = mm.stack[mm.stackTop - 2];
 			int index = mm.stack[mm.stackTop - 1];

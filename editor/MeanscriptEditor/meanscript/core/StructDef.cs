@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Meanscript
+namespace Meanscript.Core
 {
 	public class StructDef
 	{
@@ -42,7 +38,7 @@ namespace Meanscript
 		internal void PrintArgTypes(MSOutputPrint printOut)
 		{
 			foreach(var m in members)
-				printOut.Print("<").Print(m.Ref.ToString()).Print(":").Print(m.Type.ToString()).Print(">");
+				printOut.Print("[").Print(m.Ref.ToString()).Print(" ").Print(m.Type.ToString()).Print("]");
 			printOut.EndLine();
 		}
 		public override string ToString()
@@ -142,6 +138,7 @@ namespace Meanscript
 		}
 		public Member GetMemberByIndex(int i)
 		{
+			MS.Assertion(i >= 0 && i < NumMembers(), MC.EC_DATA, "index out of bounds: " + i);
 			foreach(var m in members)
 				if (i == m.Index) return m;
 			return null;
@@ -159,14 +156,11 @@ namespace Meanscript
 		
 		internal void Info(MSOutputPrint o)
 		{
-			o.PrintLine(MC.HORIZONTAL_LINE);
-			o.PrintLine("STRUCT CODE: " + types.texts.GetText(nameID));
-			o.PrintLine(MC.HORIZONTAL_LINE);
+			o.PrintLine(MS.Title("STRUCT CODE: " + types.texts.GetText(nameID)));
 			foreach(var m in members)
 			{
 				o.PrintLine("    " + m.Ref.ToString() + " : " + m.Type.TypeNameString() + " " + types.texts.GetText(m.NameID));
 			}
-			o.PrintLine(MC.HORIZONTAL_LINE);
 		}
 
 		internal void Encode(ByteCode bc, int typeID)

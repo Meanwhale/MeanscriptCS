@@ -2,6 +2,8 @@
 
 namespace Meanscript
 {
+	using Core;
+
 	public class MException : System.Exception
 	{
 		public readonly MSError error;
@@ -62,7 +64,12 @@ namespace Meanscript
 				return x.GetHashCode();
 			}
 		}
-
+		public static string Title(string s)
+		{
+			return "-------------------------------------------\n     "
+			     + s
+				 + "\n-------------------------------------------";
+		}
 		public static void Print(string s)
 		{
 			printOut.Print(s).EndLine();

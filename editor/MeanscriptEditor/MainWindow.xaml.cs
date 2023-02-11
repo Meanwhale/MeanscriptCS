@@ -1,4 +1,5 @@
 ﻿using Meanscript;
+using Meanscript.Core;
 using System;
 using System.IO;
 using System.Text;
@@ -62,6 +63,11 @@ namespace MeanscriptEditor
 		{
 			sw.ScrollToBottom();
 		}
+		public void Clear()
+		{
+			sb.Clear();
+			tb.Text = "";
+		}
 	}
 
 	public partial class MainWindow : Window
@@ -79,6 +85,7 @@ namespace MeanscriptEditor
 		
 			KeyDown += new KeyEventHandler(MainWindow_KeyDown);
 
+			
 			
 			
 			//TextBoxCode.Text = "bool a: true";
@@ -110,10 +117,9 @@ namespace MeanscriptEditor
 
 		void MainWindow_KeyDown(object sender, KeyEventArgs e)
 		{
-			Status("Key press: " + e.Key);
 			if (e.Key == Key.F5)
 			{
-				Command_Parse();
+				ComplileAndRun();
 			}
 			if (e.Key == Key.F8)
 			{
@@ -125,9 +131,14 @@ namespace MeanscriptEditor
 				RunUnitTests();
 			}
 		}
-
+		
+		public void Command_RunUnitTests(object sender, RoutedEventArgs e)
+		{
+			RunUnitTests();//Implementation of run
+		}
 		private void RunUnitTests()
 		{
+			winOutput.Clear();
 			//try
 			{
 				MeanscriptUnitTest.RunAll();
@@ -141,32 +152,17 @@ namespace MeanscriptEditor
 			//	TextBoxOutput.Text = e.ToString();
 			//}
 		}
-		private void Command_Parse()
+		public void Command_ComplileAndRun(object sender, RoutedEventArgs e)
 		{
-			// parse TextBoxCode.Text
+			ComplileAndRun();//Implementation of run
+		}
+		private void ComplileAndRun()
+		{
+			winOutput.Clear();
 			MeanMachine mm = null;
 			try
 			{
-				//TokenTree tree = Parser.Parse(TextBoxCode.Text);
-				//Semantics semantics = new Semantics(tree);
-				//Common com = new Common();
-				//com.Initialize(semantics);
-
-				//semantics.Analyze(com); // tarviiko enää treetä antaa tässä?
-				//semantics.Info(winOutput);
-				
-				//ByteCode bc = Generator.Generate(tree, semantics, com);
-				
-				//mm = new MeanMachine(bc);
-				//mm.CallFunction(0);
-				
 				MSCode code = new MSCode(TextBoxCode.Text);
-				
-				//winOutput.Print("\na = " + code.global.GetInt("a"));
-				//winOutput.Print("\na = " + code.global.GetInt("a"));
-				//var v2 = code.global.GetStruct("vec2", "v");
-				//winOutput.Print("\nv.x = " + v2.GetInt("x"));
-
 			}
 			catch (MException e)
 			{
@@ -182,12 +178,22 @@ namespace MeanscriptEditor
 			//	winOutput.Print("\n" + e.ToString());
 			//}
 		}
+		private void Verbose_Checked(object sender, RoutedEventArgs e)
+		{
+			Meanscript.MS._verboseOn = true;
+			Status("Verbose: ON");
+		}
 
+		private void Verbose_Unchecked(object sender, RoutedEventArgs e)
+		{
+			Meanscript.MS._verboseOn = false;
+			Status("Verbose: OFF");
+		}
 		public void Status(string s)
 		{
 			TextBoxStatus.Text = s;
 		}
-		public void menu_Open(object sender, RoutedEventArgs e)
+		public void Command_Open(object sender, RoutedEventArgs e)
 		{
 			Command_Open();
 		}
@@ -210,16 +216,9 @@ namespace MeanscriptEditor
 				OpenFile(dialog.FileName);
 			}
 		}
-		public void Command_CompileAndRun()
-		{
-		}
 		public void OpenCommandExecuted(object sender, ExecutedRoutedEventArgs e)
 		{
 			Command_Open();//Implementation of open file
-		}
-		public void CompileAndRunExecuted(object sender, ExecutedRoutedEventArgs e)
-		{
-			Command_CompileAndRun();//Implementation of run
 		}
 		public async void OpenFile(string filename)
 		{
@@ -236,5 +235,6 @@ namespace MeanscriptEditor
 				Status("File not found: " + filename);
 			}
 		}
+		
 	}
 }

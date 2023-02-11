@@ -42,12 +42,17 @@
         <DockPanel Grid.ColumnSpan="3" Grid.Row="0">
 
             <Menu DockPanel.Dock="Top">
-                <MenuItem Header="_File">
-                    <MenuItem Header="_New" />
-                    <MenuItem Header="_Open" Click="menu_Open" InputGestureText="Ctrl+O" />
-                    <MenuItem Header="_Save" />
+                <MenuItem Header="_menu">
+                    <!-- <MenuItem Header="_New" /> -->
+                    <MenuItem Header="_open" Click="Command_Open" InputGestureText="Ctrl+O" />
+                    <MenuItem Header="_run" Click="Command_ComplileAndRun" InputGestureText="F5" />
+                    <MenuItem Header="_run tests" Click="Command_RunUnitTests" InputGestureText="F9" />
+                    <MenuItem Header="_toggle verbose" IsCheckable="True" IsChecked="true" 
+                          Checked="Verbose_Checked"
+                          Unchecked="Verbose_Unchecked"/>
+                    <!-- <MenuItem Header="_Save" /> -->
                     <Separator />
-                    <MenuItem Header="_Exit" />
+                    <!-- <MenuItem Header="_Exit" /> -->
                 </MenuItem>
             </Menu>
             <TextBox AcceptsReturn="True" />

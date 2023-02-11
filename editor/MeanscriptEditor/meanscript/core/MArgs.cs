@@ -1,19 +1,15 @@
-namespace Meanscript
+namespace Meanscript.Core
 {
 
 	public class MArgs
 	{
-		internal ByteCode byteCode;
-		internal StructDef structDef;
-		internal int baseIndex; // stack base where struct data start from
-		internal bool valid; // become invalid when stack changes
+		internal readonly int baseIndex; // stack base where struct data start from
+		internal readonly CallbackType cb;
 
-		public MArgs(ByteCode _byteCode, StructDef _structDef, int _base)
+		public MArgs(CallbackType _cb, int _base)
 		{
-			byteCode = _byteCode;
-			structDef = _structDef;
+			cb = _cb;
 			baseIndex = _base;
-			valid = true;
 		}
 	}
 }

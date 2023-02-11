@@ -1,6 +1,4 @@
-using System;
-
-namespace Meanscript
+namespace Meanscript.Core
 {
 
 	public class MeanMachine
@@ -143,7 +141,7 @@ namespace Meanscript
 		public void InitFunctionCall(int id)
 		{
 			MS.Assertion(initialized, MC.EC_CODE, "Code not initialized.");
-			MS.Verbose("Initialize a user's function call");
+			MS.Verbose("initialize a user's function call");
 			ByteCode bc = byteCode;
 			int tagAddress = functions[id];
 			MS.Assertion(tagAddress != 0, MC.EC_CODE, "no function with ID " + id);
@@ -172,9 +170,7 @@ namespace Meanscript
 
 			if (MS._verboseOn)
 			{
-				MS.Print(MC.HORIZONTAL_LINE);
-				MS.Print("START INITIALIZING");
-				MS.Print(MC.HORIZONTAL_LINE);
+				MS.Print(MS.Title("START INITIALIZING"));
 				MC.PrintBytecode(byteCode.code, byteCode.codeTop, -1, true);
 			}
 
@@ -182,9 +178,7 @@ namespace Meanscript
 			{
 				InitStep();
 			}
-			MS.Verbose(MC.HORIZONTAL_LINE);
-			MS.Verbose("INITIALIZING FINISHED");
-			MS.Verbose(MC.HORIZONTAL_LINE);
+			MS.Verbose(MS.Title("INITIALIZING FINISHED"));
 			
 			foreach(var t in codeTypes.types.Values)
 			{
@@ -231,17 +225,12 @@ namespace Meanscript
 				int id = bc.code[instructionPointer + 1];
 				functions[id] = instructionPointer; // save address to this tag 
 			}
-			//else if (op == MC.OP_CHARS_DEF)
-			//{
-			//	currentStructID = (int)(instruction & VALUE_TYPE_MASK);
-			//	types[currentStructID] = instructionPointer;
-			//}
 			else if (op == MC.OP_STRUCT_DEF)
 			{
 				// add a struct and set it current for coming members (next op.)
 				int structID = (int)(instruction & MC.VALUE_TYPE_MASK);
 				int nameID = bc.code[instructionPointer + 1];
-				MS.Verbose("new struct def: " + GetText(nameID));
+				MS.Verbose("new struct def., id: " + structID + " " + GetText(nameID));
 				var sd = new StructDef(codeTypes, nameID);
 				currentStructDef = new StructDefType(structID, codeTypes.texts.GetText(nameID), sd);
 				codeTypes.AddTypeDef(currentStructDef);
@@ -259,12 +248,12 @@ namespace Meanscript
 				int index    = bc.code[instructionPointer + 6];
 				
 				MS.Verbose("new struct member. struct: " + structID +
-					"\nname:  " + (nameID < 1 ? nameID.ToString() : GetText(nameID)) +
-					"\ntype:  " + typeID +
-					"\nref:   " + refID +
-					"\naddr:  " + address +
-					"\nsize:  " + datasize + 
-					"\nindex: " + index);
+					"\n    name:  " + (nameID < 1 ? nameID.ToString() : GetText(nameID)) +
+					"\n    type:  " + typeID +
+					"\n    ref:   " + refID +
+					"\n    addr:  " + address +
+					"\n    size:  " + datasize + 
+					"\n    index: " + index);
 
 				var td = codeTypes.GetType(typeID);
 				MS.Assertion(td != null, MC.EC_CODE, "type not found by ID " + typeID);
@@ -272,14 +261,13 @@ namespace Meanscript
 			}
 			else if (op == MC.OP_GENERIC_TYPE)
 			{
-				MS.Verbose("new generic type");
 				int genCodeID = (int)(instruction & MC.VALUE_TYPE_MASK);
 				int numArgs = MC.InstrSize(instruction);
-				MS.Verbose("code: " + genCodeID + " args: " + numArgs);
+				
 				var fac = GenericFactory.Get(genCodeID);
 				var args = new int[numArgs];
 
-				MS.Verbose("    args:");
+				MS.Verbose("new generic type, code: " + genCodeID + ", args (" + numArgs + "):");
 				for (int i=0; i<numArgs; i++)
 				{
 					args[i] = bc.code[instructionPointer + i + 1];
@@ -332,7 +320,7 @@ namespace Meanscript
 			if (bc.nodes.ContainsKey(instructionPointer))
 			{
 				var node = bc.nodes[instructionPointer];
-				MS.Verbose("\n %%%%%%%%%%%%%%%% line " + node.lineNumber + " ch. " + node.characterNumber + "\n");
+				MS.Verbose(MS.Title("script line " + node.lineNumber + " ch. " + node.characterNumber));
 			}
 
 			int instruction = bc.code[instructionPointer];
@@ -359,10 +347,6 @@ namespace Meanscript
 			{
 				int size = PopStack();
 				int address = PopStack();
-
-				// int address = bc.code[instructionPointer + 1];
-				// int size = bc.code[instructionPointer + 2];
-				// PushData(stack, address, size);
 				PushData(Heap.GetDataArray(MC.AddressHeapID(address)), MC.AddressOffset(address), size);
 			}
 			else if (op == MC.OP_ADD_STACK_TOP_ADDRESS_OFFSET)
@@ -442,12 +426,12 @@ namespace Meanscript
 				MS.Assertion(cb != null, MC.EC_INTERNAL, "invalid callback");
 				//int argsSize = cb.argStruct.StructSize();
 
-				MArgs args = new MArgs(bc, cb.argStruct, stackTop - cb.argsSize);
+				MArgs args = new MArgs(cb, stackTop - cb.argsSize);
 
 				MS.Verbose("callback: " + callbackIndex + " argsSize: " + cb.argsSize);
 				PrintStack();
 				cb.func(this, args);
-				MS.Verbose("Clear stack after call");
+				MS.Verbose("clear stack after call");
 				// clear stack after callback is done
 				stackTop -= cb.argsSize;
 				PrintStack();
@@ -463,9 +447,6 @@ namespace Meanscript
 				// args are already in stack. make room for locals
 				int functionContextStructSize = bc.code[tagAddress + 3];
 				int argsSize = bc.code[tagAddress + 4];
-				//int delta = functionContextStructSize - argsSize;
-				//for (int i = 0; i < delta; i++) stack[stackTop + i] = -1;
-				//stackTop += delta;
 
 				// luo data function contextille (heap object) ja tall. vanha pinoon
 
@@ -475,7 +456,7 @@ namespace Meanscript
 				// poppaa argsit heap objectiin. object datan alkupää on varattu function argumenteille.
 				PopStackToTarget(currentContextData.data, argsSize, 0);
 
-				MS.Verbose("-------- function call! ID " + functionID + ", jump to " + instructionPointer + ", function context heap ID " + currentContextData.HeapID());
+				MS.Verbose(MS.Title("function call! ID " + functionID + ", jump to " + instructionPointer + ", function context heap ID " + currentContextData.HeapID()));
 				jumped = true;
 
 			}
@@ -510,7 +491,7 @@ namespace Meanscript
 				instructionPointer = PopEndIP();
 				instruction = bc.code[instructionPointer];
 				instructionPointer += 1 + MC.InstrSize(instruction);
-				MS.Verbose("Go to end of function, instructionPointer: " + instructionPointer);
+				MS.Verbose("go to end of function, instructionPointer: " + instructionPointer);
 				jumped = true;
 			}
 			else if (op == MC.OP_POP_STACK_TO_REG)
@@ -580,29 +561,31 @@ namespace Meanscript
 
 		public void Push(int data)
 		{
-			MS.Verbosen("push stack: " + data + "    ");
+			MS.Verbosen("push stack: " + data + ". ");
 			stack[stackTop++] = data;
 			PrintStack();
 		}
 
 		public void PrintStack()
 		{
-			MS.Printn("STACK:\n    ");
+			MS.Verbosen("STACK:\n    ");
 			if (MS._verboseOn)
 			{
-				MS.Printn("<base>");
+				if (stackTop == 0)
+				{
+					MS.Verbose("//empty");
+					return;
+				}
 				for(int i=0; i<stackTop; i++)
 					MS.printOut.Print("/").PrintHex(stack[i]);
-				MS.Printn("/<top>");
+				MS.Verbosen("//top");
 			}
-			MS.Print("");
+			MS.Verbose("");
 		}
 
 		public void CallbackReturn(int type, int value)
 		{
-			MS.Verbose(MC.HORIZONTAL_LINE);
-			MS.Verbose("        return " + value);
-			MS.Verbose(MC.HORIZONTAL_LINE);
+			MS.Verbose(MS.Title("return " + value));
 			// return value from a callback
 			// parameter for some other function or call
 			SaveReg(type, value);
@@ -641,7 +624,7 @@ namespace Meanscript
 
 		public void PrintCurrentContext()
 		{
-			MS.Print("CurrentContext: ");
+			MS.Print("currentContext: ");
 			if (globalsSize == 0)
 			{
 				MS.Print("    <none>");
@@ -658,23 +641,19 @@ namespace Meanscript
 
 		public void PrintDetails()
 		{
-			MS.Print("DETAILS");
-			MS.Print(MC.HORIZONTAL_LINE);
+			MS.Print(MS.Title("DETAILS"));
 			MS.Print("globals size: " + globalsSize);
 			MS.Print("stack top:    " + stackTop);
 			MS.Print("instruction pointer: " + instructionPointer);
 
 			MS.Print("\nSTACK");
-			MS.Print(MC.HORIZONTAL_LINE);
 			MC.PrintBytecode(stack, stackTop, -1, false);
 		}
 
 		public void PrintCode()
 		{
-			MS.Print("BYTECODE CONTENTS");
-			MS.Print(MC.HORIZONTAL_LINE);
+			MS.Print(MS.Title("BYTECODE CONTENTS"));
 			MS.Print("index     code/data (32 bits)");
-			MS.Print(MC.HORIZONTAL_LINE);
 			MC.PrintBytecode(byteCode.code, byteCode.codeTop, instructionPointer, true);
 		}
 	}
