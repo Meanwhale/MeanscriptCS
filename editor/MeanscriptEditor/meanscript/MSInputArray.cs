@@ -1,3 +1,4 @@
+
 namespace Meanscript
 {
 	public class MSInputArray : MSInputStream
@@ -10,11 +11,17 @@ namespace Meanscript
 		{
 			// copy array
 			size = output.index;
-			{ buffer = new byte[size]; };
+			buffer = new byte[size];
 			for (int i = 0; i < size; i++) buffer[i] = output.buffer[i];
 			index = 0;
 		}
-
+		public MSInputArray(IntArray src, int numInts)
+		{
+			// make the scr array to input stream to read
+			buffer = MS.GetIntsToBytesBE(src, 0, numInts * 4);
+			size = buffer.Length;
+			index = 0;
+		}
 		public MSInputArray(string s)
 		{
 			buffer = System.Text.Encoding.UTF8.GetBytes(s);

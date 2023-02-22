@@ -4,9 +4,13 @@ namespace Meanscript
 {
 	public class IntArray
 	{
-		private readonly int [] data;
+		private readonly int[] data;
 		public IntArray()
 		{
+		}
+		public IntArray(int [] _data)
+		{
+			data = _data;
 		}
 		public IntArray(int size)
 		{
@@ -23,13 +27,14 @@ namespace Meanscript
 			set => data[key] = value;
 		}
 		public int Length { get { return data.Length; } }
+		public int[] Data() { return data; }
 		public static bool Match(IntArray a, int aIndex, IntArray b, int bIndex, int length)
 		{
 			// check bounds
 			if (length <= 0 || a == null || b == null) return false;
 			if (aIndex + length > a.Length) return false;
 			if (bIndex + length > b.Length) return false;
-			for (int i=0; i< length; i++)
+			for (int i = 0; i < length; i++)
 			{
 				if (a[aIndex + i] != b[bIndex + i]) return false;
 			}
@@ -37,16 +42,84 @@ namespace Meanscript
 		}
 		public static void Copy(IntArray src, int srcIndex, IntArray trg, int trgIndex, int length)
 		{
-			System.Array.Copy(src.data, srcIndex, trg.data, trgIndex, length);
+			System.Array.Copy(src.Data(), srcIndex, trg.Data(), trgIndex, length);
+		}
+		public static void Copy(int [] src, int srcIndex, int [] trg, int trgIndex, int length)
+		{
+			System.Array.Copy(src, srcIndex, trg, trgIndex, length);
 		}
 		public static void Copy(IntArray src, IntArray trg, int length)
 		{
-			System.Array.Copy(src.data, trg.data, length);
+			System.Array.Copy(src.Data(), trg.Data(), length);
+		}
+		public static void Copy(int [] src, int [] trg, int length)
+		{
+			System.Array.Copy(src, trg, length);
 		}
 
 		internal void Print(MSOutputPrint o)
 		{
-			foreach(int i in data) o.Print("/").PrintHex(i);
+			foreach (int i in data) o.Print("/").PrintHex(i);
+		}
+	}
+	public class DynamicArray
+	{
+		private int[] data;
+		private int capacity;
+		private int count;
+
+		public DynamicArray(int _capacity = 256)
+		{
+			capacity = _capacity;
+			data = new int[capacity];
+			count = 0;
+		}
+
+		public void Add(int item)
+		{
+			if (count == capacity)
+			{
+				// expand the array by doubling its capacity
+				capacity *= 2;
+				int[] newData = new int[capacity];
+				System.Array.Copy(data, newData, count);
+				data = newData;
+			}
+
+			data[count] = item;
+			count++;
+		}
+
+		public int this[int index]
+		{
+			get
+			{
+				if (index < 0 || index >= count)
+				{
+					throw new System.IndexOutOfRangeException();
+				}
+
+				return data[index];
+			}
+			set
+			{
+				if (index < 0 || index >= count)
+				{
+					throw new System.IndexOutOfRangeException();
+				}
+
+				data[index] = value;
+			}
+		}
+
+		public int Count
+		{
+			get { return count; }
+		}
+
+		internal int[] Data()
+		{
+			return data;
 		}
 	}
 }

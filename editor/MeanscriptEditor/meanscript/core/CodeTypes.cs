@@ -93,7 +93,7 @@ namespace Meanscript.Core
 			return types.ContainsKey(id);
 		}
 
-		public TypeDef GetType(int id, NodeIterator it = null)
+		public TypeDef GetTypeDef(int id, NodeIterator it = null)
 		{
 			if (id < MC.MAX_BASIC_TYPES)
 			{
@@ -119,7 +119,7 @@ namespace Meanscript.Core
 		}		
 		public DataTypeDef GetDataType(int id, NodeIterator it = null)
 		{
-			var t = GetType(id,it);
+			var t = GetTypeDef(id,it);
 			if (t != null && t is DataTypeDef d) return d;
 			return null;
 		}
@@ -148,6 +148,58 @@ namespace Meanscript.Core
 				if (cb.argStruct != null && cb.argStruct.Match(args)) return cb;
 			}
 			return null;
+		}
+
+		public bool IsNameValidAndAvailable(MSText name, StructDef globals, StructDef currents)
+		{
+			// check it has valid characters
+			if (!Parser.IsValidName(name))
+			{
+				return false;
+			}
+
+			if (name.NumBytes() >= MS.globalConfig.maxNameLength)
+			{
+				MS.errorOut.Print("name is too long, max length: " + (MS.globalConfig.maxNameLength) + " name: " + name);
+				return false;
+			}
+			// return true if not reserved, otherwise print error message and return false
+
+			if (HasDataType(name))
+			{
+				MS.errorOut.Print("unexpected type name: " + name);
+				return false;
+			}
+
+			int nameID = texts.GetTextID(name);
+			if (nameID >= 0)
+			{
+				// name is saved: check if it's used in contexts
+
+				if (globals.HasMemberByNameID(nameID))
+				{
+					MS.errorOut.Print("duplicate variable name: " + name);
+					return false;
+				}
+				if (currents != globals)
+				{
+					if (currents.HasMemberByNameID(nameID))
+					{
+						MS.errorOut.Print("duplicate variable name: " + name);
+						return false;
+					}
+				}
+			}
+
+			foreach(var kw in MC.keywords)
+			{
+				if (name.Match(kw.text))
+				{
+					MS.errorOut.Print("unexpected keyword: " + name);
+					return false;
+				}
+			}
+			return true;
 		}
 	}
 }

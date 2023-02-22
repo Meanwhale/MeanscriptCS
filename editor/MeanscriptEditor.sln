@@ -5,7 +5,9 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MeanscriptEditor", "MeanscriptEditor\MeanscriptEditor.csproj", "{2EBE8F5D-E4FB-4677-B2F5-F7CE597B6B7C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{16C7460D-7C79-4ACD-9EC4-B647A5F6F0C2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IntArrayTest", "Test\IntArrayTest.csproj", "{16C7460D-7C79-4ACD-9EC4-B647A5F6F0C2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTreeTest", "BTreeTest\BTreeTest.csproj", "{E8CA5EAC-D10F-4E88-9B75-F7004B165C86}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{16C7460D-7C79-4ACD-9EC4-B647A5F6F0C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{16C7460D-7C79-4ACD-9EC4-B647A5F6F0C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{16C7460D-7C79-4ACD-9EC4-B647A5F6F0C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8CA5EAC-D10F-4E88-9B75-F7004B165C86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8CA5EAC-D10F-4E88-9B75-F7004B165C86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8CA5EAC-D10F-4E88-9B75-F7004B165C86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8CA5EAC-D10F-4E88-9B75-F7004B165C86}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

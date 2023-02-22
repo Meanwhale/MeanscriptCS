@@ -49,66 +49,15 @@ namespace Meanscript.Core
 			return null;
 		}
 		
-		public bool IsNameValidAndAvailable(string name)
-		{
-			MSText n = new MSText(name);
-			return IsNameValidAndAvailable(n);
-		}
 		public bool IsNameValidAndAvailable(MSText name)
 		{
-			// check it has valid characters
-			if (!Parser.IsValidName(name))
-			{
-				return false;
-			}
-
-			if (name.NumBytes() >= MS.globalConfig.maxNameLength)
-			{
-				MS.errorOut.Print("name is too long, max length: " + (MS.globalConfig.maxNameLength) + " name: " + name);
-				return false;
-			}
-			// return true if not reserved, otherwise print error message and return false
-
+			// TODO: REMOVE?! eikös funktion nimi ole jo typesissä?
 			if (FindContext(name) != null)
 			{
 				MS.errorOut.Print("unexpected function name: " + name);
 				return false;
 			}
-			if (HasDataType(name))
-			{
-				MS.errorOut.Print("unexpected type name: " + name);
-				return false;
-			}
-
-			int nameID = texts.GetTextID(name);
-			if (nameID >= 0)
-			{
-				// name is saved: check if it's used in contexts
-
-				if (globalContext.variables.HasMemberByNameID(nameID))
-				{
-					MS.errorOut.Print("duplicate variable name: " + name);
-					return false;
-				}
-				if (currentContext != globalContext)
-				{
-					if (currentContext.variables.HasMemberByNameID(nameID))
-					{
-						MS.errorOut.Print("duplicate variable name: " + name);
-						return false;
-					}
-				}
-			}
-
-			foreach(var kw in MC.keywords)
-			{
-				if (name.Match(kw.text))
-				{
-					MS.errorOut.Print("unexpected keyword: " + name);
-					return false;
-				}
-			}
-			return true;
+			return IsNameValidAndAvailable(name, globalContext.variables, currentContext.variables);
 		}
 		public void Analyze()
 		{
@@ -436,11 +385,11 @@ namespace Meanscript.Core
 			while (it.ToNextOrFalse());
 		}
 
-		public void WriteTypes(ByteCode bc)
+		public static void WriteTypesAndGlobals(ByteCode bc, CodeTypes codeTypes, StructDef globals)
 		{
 			// encode globals and StructDefs
 			
-			foreach(var tv in types)
+			foreach(var tv in codeTypes.types)
 			{
 				if (tv.Value is ObjectType ot)
 				{
@@ -462,26 +411,7 @@ namespace Meanscript.Core
 					factory.Encode(bc, ct);
 				}
 			}
-			globalContext.variables.Encode(bc, MC.GLOBALS_TYPE_ID);
-			
-
-			// write globals
-			//StructDef sd = contexts[0].variables;
-			//for (int a = 0; a < sd.codeTop; a++)
-			//{
-			//	bc.AddWord(sd.code[a]);
-			//}
-			//
-			//// write user struct definitions to code
-			//for (int i = MAX_MS_TYPES; i < MAX_TYPES; i++)
-			//{
-			//	if (typeStructDefs[i] == null) continue;
-			//	sd = typeStructDefs[i];
-			//	for (int a = 0; a < sd.codeTop; a++)
-			//	{
-			//		bc.AddWord(sd.code[a]);
-			//	}
-			//}
+			globals.Encode(bc, MC.GLOBALS_TYPE_ID);
 		}
 	}
 }

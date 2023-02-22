@@ -10,15 +10,15 @@ namespace Meanscript.Core
 		};
 
 		public const string simpleStructs = "struct vec [int x, int y]; struct person [vec pos, text name, int age];";
-		
+
 		public const string simpleVariableScript = "int a: 5;\nint64 short: -1;\nint64 long: 1234567891234;\ntext b: \"x\";\nchars [12] ch: \"asds\";\nfloat c:-123.456;\nfloat64 d: 12.123456789;\nbool b1 : true;\nbool b2 : false;\ntext utf: \"A\\xc3\\x84\"";
-		
-		
+
+
 		public const string complexStructs = "struct vec [int x, int y, chars[7] name]\nstruct person [chars[32] name, vec [4] corner, vec pos, float age]\nstruct group [text title, person [3] member]";
 		public const string quiteComplexStructs = "struct vec [int x, int y]\nstruct person [array[vec,4] corner, vec pos, float age]\nstruct group [text title, array[person,3] member]" +
-		                                          "\ngroup g\ng.member[1].corner[2].x: 345\nprint g.member[1].corner[2].x";
+												  "\ngroup g\ng.member[1].corner[2].x: 345\nprint g.member[1].corner[2].x";
 		public const string structAssign = "struct vec [int x, int y]\nstruct person [array[vec,4] corner, vec pos, float age]\nperson p: [(1,2),(1,2),(1,2),(1,2)],(1,100 + 11),12.34";
-		
+
 		private static void Assertion(bool b)
 		{
 			MS.Assertion(b, MC.EC_TEST, "");
@@ -37,14 +37,14 @@ namespace Meanscript.Core
 
 			byte[] bytes2;
 			bytes2 = new byte[10];
-			MC.IntsToBytes(ints, 1, bytes2, 0, 5);
+			MS.IntsToBytesLE(ints, 1, bytes2, 0, 5);
 			Assertion(bytes2[0] == 0x61);
 			Assertion(bytes2[2] == 0x63);
 			Assertion(bytes2[4] == 0x65);
 
 			byte[] cbytes = { 0x61, 0x62, 0x63, 0x64, 0x65, 0x00 };
 			var ints2 = new IntArray(3);
-			MC.BytesToInts(cbytes, 0, ints2, 0, 5);
+			MS.BytesToInts(cbytes, 0, ints2, 0, 5);
 			Assertion(ints2[0] == 0x64636261);
 			Assertion(ints2[1] == 0x00000065);
 
@@ -135,7 +135,7 @@ namespace Meanscript.Core
 			Assertion(txt.NumBytes() == 3);
 			Assertion(txt.ByteAt(0) == 0x41 && txt.ByteAt(1) == 0xc3 && txt.ByteAt(2) == 0x84);
 		}
-		
+
 		public static void SimpleVariable()
 		{
 			// long max: 9223372036854775807
@@ -145,7 +145,7 @@ namespace Meanscript.Core
 		}
 		private static void Chars()
 		{
-			
+
 			MSCode m = new MSCode("int a:5\nchars[12] c: \"Moi!\"\nint b:6");
 			Assertion(m.global.GetInt("a") == 5);
 			Assertion(m.global.GetChars("c").Equals("Moi!"));
@@ -155,7 +155,7 @@ namespace Meanscript.Core
 		public static void SimpleReference()
 		{
 			var code = "int a: 3\nint b : a\nobj[int] p: 5";
-			
+
 			MSCode m = new MSCode(code);
 			Assertion(m.global.GetRef("p").GetInt() == 5);
 		}
@@ -174,7 +174,7 @@ namespace Meanscript.Core
 			int dy = m.global.GetStruct("p").GetStruct("point").GetData("y").GetInt();
 			Assertion(dy == 3);
 		}
-		
+
 		public static void CrossReferenceStruct()
 		{
 			// structs that has references to themselves (by obj[x])
@@ -186,7 +186,7 @@ namespace Meanscript.Core
 			Assertion(m.global.GetInt("a") == 5);
 			Assertion(m.global.GetStruct("p").GetRef("workplace").GetStruct().GetInt("id") == 123);
 		}
-		
+
 
 		private static void SimpleFunction()
 		{
@@ -203,7 +203,52 @@ namespace Meanscript.Core
 			Assertion(m.global.GetInt("a") == 123);
 			Assertion(m.global.GetInt("b") == 456);
 		}
-		
+
+		private static void MsBuilder()
+		{
+			MSBuilder builder = new MSBuilder("test");
+
+			//int personTypeID = builder.createStructDef("person");
+			//builder.addMember(personTypeID, "age", MC.BASIC_TYPE_INT);
+			//builder.addMember(personTypeID, "name", MC.BASIC_TYPE_TEXT);
+
+			// struct
+			// TODO: make builder for other languages too
+
+			// simple global values
+			builder.globals.AddInt("aa", 123);
+			builder.globals.AddInt("bb", 456);
+			//builder.addText("key", "value");
+
+			//MSWriter pw = builder.createStruct("person", "boss");
+			//pw.setInt("age", 42);
+			//pw.setText("name", "Jaska");
+
+			//builder.addArray(personTypeID, "team", 3);
+			//MSWriter aw = builder.arrayItem("team", 1);
+			//aw.setInt("age", 67);
+
+			MSOutputArray output = new MSOutputArray();
+			builder.Generate(output);
+			
+			MSInputArray input = new MSInputArray(output);
+			var ms = new MSCode(input, MSCode.StreamType.BYTECODE);
+
+			ms.PrintData();
+
+			Assertion(ms.global.GetInt("aa") == 123);
+			Assertion(ms.global.GetInt("bb") == 456);
+			//Assertion(ms.getText("key").Equals("value"));
+
+			//MSData bossData = ms.getData("boss");
+			//MeanCS.print(bossData.getType());
+			//MS.Assertion(bossData.getInt("age") == 42, EC_TEST, "");
+			//MS.Assertion((ms.getData("boss").getText("name").Equals("Jaska")), EC_TEST, "");
+
+			//MSDataArray arr = ms.getArray("team");
+			//MS.Assertion(arr.getAt(1).getInt("age") == 67, EC_TEST, "");
+
+		}
 		/*
 		private static void StructAssignment()
 		{
@@ -289,9 +334,6 @@ namespace Meanscript.Core
 			Assertion(arr.GetAt(1).GetArray("pos").GetAt(1).GetInt("y") == 8);
 		}
 
-		private static void MsBuilder()
-		{
-		}
 
 		private static void InputOutputStream()
 		{
@@ -350,7 +392,7 @@ namespace Meanscript.Core
 
 			MSOutputArray output = new MSOutputArray();
 			m1.GenerateDataCode(output);
-			
+
 			var input = new MSInputArray(output);
 			MSCode m2 = new MSCode(input, MSCode.StreamType.BYTECODE);
 			// m.Run(); <- there's no function to run
@@ -373,28 +415,32 @@ namespace Meanscript.Core
 
 		public static void RunAll()
 		{
-			MS.Printn("TEST " + "NATIVE_TEST"); MS.NativeTest(); MS.Print(": OK");
-			MS.Printn("TEST " + "msText"); MsText(); MS.Print(": OK");
-			MS.Printn("TEST " + "utils"); Utils(); MS.Print(": OK");
-			MS.Printn("TEST " + "consistency"); Consistency(); MS.Print(": OK");
-			MS.Printn("TEST " + "simpleVariable"); SimpleVariable(); MS.Print(": OK");
-			MS.Printn("TEST " + "chars"); Chars(); MS.Print(": OK");
-			MS.Printn("TEST " + "simpleReference"); SimpleReference(); MS.Print(": OK");
-			MS.Printn("TEST " + "simpleStruct"); SimpleStruct(); MS.Print(": OK");
-			MS.Printn("TEST " + "crossReferenceStruct"); CrossReferenceStruct(); MS.Print(": OK");
-			MS.Printn("TEST " + "simpleArray"); SimpleArray(); MS.Print(": OK");
+			//MS.Printn("TEST " + "NATIVE_TEST"); MS.NativeTest(); MS.Print(": OK");
+			//MS.Printn("TEST " + "msText"); MsText(); MS.Print(": OK");
+			//MS.Printn("TEST " + "utils"); Utils(); MS.Print(": OK");
+			//MS.Printn("TEST " + "consistency"); Consistency(); MS.Print(": OK");
+			//MS.Printn("TEST " + "simpleVariable"); SimpleVariable(); MS.Print(": OK");
+			//MS.Printn("TEST " + "chars"); Chars(); MS.Print(": OK");
+			//MS.Printn("TEST " + "simpleReference"); SimpleReference(); MS.Print(": OK");
+			//MS.Printn("TEST " + "simpleStruct"); SimpleStruct(); MS.Print(": OK");
+			//MS.Printn("TEST " + "crossReferenceStruct"); CrossReferenceStruct(); MS.Print(": OK");
+			//MS.Printn("TEST " + "simpleArray"); SimpleArray(); MS.Print(": OK");
+			//MS.Printn("TEST " + "simpleFunction"); SimpleFunction(); MS.Print(": OK");
+			//MS.Printn("TEST " + "writeCodeState"); WriteCodeState(); MS.Print(": OK");
+
+			MS.Printn("TEST " + "MsBuilder"); MsBuilder(); MS.Print(": OK");
+
+			// MYÖHEMMIN:
+
 			//MS.Printn("TEST " + "structAssignment"); StructAssignment(); MS.Print(": OK"); ;
 			//MS.Printn("TEST " + "argumentList"); ArgumentList(); MS.Print(": OK"); ;
-			MS.Printn("TEST " + "simpleFunction"); SimpleFunction(); MS.Print(": OK"); ;
 			//MS.Printn("TEST " + "structFunction"); StructFunction(); MS.Print(": OK"); ;
 			//MS.Printn("TEST " + "msBuilder"); MsBuilder(); MS.Print(": OK"); ;
 			//// TODO: test arrays when refactoring for generics is done!
 			//MS.Printn("TEST " + "varArray"); VarArray(); MS.Print(": OK"); ;
 			////MS.printn("TEST " +  "structArray" ); structArray(); MS.print(": OK");;
 			//MS.Printn("TEST " + "inputOutputStream"); InputOutputStream(); MS.Print(": OK"); ;
-			MS.Printn("TEST " + "writeCodeState"); WriteCodeState(); MS.Print(": OK"); ;
 			////MS.printn("TEST " +  "scriptOutput" ); scriptOutput(); MS.print(": OK");;
-
 
 			// DISABLOITU MUKAVUUSSYISTÄ
 			//MS.Print("TEST ERROR " + "parseError"); if (ParseError()) MS.Print(": OK"); else throw new MException(MC.EC_INTERNAL, "ERROR TEST FAIL"); ;

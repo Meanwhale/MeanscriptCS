@@ -15,8 +15,8 @@ namespace MeanscriptEditor
 		private ScrollViewer sw;
 		StringBuilder sb = new StringBuilder();
 		
-		const int MAX_SIZE = 50000;
-		const int MIN_SIZE = 25000;
+		const int MAX_SIZE = 40000;
+		const int MIN_SIZE = 20000;
 
 		// TODO: test more (printtaa vähän kerrallaan ja testaa toimiiko oikein)
 

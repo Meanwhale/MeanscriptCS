@@ -107,21 +107,9 @@ namespace Meanscript
 			Assertion(b, MC.EC_SYNTAX, s);
 		}
 
-		public static void NativeTest()
+		/*public static byte[] IntsToBytesLE(IntArray ia, int iaOffset, int bytesLength)
 		{
-			// TODO: testaa unicode
 
-			string s = "Toimii!";
-			byte[] bytes = System.Text.Encoding.ASCII.GetBytes(s);
-			IntArray ia = BytesToInts(bytes);
-			byte[] ba = IntsToBytes(ia, 0, 7);
-			string ns = System.Text.Encoding.UTF8.GetString(ba);
-
-			printOut.Print("Toimii? " + s.Equals(ns));
-		}
-
-		public static byte[] IntsToBytes(IntArray ia, int iaOffset, int bytesLength)
-		{
 			byte[] bytes = new byte[bytesLength];
 
 			int shift = 0;
@@ -153,8 +141,97 @@ namespace Meanscript
 				else shift += 8;
 			}
 			return ints;
+		}*/
+		public static byte[] GetIntsToBytesLE(IntArray ia, int iaOffset, int bytesLength)
+		{
+			byte[] bytes = new byte[bytesLength];
+			IntsToBytesLE(ia, iaOffset, bytes, 0, bytesLength);
+			return bytes;
+		}
+		public static void IntsToBytesLE(IntArray ints, int intsOffset, byte[] bytes, int bytesOffset, int bytesLength)
+		{
+			// little endian, for strings
+
+			// For example 0x00ccbbaa
+			// --> byte[]
+			// [0]	0xaa	byte
+			// [1]	0xbb	byte
+			// [2]	0xcc	byte
+			
+			Assertion(bytesLength > 0);
+			Assertion(bytes.Length >= bytesOffset + bytesLength);
+			int intsLength = (bytesLength / 4) + 1;
+			int bytesLast = bytesOffset + bytesLength;
+
+			for (int i = intsOffset; i < intsOffset + intsLength; i++)
+			{
+				int data = ints[i];
+				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data       & 0x000000ff); else break; bytesOffset++;
+				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data >> 8  & 0x000000ff); else break; bytesOffset++;
+				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data >> 16 & 0x000000ff); else break; bytesOffset++;
+				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data >> 24 & 0x000000ff); else break; bytesOffset++;
+			}
 		}
 
+		public static byte[] GetIntsToBytesBE(IntArray ia, int iaOffset, int bytesLength)
+		{
+			byte[] bytes = new byte[bytesLength];
+			IntsToBytesBE(ia, iaOffset, bytes, 0, bytesLength);
+			return bytes;
+		}
+		public static void IntsToBytesBE(IntArray ints, int intsOffset, byte[] bytes, int bytesOffset, int bytesLength)
+		{
+			// big endian, for strings
+
+			// For example 0x00ccbbaa
+			// --> byte[]
+			// [0]	0x00	byte
+			// [1]	0xcc	byte
+			// [2]	0xbb	byte
+			// [2]	0xaa	byte
+			
+			Assertion(bytesLength > 0);
+			Assertion(bytes.Length >= bytesOffset + bytesLength);
+			int intsLength = (bytesLength / 4) + 1;
+			int bytesLast = bytesOffset + bytesLength;
+
+			for (int i = intsOffset; i < intsOffset + intsLength; i++)
+			{
+				int data = ints[i];
+				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data >> 24 & 0x000000ff); else break; bytesOffset++;
+				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data >> 16 & 0x000000ff); else break; bytesOffset++;
+				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data >> 8  & 0x000000ff); else break; bytesOffset++;
+				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data       & 0x000000ff); else break; bytesOffset++;
+			}
+		}
+
+		public static void BytesToInts(byte[] bytes, int bytesOffset, IntArray ints, int intsOffset, int bytesLength)
+		{
+			// TODO: tarvitaanko bytesOffset?
+
+			// order: 0x04030201
+
+			// bytes:	b[3] b[2] b[1] b[0] b[7] b[6] b[5] b[4]...
+			// ints:	_________i[0]______|_________i[1]______...
+
+			int shift = 0;
+			ints[intsOffset] = 0;
+			for (int i = 0; i < bytesLength;)
+			{
+				ints[(i / 4) + intsOffset] += (bytes[i] & 0x000000FF) << shift;
+
+				i++;
+				if (i % 4 == 0)
+				{
+					shift = 0;
+					if (i < bytesLength)
+					{
+						ints[(i / 4) + intsOffset] = 0;
+					}
+				}
+				else shift += 8;
+			}
+		}
 
 		public static int FloatToIntFormat(float f)
 		{

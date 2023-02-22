@@ -105,6 +105,7 @@
     <Compile Include="meanscript\core\TokenTree.cs" />
     <Compile Include="meanscript\core\TypeDef.cs" />
     <Compile Include="meanscript\core\CodeTypes.cs" />
+    <Compile Include="meanscript\MSBuilder.cs" />
     <Compile Include="meanscript\MSCode.cs" />
     <Compile Include="meanscript\MSData.cs" />
     <Compile Include="meanscript\MSConfig.cs" />
@@ -115,6 +116,8 @@
     <Compile Include="meanscript\MSOutputPrintArray.cs" />
     <Compile Include="meanscript\MSOutputStream.cs" />
     <Compile Include="meanscript\MSText.cs" />
+    <Compile Include="meanscript\MSStructBuilder.cs" />
+    <Compile Include="meanscript\MSWriter.cs" />
     <Compile Include="MList.cs" />
     <Compile Include="MS.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">

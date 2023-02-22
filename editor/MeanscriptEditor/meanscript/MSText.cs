@@ -34,7 +34,7 @@ namespace Meanscript
 		{
 			data = new IntArray((length / 4) + 2);
 			data[0] = length;
-			MC.BytesToInts(src, start, data, 1, length);
+			MS.BytesToInts(src, start, data, 1, length);
 		}
 
 		public MSText(MSText src)
@@ -102,7 +102,7 @@ namespace Meanscript
 		public string GetString()
 		{
 			Check();
-			return System.Text.Encoding.UTF8.GetString(MS.IntsToBytes(data, 1, data[0]));
+			return System.Text.Encoding.UTF8.GetString(MS.GetIntsToBytesLE(data, 1, data[0]));
 		}
 		
 		// 'object' overrides:
@@ -117,7 +117,7 @@ namespace Meanscript
 		{
 			if (obj == null) return false;
 			if (obj is MSText t) return Compare(t) == 0;
-			if (obj is string s) return System.Text.Encoding.UTF8.GetString(MS.IntsToBytes(data, 1, data[0])).Equals(s);
+			if (obj is string s) return System.Text.Encoding.UTF8.GetString(MS.GetIntsToBytesLE(data, 1, data[0])).Equals(s);
 			return false;
 		}
 		public override string ToString()
@@ -125,7 +125,7 @@ namespace Meanscript
 			try
 			{
 				Check();
-				return System.Text.Encoding.UTF8.GetString(MS.IntsToBytes(data, 1, data[0]));
+				return System.Text.Encoding.UTF8.GetString(MS.GetIntsToBytesLE(data, 1, data[0]));
 			}
 			catch (System.Exception)
 			{

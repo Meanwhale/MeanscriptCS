@@ -14,7 +14,6 @@ namespace Meanscript.Core
 		internal DData currentContextData;
 		//internal int stackBase;
 		internal int instructionPointer;
-		internal int globalsSize;
 		internal int numTexts;
 		internal int registerType;
 		private int dataInitEnd;
@@ -49,7 +48,6 @@ namespace Meanscript.Core
 			registerType = -1;
 			ipStackTop = 0;
 			dataInitEnd = -1;
-			globalsSize = -1;
 			instructionPointer = 0; // instruction pointer
 			initialized = false;
 			done = false;
@@ -88,7 +86,7 @@ namespace Meanscript.Core
 			if (id <= 0) return "";
 			int address = texts[id];
 			int numChars = byteCode.code[address + 1];
-			string s = System.Text.Encoding.UTF8.GetString(MS.IntsToBytes(byteCode.code, address + 2, numChars));
+			string s = System.Text.Encoding.UTF8.GetString(MS.GetIntsToBytesLE(byteCode.code, address + 2, numChars));
 			return s;
 		}
 
@@ -204,11 +202,8 @@ namespace Meanscript.Core
 			{
 				MS.Assertion(op == MC.OP_START_INIT, MC.EC_CODE, "bytecode starting tag missing");
 				numTexts = bc.code[instructionPointer + 1];
-				globalsSize = bc.code[instructionPointer + 2];
 				MS.Verbose("start init! " + numTexts + " texts");
 				texts = new IntArray(numTexts + 1);
-				
-				currentContextData = Heap.AllocGlobal(globalsSize);
 			}
 			else if (op == MC.OP_ADD_TEXT)
 			{
@@ -255,7 +250,7 @@ namespace Meanscript.Core
 					"\n    size:  " + datasize + 
 					"\n    index: " + index);
 
-				var td = codeTypes.GetType(typeID);
+				var td = codeTypes.GetTypeDef(typeID);
 				MS.Assertion(td != null, MC.EC_CODE, "type not found by ID " + typeID);
 				currentStructDef.SD.AddMember(nameID, td, refID, address, datasize, index);
 			}
@@ -289,7 +284,7 @@ namespace Meanscript.Core
 					heapID == 1 ? DData.Role.GLOBAL : DData.Role.OBJECT,
 					heapID,
 					typeID,
-					bc.code,
+					bc.code.Data(),
 					instructionPointer + 2, // data starts after the op. and heap ID
 					dataSize);
 			}
@@ -297,6 +292,14 @@ namespace Meanscript.Core
 			{
 				MS.Verbose("DATA INIT DONE!");
 				dataInitEnd = instructionPointer;
+
+				// create global data object if needed
+				if (!Heap.HasObject(1))
+				{
+					var gl = codeTypes.GetTypeDef(MC.GLOBALS_TYPE_ID);
+					Heap.AllocGlobal(gl.SizeOf());
+				}
+				currentContextData = Heap.GetDDataByIndex(1);
 			}
 			else if (op == MC.OP_END_INIT)
 			{
@@ -599,50 +602,50 @@ namespace Meanscript.Core
 
 		public void GenerateDataCode(MSOutputStream output)
 		{
-			// TODO: write structs, texts, and types
+			// TODO: _encode_ structs, texts, and types,
+			// not copy because bytecode won't be saved in the future.
+			// code will be executed from stream.
+			// then it will be similar to MSBuilder
+
 			MS.Assertion(dataInitEnd > 0);
 			output.Write(byteCode.code, 0, dataInitEnd);
 
-			// write heap data
-			for(int i=0; i < Heap.capacity; i++)
-			{
-				if (Heap.array[i] != null)
-				{
-					// [ OP > HeapID > ... data ... ] size = data size + 1 (heapID)
-
-					MS.Assertion(Heap.array[i].HeapID() == i);
-					output.WriteInt(MC.MakeInstruction(MC.OP_WRITE_HEAP_OBJECT, Heap.array[i].data.Length + 1, Heap.array[i].DataTypeID()));
-					output.WriteInt(Heap.array[i].HeapID());
-					output.Write(Heap.array[i].data, 0, Heap.array[i].data.Length);
-				}
-			}
+			WriteHeap(output, Heap);
 
 			// TODO: write special type data, eg. 'map'
 			
 			output.WriteInt(MC.MakeInstruction(MC.OP_END_INIT, 0, 0));
 		}
 
+		internal static void WriteHeap(MSOutputStream output, MHeap heap)
+		{
+			// write heap data
+			for(int i=0; i < heap.capacity; i++)
+			{
+				if (heap.array[i] != null)
+				{
+					// [ OP > HeapID > ... data ... ] size = data size + 1 (heapID)
+
+					MS.Assertion(heap.array[i].HeapID() == i);
+					output.WriteInt(MC.MakeInstruction(MC.OP_WRITE_HEAP_OBJECT, heap.array[i].data.Length + 1, heap.array[i].DataTypeID()));
+					output.WriteInt(heap.array[i].HeapID());
+					output.Write(heap.array[i].data, 0, heap.array[i].data.Length);
+				}
+			}
+		}
+
 		public void PrintCurrentContext()
 		{
 			MS.Print("currentContext: ");
-			if (globalsSize == 0)
+			for (int i = 0; i < currentContextData.data.Length; i++)
 			{
-				MS.Print("    <none>");
-			}
-			else
-			{
-				for (int i = 0; i < globalsSize; i++)
-				{
-					MS.Print("    " + i + ":    " + currentContextData.data[i]);
-				}
-				MS.Print("");
+				MS.Print("    " + i + ":    " + currentContextData.data[i]);
 			}
 		}
 
 		public void PrintDetails()
 		{
 			MS.Print(MS.Title("DETAILS"));
-			MS.Print("globals size: " + globalsSize);
 			MS.Print("stack top:    " + stackTop);
 			MS.Print("instruction pointer: " + instructionPointer);
 

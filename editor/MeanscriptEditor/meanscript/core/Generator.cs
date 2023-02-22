@@ -30,8 +30,7 @@ namespace Meanscript.Core
 			currentContext = sem.contexts[0];
 
 			// start
-			bc.AddInstructionWithData(MC.OP_START_INIT, 2, 0, sem.texts.TextCount());
-			bc.AddWord(currentContext.variables.StructSize()); // globals size
+			bc.AddInstructionWithData(MC.OP_START_INIT, 1, 0, sem.texts.TextCount());
 
 			// add texts
 			foreach (var textEntry in sem.texts.texts)
@@ -39,7 +38,7 @@ namespace Meanscript.Core
 				bc.codeTop = MC.AddTextInstruction(textEntry.Key, MC.OP_ADD_TEXT, bc.code, bc.codeTop, textEntry.Value);
 			}
 
-			sem.WriteTypes(bc);
+			Semantics.WriteTypesAndGlobals(bc, sem, sem.globalContext.variables);
 			
 			bc.AddInstruction(MC.OP_END_DATA_INIT, 0, 0);
 

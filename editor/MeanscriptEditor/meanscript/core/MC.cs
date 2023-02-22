@@ -298,49 +298,6 @@ namespace Meanscript.Core
 			//return false;
 		}
 
-		public static void IntsToBytes(IntArray ints, int intsOffset, byte[] bytes, int bytesOffset, int bytesLength)
-		{
-			// order: 0x04030201
-
-			int shift = 0;
-			for (int i = 0; i < bytesLength;)
-			{
-				bytes[i + bytesOffset] = (byte)((ints[intsOffset + (i / 4)] >> shift) & 0x000000FF);
-
-				i++;
-				if (i % 4 == 0) shift = 0;
-				else shift += 8;
-			}
-		}
-
-		public static void BytesToInts(byte[] bytes, int bytesOffset, IntArray ints, int intsOffset, int bytesLength)
-		{
-			// TODO: tarvitaanko bytesOffset?
-
-			// order: 0x04030201
-
-			// bytes:	b[3] b[2] b[1] b[0] b[7] b[6] b[5] b[4]...
-			// ints:	_________i[0]______|_________i[1]______...
-
-			int shift = 0;
-			ints[intsOffset] = 0;
-			for (int i = 0; i < bytesLength;)
-			{
-				ints[(i / 4) + intsOffset] += (bytes[i] & 0x000000FF) << shift;
-
-				i++;
-				if (i % 4 == 0)
-				{
-					shift = 0;
-					if (i < bytesLength)
-					{
-						ints[(i / 4) + intsOffset] = 0;
-					}
-				}
-				else shift += 8;
-			}
-		}
-
 		public static int AddTextInstruction(MSText text, int instructionCode, IntArray code, int top, int textID)
 		{
 			//MS.verbose("add text: " + size32 + " x 4 bytes, " + numChars + " characters");

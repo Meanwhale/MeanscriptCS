@@ -13,7 +13,7 @@ namespace Meanscript.Core
 		{
 			public readonly TypeDef Type;
 			public readonly Arg Ref;
-			public readonly int Address; // from 0
+			public readonly int Address; // from 0, increased by DataSize
 			public readonly int DataSize; // sizeof
 			public readonly int Index; // 0, 1, 2, ...
 			public readonly int NameID; // 0, 1, 2, ...
@@ -65,11 +65,11 @@ namespace Meanscript.Core
 			}
 			return true;
 		}
-		public void AddMember(int nameID, ArgType at)
+		public Member AddMember(int nameID, ArgType at)
 		{
-			AddMember(nameID, at.Def, at.Ref);
+			return AddMember(nameID, at.Def, at.Ref);
 		}
-		public void AddMember(int nameID, TypeDef type, Arg arg)
+		public Member AddMember(int nameID, TypeDef type, Arg arg)
 		{
 			MS.Assertion(nameID < 0 || GetMemberByNameID(nameID) == null);
 			int size;
@@ -86,21 +86,23 @@ namespace Meanscript.Core
 					size = 0;
 					break;
 			}
-			members.AddLast(new Member(
+			var member = new Member(
 				type,				// data type
 				arg,				// reference type
 				offset,				// address
 				size,				// "sizeof" the member
 				members.Size(),
-				nameID));			// index (0, 1, 2, ...)
+				nameID);
+			members.AddLast(member);			// index (0, 1, 2, ...)
 			offset += size;
+			return member;
 		}
-		internal void AddMember(int nameID, TypeDef typeDef, int refID, int address, int datasize, int index)
+		internal void AddMember(int nameID, TypeDef typeDef, int refTypeID, int address, int datasize, int index)
 		{
 			MS.Assertion(typeDef != null);
 			members.AddLast(new Member(
 				typeDef,			// data type
-				(Arg)refID,			// reference type
+				(Arg)refTypeID,			// reference type
 				address,			// address
 				datasize,			// "sizeof" the member
 				index,

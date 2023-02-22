@@ -1,7 +1,11 @@
-﻿namespace Meanscript.Core
+﻿using System;
+
+namespace Meanscript.Core
 {
 	public class DData
 	{
+		// Dynamically allocated Data
+
 		public enum Role
 		{
 			GLOBAL,
@@ -21,10 +25,10 @@
 			this.data = data;
 		}
 
-		public DData(Role role, int tag, IntArray src, int startIndex, int dataLength) :
+		public DData(Role role, int tag, int[] src, int startIndex, int dataLength) :
 			this(role, tag, new IntArray(dataLength))
 		{
-			IntArray.Copy(src, startIndex, data, 0, dataLength);
+			IntArray.Copy(src, startIndex, data.Data(), 0, dataLength);
 		}
 
 		public int HeapID()
@@ -104,7 +108,7 @@
 
 			return tag;
 		}
-		public int Write(DData.Role role, int heapID, int type, IntArray data, int startIndex, int dataLength)
+		public int Write(DData.Role role, int heapID, int type, int[] data, int startIndex, int dataLength)
 		{
 			// create a new object and return tag
 			
@@ -118,7 +122,7 @@
 			{
 				// when serializing, global data could have been created already. check it's size matches.
 				MS.Assertion(heapID == 1 && array[1].data.Length == dataLength);
-				IntArray.Copy(data, startIndex, array[1].data, 0, dataLength);
+				IntArray.Copy(data, startIndex, array[1].data.Data(), 0, dataLength);
 			}
 
 			if (MS._verboseOn)
@@ -153,11 +157,17 @@
 		}
 		internal IntArray GetDataArray(int heapID)
 		{
+			MS.Assertion(HasObject(heapID), MC.EC_CODE, "no heap object by ID: " + heapID);
 			return array[heapID].data;
+		}
+		internal DData GetDDataByIndex(int heapID)
+		{
+			MS.Assertion(HasObject(heapID), MC.EC_CODE, "no heap object by ID: " + heapID);
+			return array[heapID];
 		}
 		internal int GetAt(int heapID, int offset)
 		{
-			MS.Assertion(HasObject(heapID), MC.EC_CODE, "wrong heap ID: " + heapID);
+			MS.Assertion(HasObject(heapID), MC.EC_CODE, "no heap object by ID: " + heapID);
 			MS.Assertion(array[heapID].InRange(offset), MC.EC_CODE, "object data index out of bounds: " + offset);
 			return array[heapID].data[offset];
 		}		
@@ -217,5 +227,6 @@
 				MS.printOut.EndLine();
 			}
 		}
+
 	}
 }
