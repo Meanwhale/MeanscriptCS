@@ -12,14 +12,14 @@ namespace Meanscript
 		
 		private string packageName;
 		internal CodeTypes types; // types and texts
-		public MSStructBuilder globals;
+		public MSBuilderStructWriter globals;
 		private MHeap heap = new MHeap();
 
 		public MSBuilder(string _packageName)
 		{
 			packageName = _packageName;
 			types = new CodeTypes(new Texts());
-			globals = new MSStructBuilder(this, 0);
+			globals = new MSBuilderStructWriter(this, 0);
 		}
 
 		/*public void lockCheck()
@@ -124,33 +124,32 @@ namespace Meanscript
 			// write heap data: ks. GenerateDataCode. tee funktio.
 			// myöhemmin specialit kuten mapin tall.
 			
-			
 			// START_INIT and texts
-			output.WriteInt(MC.MakeInstruction(MC.OP_START_INIT, 1, 0));
+			output.WriteInt(MC.MakeInstruction(MC.OP_START_DEFINE, 1, 0));
 			output.WriteInt(types.texts.TextCount());
 
 			// add texts
+
 			foreach (var textEntry in types.texts.texts)
 			{
-				bc.codeTop = MC.AddTextInstruction(textEntry.Key, MC.OP_ADD_TEXT, bc.code, bc.codeTop, textEntry.Value);
+				MC.WriteTextInstruction(output, textEntry.Key, MC.OP_ADD_TEXT, textEntry.Value);
 			}
 
-			Semantics.WriteTypesAndGlobals(bc, types, globals.SD);
+			types.WriteTypes(output);
 			
 			// kirjoita globaalit heapiin ID:llä 1
 
-			MS.Assertion(globals.SD.StructSize() == globals.values.Count);
-			heap.AllocGlobal(globals.SD.StructSize());
-			heap.Write(DData.Role.GLOBAL, 1, MC.GLOBALS_TYPE_ID, globals.values.Data(), 0, globals.values.Count);
+			heap.Write(output);
 
 			// kirjoita koko heap kuten MM:ssa
 			
-			MeanMachine.WriteHeap(output, heap);
+			heap.WriteHeap(output);
+			
+			output.WriteOp(MC.OP_START_INIT, 0, 0);
 
-			bc.AddInstruction(MC.OP_END_DATA_INIT, 0, 0);
-			bc.AddInstruction(MC.OP_END_INIT, 0, 0);
+			// ...
 
-			return bc;
+			output.WriteOp(MC.OP_END_INIT, 0, 0);
 		}
 	}
 }

@@ -165,10 +165,10 @@ namespace Meanscript.Core
 			}
 		}
 
-		internal void Encode(ByteCode bc, int typeID)
+		internal void Encode(MSOutput output, int typeID)
 		{
 			MS.Verbose("ENCODE StructDef: " + typeID + " " + types.texts.GetText(nameID));
-			bc.AddInstructionWithData(MC.OP_STRUCT_DEF, 1, typeID, nameID);
+			output.WriteOpWithData(MC.OP_STRUCT_DEF, 1, typeID, nameID);
 
 			// encode members
 
@@ -183,12 +183,12 @@ namespace Meanscript.Core
 				public readonly int NameID; // 0, 1, 2, ...
 				*/
 
-				bc.AddInstructionWithData(MC.OP_STRUCT_MEMBER, 6, typeID, m.NameID); // struct type and member name
-				bc.AddWord(m.Type.ID);
-				bc.AddWord((int)m.Ref);
-				bc.AddWord(m.Address);
-				bc.AddWord(m.DataSize);
-				bc.AddWord(m.Index);
+				output.WriteOpWithData(MC.OP_STRUCT_MEMBER, 6, typeID, m.NameID); // struct type and member name
+				output.WriteInt(m.Type.ID);
+				output.WriteInt((int)m.Ref);
+				output.WriteInt(m.Address);
+				output.WriteInt(m.DataSize);
+				output.WriteInt(m.Index);
 			}
 		}
 

@@ -14,6 +14,8 @@ namespace Meanscript
 		// Number of ints after the first int 'i' is '(int)i / 4 + 1' if 'i > 0', and 0 otherwise.
 		// Can't be modified. TODO: C++ reference counter for smart memory handling.
 
+		public const int MAX_NUM_BYTES = 0x0000ffff;
+
 		private IntArray data;
 
 		private static readonly MSText _empty = new MSText("");
@@ -29,12 +31,29 @@ namespace Meanscript
 		{
 			Init(src, start, length);
 		}
-
+		public MSText(MSInput input)
+		{
+			int numBytes = input.ReadInt();
+			MS.Assertion(numBytes <= MAX_NUM_BYTES);
+			data = new IntArray((numBytes / 4) + 2);
+			data[0] = numBytes;
+			for (int i = 1; i < data.Length; i++)
+			{
+				data[i] = input.ReadInt();
+			}
+		}
+		public void Write(MSOutput output)
+		{
+			for (int i = 0; i < data.Length; i++)
+			{
+				output.WriteInt(data[i]);
+			}
+		}
 		private void Init(byte[] src, int start, int length)
 		{
 			data = new IntArray((length / 4) + 2);
 			data[0] = length;
-			MS.BytesToInts(src, start, data, 1, length);
+			MS.BytesToInts(src, start, data.Data(), 1, length);
 		}
 
 		public MSText(MSText src)
@@ -75,14 +94,6 @@ namespace Meanscript
 		{
 			MS.Assertion(index >= 0 && index <= data[0], MC.EC_INTERNAL, "index overflow");
 			return ((data[(index / 4) + 1]) >> ((index % 4) * 8) & 0x000000ff);
-		}
-		public int Write(IntArray trg, int start)
-		{
-			for (int i = 0; i < data.Length; i++)
-			{
-				trg[start + i] = data[i];
-			}
-			return start + data.Length;
 		}
 		public void Copy(IntArray src)
 		{

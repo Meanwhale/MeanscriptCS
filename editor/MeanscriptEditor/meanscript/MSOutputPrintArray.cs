@@ -11,7 +11,8 @@ namespace Meanscript
 
 		public MSOutputPrintArray()
 		{
-			maxSize = MS.globalConfig.outputArraySize;
+			// TODO use dynamic array
+			maxSize = 16384; // 2^12
 			{ buffer = new byte[maxSize]; };
 			index = 0;
 		}

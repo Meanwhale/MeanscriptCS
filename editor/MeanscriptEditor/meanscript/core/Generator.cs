@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Meanscript.Core
 {
 	public class Generator
@@ -5,24 +7,27 @@ namespace Meanscript.Core
 		Context currentContext;
 		readonly TokenTree tree;
 		readonly Semantics sem;
-		readonly ByteCode bc;
+		//readonly ByteCode bc;
+		readonly MSOutput output;
+		
+		public readonly Dictionary<int, MNode> nodes = new Dictionary<int, MNode>();
 
-		public Generator(TokenTree _tree, Semantics _sem)
+		public Generator(TokenTree _tree, Semantics _sem, MSOutput _output)
 		{
 			sem = _sem;
-			bc = new ByteCode();
 			tree = _tree;
+			output = _output;
 			currentContext = null;
 		}
 
-		public static ByteCode Generate(TokenTree _tree, Semantics _sem)
+		public static Dictionary<int, MNode> Generate(TokenTree _tree, Semantics _sem, MSOutput _output)
 		{
-			Generator gen = new Generator(_tree, _sem);
+			Generator gen = new Generator(_tree, _sem, _output);
 			gen.Generate();
-			return gen.bc;
+			return gen.nodes;
 		}
 
-		private ByteCode Generate()
+		private void Generate()
 		{
 
 			MS.Verbose(MS.Title("GENERATE GLOBAL CODE"));
@@ -30,79 +35,75 @@ namespace Meanscript.Core
 			currentContext = sem.contexts[0];
 
 			// start
-			bc.AddInstructionWithData(MC.OP_START_INIT, 1, 0, sem.texts.TextCount());
+			output.WriteOp(MC.OP_START_DEFINE, 0, 0);
 
 			// add texts
 			foreach (var textEntry in sem.texts.texts)
 			{
-				bc.codeTop = MC.AddTextInstruction(textEntry.Key, MC.OP_ADD_TEXT, bc.code, bc.codeTop, textEntry.Value);
+				MC.WriteTextInstruction(output, textEntry.Key, MC.OP_ADD_TEXT, textEntry.Value);
 			}
 
-			Semantics.WriteTypesAndGlobals(bc, sem, sem.globalContext.variables);
+			sem.WriteTypes(output);
 			
-			bc.AddInstruction(MC.OP_END_DATA_INIT, 0, 0);
+			// TODO: generate functions
 
-			// introduce functions
-			for (int i = 0; i < sem.maxContexts; i++)
-			{
-				if (sem.contexts[i] != null)
-				{
-					sem.contexts[i].tagAddress = bc.codeTop;
-					bc.AddInstruction(MC.OP_FUNCTION, 5, 0);
-					bc.AddWord(sem.contexts[i].functionID);
-					bc.AddWord(-1); // add start address later
-					bc.AddWord(-1); // add struct size later (temp. variables may be added)
-					bc.AddWord(sem.contexts[i].argsSize); // sizeof the args part of stack
-					bc.AddWord(-1); // add end address later...
-									// ...where the 'go back' instruction is, or in the future
-									// some local un-initialization or something.
-									// 'return' takes you there.
-				}
-			}
-			bc.AddInstruction(MC.OP_END_INIT, 0, 0);
+			output.WriteOp(MC.OP_START_INIT, 0, 0);
+
+			// initialize globals
 
 			currentContext = sem.contexts[0]; // = global
-			currentContext.codeStartAddress = bc.codeTop;
-
 			NodeIterator it = new NodeIterator(tree.root);
-
 			GenerateCodeBlock(it.Copy());
 
-			currentContext.codeEndAddress = bc.codeTop;
-			bc.AddInstruction(MC.OP_RETURN_FUNCTION, 0, 0); // end of global code
+			output.WriteOp(MC.OP_END_INIT, 0, 0);
+			
+			//// introduce functions
+			//for (int i = 0; i < sem.maxContexts; i++)
+			//{
+			//	if (sem.contexts[i] != null)
+			//	{
+			//		//sem.contexts[i].tagAddress = bc.codeTop;
+			//		output.WriteOp(MC.OP_FUNCTION, 5, 0);
+			//		output.WriteInt(sem.contexts[i].functionID);
+			//		output.WriteInt(-1); // add start address later
+			//		output.WriteInt(-1); // add struct size later (temp. variables may be added)
+			//		output.WriteInt(sem.contexts[i].argsSize); // sizeof the args part of stack
+			//		output.WriteInt(-1); // add end address later...
+			//						// ...where the 'go back' instruction is, or in the future
+			//						// some local un-initialization or something.
+			//						// 'return' takes you there.
+			//	}
+			//}			for (int i = 1; i < sem.maxContexts; i++)
+			//{
+			//	if (sem.contexts[i] != null)
+			//	{
+			//		MS.Verbose(MS.Title("GENERATE FUNCTION CODE"));
+			//		currentContext = sem.contexts[i];
+			//		NodeIterator iter = new NodeIterator(currentContext.codeNode);
+			//		GenerateFunctionCode(iter.Copy());
+			//	}
+			//}
+			//MS.Verbose(MS.Title("write code addresses"));
 
-			for (int i = 1; i < sem.maxContexts; i++)
-			{
-				if (sem.contexts[i] != null)
-				{
-					MS.Verbose(MS.Title("GENERATE FUNCTION CODE"));
-					currentContext = sem.contexts[i];
-					NodeIterator iter = new NodeIterator(currentContext.codeNode);
-					GenerateFunctionCode(iter.Copy());
-				}
-			}
-			MS.Verbose(MS.Title("write code addresses"));
-
-			for (int i = 0; i < sem.maxContexts; i++)
-			{
-				if (sem.contexts[i] != null)
-				{
-					bc.code[(sem.contexts[i].tagAddress) + 2] = sem.contexts[i].codeStartAddress;
-					bc.code[(sem.contexts[i].tagAddress) + 3] = sem.contexts[i].variables.StructSize();
-					bc.code[(sem.contexts[i].tagAddress) + 5] = sem.contexts[i].codeEndAddress;
-				}
-			}
+			//for (int i = 0; i < sem.maxContexts; i++)
+			//{
+			//	if (sem.contexts[i] != null)
+			//	{
+			//		bc.code[(sem.contexts[i].tagAddress) + 2] = sem.contexts[i].codeStartAddress;
+			//		bc.code[(sem.contexts[i].tagAddress) + 3] = sem.contexts[i].variables.StructSize();
+			//		bc.code[(sem.contexts[i].tagAddress) + 5] = sem.contexts[i].codeEndAddress;
+			//	}
+			//}
 			MS.Verbose(MS.Title("END GENERATION"));
-			return bc;
 		}
 
 		private void GenerateFunctionCode(NodeIterator it)
 		{
 			it.ToChild();
-			currentContext.codeStartAddress = bc.codeTop;
+			//currentContext.codeStartAddress = bc.codeTop;
 			GenerateCodeBlock(it);
-			currentContext.codeEndAddress = bc.codeTop;
-			bc.AddInstruction(MC.OP_RETURN_FUNCTION, 0, 0);
+			//currentContext.codeEndAddress = bc.codeTop;
+			output.WriteOp(MC.OP_RETURN_FUNCTION, 0, 0);
 		}
 
 		private void GenerateCodeBlock(NodeIterator it)
@@ -145,7 +146,10 @@ namespace Meanscript.Core
 			MS.Verbose(MS.Title("generateExpression"));
 			if (MS._verboseOn) it.PrintTree(false);
 
-			bc.nodes.Add(bc.codeTop, it.node);
+			if (output is MSOutputArray oa)
+			{
+				nodes.Add(oa.Index, it.node);
+			}
 
 			// get list of arguments and find a call that match the list.
 
@@ -178,9 +182,9 @@ namespace Meanscript.Core
 				MS.SyntaxAssertion(returnArgs.First().Def == currentContext.returnType, it, "wrong argument");
 			
 				// write pushed return args from stack to register
-				bc.AddInstruction(MC.OP_POP_STACK_TO_REG, 1, currentContext.returnType.ID);
-				bc.AddWord(currentContext.returnType.SizeOf());
-				bc.AddInstruction(MC.OP_RETURN_FUNCTION, 0, 0);
+				output.WriteOp(MC.OP_POP_STACK_TO_REG, 1, currentContext.returnType.ID);
+				output.WriteInt(currentContext.returnType.SizeOf());
+				output.WriteOp(MC.OP_RETURN_FUNCTION, 0, 0);
 
 				return null;
 			}
@@ -192,10 +196,10 @@ namespace Meanscript.Core
 				// scripted function
 				var funcContext = sc.FuncContext;
 
-				bc.AddInstructionWithData(MC.OP_FUNCTION_CALL, 1, 0, funcContext.functionID);
+				output.WriteOpWithData(MC.OP_FUNCTION_CALL, 1, 0, funcContext.functionID);
 				
 				//MS.SyntaxAssertion(targetType == returnData.typeID, it, "type mismatch");
-				bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, funcContext.returnType.SizeOf());
+				output.WriteOpWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, funcContext.returnType.SizeOf());
 
 				args = new MList<ArgType>();
 				args.Add(new ArgType(Arg.DATA, funcContext.returnType));
@@ -209,10 +213,10 @@ namespace Meanscript.Core
 				{
 					MS.Verbose("callback found: ");
 					if (MS._verboseOn) callback.Print(MS.printOut);
-					bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, callback.ID);
+					output.WriteOp(MC.OP_CALLBACK_CALL, 0, callback.ID);
 					if (callback.returnType.Def.SizeOf() > 0)
 					{
-						bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, callback.returnType.Def.SizeOf());
+						output.WriteOpWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, callback.returnType.Def.SizeOf());
 					}
 					args = new MList<ArgType>();
 					args.Add(callback.returnType);
@@ -270,17 +274,17 @@ namespace Meanscript.Core
 
 			if (assignTarget.Ref == Arg.ADDRESS)
 			{
-				bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, assignTarget.Def.SizeOf());
+				output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, assignTarget.Def.SizeOf());
 				
 				if (assignTarget.Def is ObjectType)
 				{
 					// stack: ... [target: address to heap tag][           data           ][size] top
-					bc.AddInstruction(MC.OP_POP_STACK_TO_OBJECT_TAG, 0, MC.BASIC_TYPE_VOID);
+					output.WriteOp(MC.OP_POP_STACK_TO_OBJECT_TAG, 0, MC.BASIC_TYPE_VOID);
 				}
 				else
 				{
 					// stack: ... [target: heap ID + offset][           data           ][size] top
-					bc.AddInstruction(MC.OP_POP_STACK_TO_OBJECT, 0, MC.BASIC_TYPE_VOID);
+					output.WriteOp(MC.OP_POP_STACK_TO_OBJECT, 0, MC.BASIC_TYPE_VOID);
 				}
 			}
 			else
@@ -347,7 +351,7 @@ namespace Meanscript.Core
 				{
 					MS.SyntaxAssertion(it.GetChild().next == null, it, "extra tokens after null");
 					MS.Verbose("NULL!!!");
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, 0);
+					output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, 0);
 					return;
 				}
 			
@@ -360,10 +364,10 @@ namespace Meanscript.Core
 				// stack: ... [           data           ]
 
 				// setter creates dynamic data object and saves the address tag to register.
-				bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, obj.SetterID);
+				output.WriteOp(MC.OP_CALLBACK_CALL, 0, obj.SetterID);
 
 				// save dynamic address to reg.
-				bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, 1);
+				output.WriteOpWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, 1);
 			}
 			else
 			{
@@ -423,10 +427,10 @@ namespace Meanscript.Core
 
 				if (arg.Ref == Arg.ADDRESS)
 				{
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, arg.Def.SizeOf());
+					output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, arg.Def.SizeOf());
 					// OP_PUSH_GLOBAL/LOCAL gets address and size from stack and push to the stack
 					//MS.Assertion(InGlobal());
-					bc.AddInstruction(MC.OP_PUSH_OBJECT_DATA, 0, MC.BASIC_TYPE_INT);
+					output.WriteOp(MC.OP_PUSH_OBJECT_DATA, 0, MC.BASIC_TYPE_INT);
 				}
 				else
 				{
@@ -450,7 +454,7 @@ namespace Meanscript.Core
 			int offset = member.Address;
 
 			// push offset. heap ID will be added in MM according to current (function) context.
-			bc.AddInstructionWithData(MC.OP_PUSH_CONTEXT_ADDRESS, 1, MC.BASIC_TYPE_INT, offset);
+			output.WriteOpWithData(MC.OP_PUSH_CONTEXT_ADDRESS, 1, MC.BASIC_TYPE_INT, offset);
 
 			while(true)
 			{
@@ -464,7 +468,7 @@ namespace Meanscript.Core
 					{
 						// pop the dynamic object HEAP address from the stack top
 						// and push it's address (head ID + offset 0) to top of the stack
-						bc.AddInstruction(MC.OP_SET_DYNAMIC_OBJECT, 0, 0);
+						output.WriteOp(MC.OP_SET_DYNAMIC_OBJECT, 0, 0);
 						varType = obj.itemType;
 					}
 					else
@@ -484,8 +488,8 @@ namespace Meanscript.Core
 					var structMember = ((StructDefType)varType).SD.GetMember(it.Data());
 					MS.SyntaxAssertion(structMember != null, it, "unknown member: " + it.Data());
 					// push offset > pop and add
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, 0, structMember.Address);
-					bc.AddInstruction(MC.OP_ADD_STACK_TOP_ADDRESS_OFFSET, 0, 0);
+					output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, 0, structMember.Address);
+					output.WriteOp(MC.OP_ADD_STACK_TOP_ADDRESS_OFFSET, 0, 0);
 					varType = structMember.Type;
 					continue;
 				}
@@ -515,10 +519,10 @@ namespace Meanscript.Core
 					assignTarget = tmp;
 					MS.SyntaxAssertion(arrayType.ValidIndex(args), it, "wrong array index");
 					MS.Verbose("array callback id: " + arrayType.accessorID);
-					bc.AddInstruction(MC.OP_CALLBACK_CALL, 0, arrayType.accessorID);
+					output.WriteOp(MC.OP_CALLBACK_CALL, 0, arrayType.accessorID);
 
 					// address is in register, so push it to stack
-					bc.AddInstructionWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, 1);
+					output.WriteOpWithData(MC.OP_PUSH_REG_TO_STACK, 1, MC.BASIC_TYPE_VOID, 1);
 
 					varType = arrayType.itemType;
 					continue;
@@ -551,15 +555,15 @@ namespace Meanscript.Core
 				//if (targetType == MS_TYPE_INT)
 				//{
 					long number = MC.ParseHex(it.Data().GetString(), 8);
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, MC.Int64lowBits(number));
+					output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, MC.Int64lowBits(number));
 					return ArgType.Data(MC.basics.IntType);
 				//}
 				//else if (targetType == MS_TYPE_INT64)
 				//{
 				//	long number = ParseHex((it.Data()).GetString(), 16);
-				//	bc.AddInstruction(OP_PUSH_IMMEDIATE, 2, MS_TYPE_INT64);
-				//	bc.AddWord(Int64highBits(number));
-				//	bc.AddWord(Int64lowBits(number));
+				//	output.WriteOp(OP_PUSH_IMMEDIATE, 2, MS_TYPE_INT64);
+				//	output.WriteInt(Int64highBits(number));
+				//	output.WriteInt(Int64lowBits(number));
 				//	return;
 				//}
 				//else
@@ -572,31 +576,31 @@ namespace Meanscript.Core
 				if (assignTarget == null || assignTarget.ID == MC.BASIC_TYPE_INT)
 				{
 					int number = MS.ParseInt(it.Data().GetString());
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, number);
+					output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, number);
 					return ArgType.Data(MC.basics.IntType);
 				}
 				else if (assignTarget.ID == MC.BASIC_TYPE_INT64)
 				{
 					long number = MS.ParseInt64(it.Data().GetString());
-					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.BASIC_TYPE_INT64);
-					bc.AddWord(MC.Int64highBits(number));
-					bc.AddWord(MC.Int64lowBits(number));
+					output.WriteOp(MC.OP_PUSH_IMMEDIATE, 2, MC.BASIC_TYPE_INT64);
+					output.WriteInt(MC.Int64highBits(number));
+					output.WriteInt(MC.Int64lowBits(number));
 					return ArgType.Data(assignTarget);
 				}
 				else if (assignTarget.ID == MC.BASIC_TYPE_FLOAT)
 				{
 					float f = MS.ParseFloat32(it.Data().GetString());
 					int floatToInt = MS.FloatToIntFormat(f);
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_FLOAT, floatToInt);
+					output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_FLOAT, floatToInt);
 					return ArgType.Data(assignTarget);
 				}
 				else if (assignTarget.ID == MC.BASIC_TYPE_FLOAT64)
 				{
 					double f = MS.ParseFloat64(it.Data().GetString());
 					long number = MS.Float64ToInt64Format(f);
-					bc.AddInstruction(MC.OP_PUSH_IMMEDIATE, 2, MC.BASIC_TYPE_FLOAT64);
-					bc.AddWord(MC.Int64highBits(number));
-					bc.AddWord(MC.Int64lowBits(number));
+					output.WriteOp(MC.OP_PUSH_IMMEDIATE, 2, MC.BASIC_TYPE_FLOAT64);
+					output.WriteInt(MC.Int64highBits(number));
+					output.WriteInt(MC.Int64lowBits(number));
 					return ArgType.Data(assignTarget);
 				}
 				else
@@ -612,15 +616,15 @@ namespace Meanscript.Core
 				{
 					// copy chars
 					// chars.maxChars == eg. 7 if "chars[7] x"
-					bc.AddInstructionWithData(MC.OP_PUSH_CHARS, 3, MC.BASIC_TYPE_TEXT, textID);
-					bc.AddWord(chars.maxChars);
-					bc.AddWord(chars.SizeOf()); // sizeOf in ints. characters + size.
+					output.WriteOpWithData(MC.OP_PUSH_CHARS, 3, MC.BASIC_TYPE_TEXT, textID);
+					output.WriteInt(chars.maxChars);
+					output.WriteInt(chars.SizeOf()); // sizeOf in ints. characters + size.
 					return ArgType.Data(assignTarget);
 				}
 				else
 				{
 					// assign text id
-					bc.AddInstructionWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_TEXT, textID);
+					output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_TEXT, textID);
 					return ArgType.Data(MC.basics.TextType);
 				}
 			}

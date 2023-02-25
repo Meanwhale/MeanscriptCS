@@ -2,14 +2,14 @@ namespace Meanscript
 {
 	using Core;
 
-	public abstract class MSInputStream
+	public abstract class MSInput
 	{
-		public MSInputStream()
+		public MSInput()
 		{
 		}
 
 		public abstract int GetByteCount();
-		public abstract int ReadByte();
+		public abstract byte ReadByte();
 		public abstract bool End();
 		public abstract void Close();
 
@@ -20,7 +20,7 @@ namespace Meanscript
 			return i;
 		}
 
-		public int ReadInt()
+		public virtual int ReadInt()
 		{
 			// bytes:	b[0] b[1] b[2] b[3] b[4] b[5] b[6] b[7]   ...
 			// ints:	_________i[0]______|_________i[1]______|_ ...

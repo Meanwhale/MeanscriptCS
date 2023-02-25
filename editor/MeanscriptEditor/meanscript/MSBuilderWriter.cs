@@ -3,13 +3,13 @@ namespace Meanscript
 {
 	using Core;
 
-	public class MSWriter
+	public class MSBuilderWriter
 	{
 		internal StructDef SD;
 		internal MSBuilder builder;
 		internal DynamicArray values = new DynamicArray(); // default values
 
-		public MSWriter(MSBuilder _builder, StructDef _sd)
+		public MSBuilderWriter(MSBuilder _builder, StructDef _sd)
 		{	
 			builder = _builder;
 			SD = _sd;

@@ -422,7 +422,7 @@ namespace Meanscript.Core
 			return Parse(new MSInputArray(code));
 		}
 
-		public static TokenTree Parse(MSInputStream input)
+		public static TokenTree Parse(MSInput input)
 		{
 			MS.Verbose(MS.Title("START PARSING"));
 

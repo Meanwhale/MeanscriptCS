@@ -17,18 +17,23 @@ namespace Meanscript.Core
 		public Role role;
 		public int tag;
 		public IntArray data;
-
+		
 		public DData(Role role, int tag, IntArray data)
 		{
 			this.role = role;
 			this.tag = tag;
 			this.data = data;
 		}
-
+		
 		public DData(Role role, int tag, int[] src, int startIndex, int dataLength) :
 			this(role, tag, new IntArray(dataLength))
 		{
 			IntArray.Copy(src, startIndex, data.Data(), 0, dataLength);
+		}
+		public DData(Role role, int tag, MSInput input, int dataLength) :
+			this(role, tag, new IntArray(dataLength))
+		{
+			IntArray.Read(input, data.Data(), dataLength);
 		}
 
 		public int HeapID()
@@ -108,7 +113,7 @@ namespace Meanscript.Core
 
 			return tag;
 		}
-		public int Write(DData.Role role, int heapID, int type, int[] data, int startIndex, int dataLength)
+		/*public int Write(DData.Role role, int heapID, int type, int[] data, int startIndex, int dataLength)
 		{
 			// create a new object and return tag
 			
@@ -132,7 +137,39 @@ namespace Meanscript.Core
 			}
 
 			return tag;
+		}*/
+		
+		internal void WriteHeap(MSOutput output)
+		{
+			// write heap data
+			for(int i=0; i < capacity; i++)
+			{
+				if (array[i] != null)
+				{
+					// [ OP > HeapID > ... data ... ] size = data size + 1 (heapID)
+
+					MS.Assertion(array[i].HeapID() == i);
+					output.WriteOp(MC.OP_WRITE_HEAP_OBJECT, array[i].data.Length + 1, array[i].DataTypeID());
+					output.WriteInt(array[i].HeapID());
+					output.Write(array[i].data, 0, array[i].data.Length);
+				}
+			}
 		}
+		internal void ReadFromInput(DData.Role role, int heapID, int typeID, MSInput input, int dataLength)
+		{	
+			int tag = MakeTag(typeID,heapID,1);
+			
+			if (array[heapID] != null) MS.Verbose("HEAP overwrite ID " + heapID);
+
+			array[heapID] = new DData(role, tag, input, dataLength);
+
+			if (MS._verboseOn)
+			{
+				MS.printOut.Print("HEAP WriteObject [").Print(heapID).Print("] tag: ").PrintHex(tag).Print(" data:");
+				array[heapID].Print(MS.printOut); MS.printOut.EndLine();
+			}
+		}
+
 		public void Free(int tag, int datatype)
 		{
 			if (tag == 0) return;
@@ -155,6 +192,12 @@ namespace Meanscript.Core
 			array[index] = null;
 			MS.Verbose("heap free context @ " + index);
 		}
+
+		internal void Write(MSOutputArray output)
+		{
+			throw new NotImplementedException();
+		}
+
 		internal IntArray GetDataArray(int heapID)
 		{
 			MS.Assertion(HasObject(heapID), MC.EC_CODE, "no heap object by ID: " + heapID);

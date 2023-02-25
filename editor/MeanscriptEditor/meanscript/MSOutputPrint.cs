@@ -1,7 +1,7 @@
 namespace Meanscript
 {
 
-	public abstract class MSOutputPrint : MSOutputStream
+	public abstract class MSOutputPrint : MSOutput
 	{
 
 		// write byte as an ASCII char, e.g. writeByte(64) writes "@", and not "64"
@@ -16,6 +16,10 @@ namespace Meanscript
 
 		public override void Close()
 		{
+		}
+		public override bool Closed()
+		{
+			return false;
 		}
 
 		public MSOutputPrint Print(MSText text)

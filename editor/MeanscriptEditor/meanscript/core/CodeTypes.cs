@@ -78,7 +78,11 @@ namespace Meanscript.Core
 		}
 
 		// accessors: access common and custom types. add common (basic) types first.
-
+		
+		public bool HasType(MSText name)
+		{
+			return GetType(name) != null;
+		}
 		public bool HasDataType(MSText name)
 		{
 			return GetDataType(name) != null;
@@ -165,7 +169,7 @@ namespace Meanscript.Core
 			}
 			// return true if not reserved, otherwise print error message and return false
 
-			if (HasDataType(name))
+			if (HasType(name))
 			{
 				MS.errorOut.Print("unexpected type name: " + name);
 				return false;
@@ -200,6 +204,36 @@ namespace Meanscript.Core
 				}
 			}
 			return true;
+		}
+		public void WriteTypes(MSOutput output)
+		{
+			// encode globals and StructDefs
+			StructDefType gl = null;
+			foreach(var tv in types)
+			{
+				if (tv.Value is ObjectType ot)
+				{
+					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_OBJECT);
+					factory.Encode(output, ot);
+				}
+				if (tv.Value is StructDefType sdt)
+				{
+					// globals last
+					if (sdt.ID == MC.GLOBALS_TYPE_ID) gl = sdt;
+					else sdt.SD.Encode(output, tv.Key);
+				}
+				if (tv.Value is GenericArrayType at)
+				{
+					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_ARRAY);
+					factory.Encode(output, at);
+				}
+				if (tv.Value is GenericCharsType ct)
+				{
+					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_CHARS);
+					factory.Encode(output, ct);
+				}
+			}
+			if (gl != null) gl.SD.Encode(output, MC.GLOBALS_TYPE_ID);
 		}
 	}
 }

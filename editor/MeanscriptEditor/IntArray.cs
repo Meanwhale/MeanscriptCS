@@ -40,6 +40,13 @@ namespace Meanscript
 			}
 			return true;
 		}
+
+		internal static void Read(MSInput input, int[] trg, int dataLength)
+		{
+			MS.Assertion(dataLength <= trg.Length);
+			for(int i = 0; i < dataLength; i++) trg[i] = input.ReadInt();
+		}
+
 		public static void Copy(IntArray src, int srcIndex, IntArray trg, int trgIndex, int length)
 		{
 			System.Array.Copy(src.Data(), srcIndex, trg.Data(), trgIndex, length);

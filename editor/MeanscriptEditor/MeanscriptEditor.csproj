@@ -86,7 +86,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="meanscript\core\ByteAutomata.cs" />
-    <Compile Include="meanscript\core\ByteCode.cs" />
     <Compile Include="meanscript\core\BasicTypes.cs" />
     <Compile Include="meanscript\core\Context.cs" />
     <Compile Include="meanscript\core\Generator.cs" />
@@ -110,14 +109,14 @@
     <Compile Include="meanscript\MSData.cs" />
     <Compile Include="meanscript\MSConfig.cs" />
     <Compile Include="meanscript\MSInputArray.cs" />
-    <Compile Include="meanscript\MSInputStream.cs" />
+    <Compile Include="meanscript\MSInput.cs" />
     <Compile Include="meanscript\MSOutputArray.cs" />
     <Compile Include="meanscript\MSOutputPrint.cs" />
     <Compile Include="meanscript\MSOutputPrintArray.cs" />
-    <Compile Include="meanscript\MSOutputStream.cs" />
+    <Compile Include="meanscript\MSOutput.cs" />
     <Compile Include="meanscript\MSText.cs" />
-    <Compile Include="meanscript\MSStructBuilder.cs" />
-    <Compile Include="meanscript\MSWriter.cs" />
+    <Compile Include="meanscript\MSBuilderStructWriter.cs" />
+    <Compile Include="meanscript\MSBuilderWriter.cs" />
     <Compile Include="MList.cs" />
     <Compile Include="MS.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">

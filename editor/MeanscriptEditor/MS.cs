@@ -158,7 +158,8 @@ namespace Meanscript
 			// [1]	0xbb	byte
 			// [2]	0xcc	byte
 			
-			Assertion(bytesLength > 0);
+			Assertion(bytesLength >= 0);
+			if (bytesLength == 0) return;
 			Assertion(bytes.Length >= bytesOffset + bytesLength);
 			int intsLength = (bytesLength / 4) + 1;
 			int bytesLast = bytesOffset + bytesLength;
@@ -173,7 +174,7 @@ namespace Meanscript
 			}
 		}
 
-		public static byte[] GetIntsToBytesBE(IntArray ia, int iaOffset, int bytesLength)
+		/*public static byte[] GetIntsToBytesBE(IntArray ia, int iaOffset, int bytesLength)
 		{
 			byte[] bytes = new byte[bytesLength];
 			IntsToBytesBE(ia, iaOffset, bytes, 0, bytesLength);
@@ -203,9 +204,9 @@ namespace Meanscript
 				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data >> 8  & 0x000000ff); else break; bytesOffset++;
 				if (bytesOffset < bytesLast) bytes[bytesOffset] = (byte)(data       & 0x000000ff); else break; bytesOffset++;
 			}
-		}
+		}*/
 
-		public static void BytesToInts(byte[] bytes, int bytesOffset, IntArray ints, int intsOffset, int bytesLength)
+		public static void BytesToInts(byte[] bytes, int bytesOffset, int[] ints, int intsOffset, int bytesLength)
 		{
 			// TODO: tarvitaanko bytesOffset?
 

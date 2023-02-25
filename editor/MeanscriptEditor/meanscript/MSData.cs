@@ -117,7 +117,7 @@ namespace Meanscript
 		}
 		internal MSData GetData(StructDef.Member member)
 		{
-			MS.Assertion(!(member.Type is StructDefType), MC.EC_DATA, "member is a struct: " + mm.GetText(member.NameID));
+			MS.Assertion(!(member.Type is StructDefType), MC.EC_DATA, "member is a struct: " + mm.FindTextByID(member.NameID));
 			return new MSData(mm, member.Type.ID, heapID, member.Address + offset);
 		}
 		internal MSData GetRef(string name)
@@ -296,7 +296,7 @@ namespace Meanscript
 			MS.Assertion(member.Type.ID == MC.BASIC_TYPE_TEXT, MC.EC_DATA, "not a text " + name);
 			int address = offset + member.Address;
 			int textID = dataCode[address];
-			return mm.GetText(textID);
+			return mm.FindTextByID(textID);
 		}
 	}
 }

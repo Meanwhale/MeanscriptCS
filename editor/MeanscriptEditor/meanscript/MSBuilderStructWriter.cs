@@ -5,9 +5,9 @@ namespace Meanscript
 {
 	using Core;
 
-	public class MSStructBuilder : MSWriter
+	public class MSBuilderStructWriter : MSBuilderWriter
 	{	
-		public MSStructBuilder(MSBuilder _builder, int nameID) : 
+		public MSBuilderStructWriter(MSBuilder _builder, int nameID) : 
 			base(_builder, new StructDef(_builder.types, nameID))
 		{
 		}

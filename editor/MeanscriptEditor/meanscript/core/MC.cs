@@ -1,3 +1,5 @@
+using System;
+
 namespace Meanscript.Core
 {
 	public enum NodeType
@@ -51,7 +53,7 @@ namespace Meanscript.Core
 
 		public const int OP_SYSTEM = 0x00000001; // system calls (ERROR, assert, exception, etc. TBD)
 		public const int OP_CALLBACK_CALL = 0x03000000;
-		public const int OP_JUMP = 0x04000000;
+		public const int OP_JUMP = 0x04000000; // TODO: poista? ei kai käytetä koskaan
 		public const int OP_RETURN_FUNCTION = 0x05000000; // return to previous block. named to be less confusing
 		public const int OP_GO_END = 0x06000000; // go to end of the function (context's end address)
 												 //public const int OP_CHARS_DEF				= 0x07000000;
@@ -65,8 +67,8 @@ namespace Meanscript.Core
 		public const int OP_ADD_STACK_TOP_ADDRESS_OFFSET = 0x12000000; // add a value on stack's top item
 		public const int OP_PUSH_REG_TO_STACK = 0x13000000; // push content of register to stack
 		public const int OP_FUNCTION = 0x14000000; // introduce a function
-		public const int OP_START_INIT = 0x15000000;
-		public const int OP_END_INIT = 0x16000000;
+		public const int OP_START_DEFINE = 0x15000000;
+		public const int OP_START_INIT = 0x16000000;
 		public const int OP_FUNCTION_CALL = 0x17000000;
 		public const int OP_PUSH_CONTEXT_ADDRESS = 0x18000000;
 		public const int OP_PUSH_OBJECT_DATA = 0x19000000;
@@ -78,7 +80,7 @@ namespace Meanscript.Core
 		//public const int OP_POP_STACK_TO_DYNAMIC = 0x1d000000;
 		public const int OP_POP_STACK_TO_REG = 0x1c000000;
 		
-		public const int OP_END_DATA_INIT = 0x1d000000;
+		public const int OP_END_INIT = 0x1d000000;
 		public const int OP_WRITE_HEAP_OBJECT = 0x1e000000;
 		public const int OP_GENERIC_TYPE = 0x1f000000;
 		
@@ -94,9 +96,9 @@ namespace Meanscript.Core
 			"struct definition",    "struct member",        "---OLD---",            "---OLD---",
 			"no operation",         "---OLD---",            "---OLD---",            "---OLD---",
 			"text",                 "push immediate",       "add top",	            "push from reg.",
-			"function data",        "start init",           "end init",             "function call",
+			"function data",        "start define",         "start init",           "function call",
 			"push context address", "push object data",     "pop to object",        "pop to object tag",
-			"pop to register",      "end data init",        "write heap object",    "generic type",
+			"pop to register",      "end init",             "write heap object",    "generic type",
 			"set dynamic object",   "---OLD---",            "---OLD---",            "---OLD---",
 			"---OLD---",            "push chars",           "---ERROR---",          "---ERROR---",
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
@@ -234,7 +236,7 @@ namespace Meanscript.Core
 			return address & 0x0000ffff;
 		}
 
-		public static void PrintBytecode(IntArray data, int top, int index, bool code)
+		public static void PrintBytecode(int [] data, int top, int index, bool code)
 		{
 			int tagIndex = 0;
 			for (int i = 0; i < top; i++)
@@ -257,13 +259,13 @@ namespace Meanscript.Core
 				}
 			}
 		}
-		public static int StringToIntsWithSize(string text, IntArray code, int top, int maxSize)
-		{
-			MSText t = new MSText(text);
-			int size32 = t.DataSize();
-			MS.Assertion(size32 <= maxSize, EC_CODE, "text is too long, max 32-bit size: " + maxSize + ", text: " + text);
-			return t.Write(code, top);
-		}
+		//public static int StringToIntsWithSize(string text, IntArray code, int top, int maxSize)
+		//{
+		//	MSText t = new MSText(text);
+		//	int size32 = t.DataSize();
+		//	MS.Assertion(size32 <= maxSize, EC_CODE, "text is too long, max 32-bit size: " + maxSize + ", text: " + text);
+		//	return t.Write(code, top);
+		//}
 
 		public static int CompareIntStringsWithSizeEquals(IntArray a, IntArray b)
 		{
@@ -298,12 +300,11 @@ namespace Meanscript.Core
 			//return false;
 		}
 
-		public static int AddTextInstruction(MSText text, int instructionCode, IntArray code, int top, int textID)
+		public static void WriteTextInstruction(MSOutput output, MSText text, int instructionCode, int textID)
 		{
 			//MS.verbose("add text: " + size32 + " x 4 bytes, " + numChars + " characters");
-			int instruction = MakeInstruction(instructionCode, text.DataSize(), textID);
-			code[top++] = instruction;
-			return text.Write(code, top);
+			output.WriteOp(instructionCode, text.DataSize(), textID);
+			text.Write(output);
 		}
 
 		public static long ParseHex(string text, int maxChars)
@@ -332,5 +333,9 @@ namespace Meanscript.Core
 			return 0;
 		}
 
+		internal static int ByteArraySizeToIntArraySize(int byteArraySize)
+		{
+			return (byteArraySize / 4) + 1; // + (byteArraySize % 4 == 0 ? 1 : 0);
+		}
 	}
 }

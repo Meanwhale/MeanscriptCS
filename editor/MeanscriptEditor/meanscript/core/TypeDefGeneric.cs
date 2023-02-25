@@ -41,7 +41,7 @@
 		public abstract string TypeName();
 		public abstract GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it);
 		public abstract GenericType Decode(MeanMachine mm, int [] args);
-		public abstract void Encode(ByteCode bc, GenericType t);
+		public abstract void Encode(MSOutput output, GenericType t);
 		public abstract int NumArgs();
 		
 		public static MList<GenericFactory> factories = new MList<GenericFactory>();
@@ -77,14 +77,14 @@
 				MS.SyntaxAssertion(itemType != null, it, "in obj[x], x is of undefined type: " + genArgs.First().data);
 				return new ObjectType(types, id, itemType, types.GetNewTypeID());
 			}
-			public override void Encode(ByteCode bc, GenericType t)
+			public override void Encode(MSOutput output, GenericType t)
 			{
 				// data for bytecode
 				var ot = (ObjectType)t;
-				bc.AddInstruction(MC.OP_GENERIC_TYPE, 3, CodeID());
-				bc.AddWord(ot.ID);
-				bc.AddWord(ot.itemType.ID);
-				bc.AddWord(ot.SetterID);
+				output.WriteOp(MC.OP_GENERIC_TYPE, 3, CodeID());
+				output.WriteInt(ot.ID);
+				output.WriteInt(ot.itemType.ID);
+				output.WriteInt(ot.SetterID);
 			}
 			public override GenericType Decode(MeanMachine mm, int [] args)
 			{
@@ -193,15 +193,15 @@
 
 				return new GenericArrayType(types, id, itemType, itemCount, types.GetNewTypeID());
 			}
-			public override void Encode(ByteCode bc, GenericType t)
+			public override void Encode(MSOutput output, GenericType t)
 			{
 				// data for bytecode
 				var at = (GenericArrayType)t;
-				bc.AddInstruction(MC.OP_GENERIC_TYPE, 4, CodeID());
-				bc.AddWord(at.ID);
-				bc.AddWord(at.itemType.ID);
-				bc.AddWord(at.itemCount);
-				bc.AddWord(at.accessorID);
+				output.WriteOp(MC.OP_GENERIC_TYPE, 4, CodeID());
+				output.WriteInt(at.ID);
+				output.WriteInt(at.itemType.ID);
+				output.WriteInt(at.itemCount);
+				output.WriteInt(at.accessorID);
 			}
 			public override GenericType Decode(MeanMachine mm, int [] args)
 			{
@@ -304,13 +304,13 @@
 				return new GenericCharsType(id, maxChars, size);
 			}
 			
-			public override void Encode(ByteCode bc, GenericType t)
+			public override void Encode(MSOutput output, GenericType t)
 			{
 				var ct = (GenericCharsType)t;
-				bc.AddInstruction(MC.OP_GENERIC_TYPE, 3, CodeID());
-				bc.AddWord(ct.ID);
-				bc.AddWord(ct.maxChars);
-				bc.AddWord(ct.size);
+				output.WriteOp(MC.OP_GENERIC_TYPE, 3, CodeID());
+				output.WriteInt(ct.ID);
+				output.WriteInt(ct.maxChars);
+				output.WriteInt(ct.size);
 			}
 			public override GenericType Decode(MeanMachine mm, int[] args)
 			{

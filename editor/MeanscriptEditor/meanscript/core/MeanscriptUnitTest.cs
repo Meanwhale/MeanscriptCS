@@ -4,10 +4,10 @@ namespace Meanscript.Core
 	{
 
 		// code: struct vec [int x, int y]
-		public static readonly int[] vecStructCode = new int[] {
-			134225936,3,6514038,486547458,1,120,151003137,0,
-			1,486547458,1,121,151003137,1,1,
-		};
+		//public static readonly int[] vecStructCode = new int[] {
+		//	134225936,3,6514038,486547458,1,120,151003137,0,
+		//	1,486547458,1,121,151003137,1,1,
+		//};
 
 		public const string simpleStructs = "struct vec [int x, int y]; struct person [vec pos, text name, int age];";
 
@@ -44,7 +44,7 @@ namespace Meanscript.Core
 
 			byte[] cbytes = { 0x61, 0x62, 0x63, 0x64, 0x65, 0x00 };
 			var ints2 = new IntArray(3);
-			MS.BytesToInts(cbytes, 0, ints2, 0, 5);
+			MS.BytesToInts(cbytes, 0, ints2.Data(), 0, 5);
 			Assertion(ints2[0] == 0x64636261);
 			Assertion(ints2[1] == 0x00000065);
 
@@ -115,6 +115,21 @@ namespace Meanscript.Core
 			Assertion(f64 == f64x);
 		}
 
+		private static void InputOutputTest()
+		{
+			var output = new MSOutputArray();
+			output.WriteInt(0x0a0b0c0d);
+			output.WriteInt(0x04030201);
+			Assertion(output.Index == 8);
+
+			var input = new MSInputArray(output);
+			Assertion(input.GetByteCount() == 8);
+			Assertion(input.ReadInt() == 0x0a0b0c0d);
+			Assertion(input.ReadByte() == 0x01);
+			Assertion(input.ReadByte() == 0x02);
+			Assertion(input.ReadByte() == 0x03);
+			Assertion(input.ReadByte() == 0x04);
+		}
 
 		private static void SimpleVariableCheck(MSCode m)
 		{
@@ -395,7 +410,7 @@ namespace Meanscript.Core
 
 			var input = new MSInputArray(output);
 			MSCode m2 = new MSCode(input, MSCode.StreamType.BYTECODE);
-			// m.Run(); <- there's no function to run
+			Assertion(m2.global.GetInt("a") == 5);
 			Assertion(m2.global.Match(m1.global));
 		}
 
@@ -415,20 +430,20 @@ namespace Meanscript.Core
 
 		public static void RunAll()
 		{
-			//MS.Printn("TEST " + "NATIVE_TEST"); MS.NativeTest(); MS.Print(": OK");
-			//MS.Printn("TEST " + "msText"); MsText(); MS.Print(": OK");
-			//MS.Printn("TEST " + "utils"); Utils(); MS.Print(": OK");
-			//MS.Printn("TEST " + "consistency"); Consistency(); MS.Print(": OK");
-			//MS.Printn("TEST " + "simpleVariable"); SimpleVariable(); MS.Print(": OK");
-			//MS.Printn("TEST " + "chars"); Chars(); MS.Print(": OK");
-			//MS.Printn("TEST " + "simpleReference"); SimpleReference(); MS.Print(": OK");
-			//MS.Printn("TEST " + "simpleStruct"); SimpleStruct(); MS.Print(": OK");
-			//MS.Printn("TEST " + "crossReferenceStruct"); CrossReferenceStruct(); MS.Print(": OK");
-			//MS.Printn("TEST " + "simpleArray"); SimpleArray(); MS.Print(": OK");
+			MS.Printn("TEST " + "consistency"); Consistency(); MS.Print(": OK");
+			MS.Printn("TEST " + "InputOutputTest"); InputOutputTest(); MS.Print(": OK");
+			MS.Printn("TEST " + "msText"); MsText(); MS.Print(": OK");
+			MS.Printn("TEST " + "utils"); Utils(); MS.Print(": OK");
+			MS.Printn("TEST " + "simpleVariable"); SimpleVariable(); MS.Print(": OK");
+			MS.Printn("TEST " + "chars"); Chars(); MS.Print(": OK");
+			MS.Printn("TEST " + "simpleReference"); SimpleReference(); MS.Print(": OK");
+			MS.Printn("TEST " + "simpleStruct"); SimpleStruct(); MS.Print(": OK");
+			MS.Printn("TEST " + "crossReferenceStruct"); CrossReferenceStruct(); MS.Print(": OK");
+			MS.Printn("TEST " + "simpleArray"); SimpleArray(); MS.Print(": OK");
 			//MS.Printn("TEST " + "simpleFunction"); SimpleFunction(); MS.Print(": OK");
-			//MS.Printn("TEST " + "writeCodeState"); WriteCodeState(); MS.Print(": OK");
+			MS.Printn("TEST " + "writeCodeState"); WriteCodeState(); MS.Print(": OK");
 
-			MS.Printn("TEST " + "MsBuilder"); MsBuilder(); MS.Print(": OK");
+			//MS.Printn("TEST " + "MsBuilder"); MsBuilder(); MS.Print(": OK");
 
 			// MYÖHEMMIN:
 

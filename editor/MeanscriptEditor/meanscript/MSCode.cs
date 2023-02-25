@@ -1,6 +1,7 @@
 namespace Meanscript
 {
 	using Core;
+	using System.Collections.Generic;
 
 	public class MSCode
 	{
@@ -15,6 +16,7 @@ namespace Meanscript
 		}
 
 		private MeanMachine mm = null;
+		private Dictionary<int, MNode> nodes;
 		private bool initialized = false;
 
 		public MSStruct global;
@@ -23,12 +25,13 @@ namespace Meanscript
 		{
 			CompileAndRun(s);
 		}
-		public MSCode(MSInputStream input, StreamType st)
+		public MSCode(MSInput input, StreamType st)
 		{
 			switch (st)
 			{
 				case StreamType.SCRIPT:
-					mm = new MeanMachine(Compile(input));
+					var result = Compile(input);
+					mm = new MeanMachine(new MSInputArray((MSOutputArray)result));
 					break;
 				case StreamType.BYTECODE:
 					InitBytecode(input);
@@ -41,25 +44,17 @@ namespace Meanscript
 			return mm;
 		}
 
-		private void InitBytecode(MSInputStream input)
+		private void InitBytecode(MSInput input)
 		{
 			MS.Assertion(!initialized);	
-
-			ByteCode byteCode = new ByteCode(input);
-			mm = new MeanMachine(byteCode);
+			
+			mm = new MeanMachine(input);
 			global = new MSStruct(mm, MC.GLOBALS_TYPE_ID, 1 ,0);
 
 			initialized = true;
 		}
 
-		public void InitBytecode(ByteCode bc)
-		{
-			ByteCode byteCode = new ByteCode(bc);
-			mm = new MeanMachine(byteCode);
-
-			initialized = true;
-		}
-		public void GenerateDataCode(MSOutputStream output)
+		public void GenerateDataCode(MSOutput output)
 		{
 			mm.GenerateDataCode(output);
 		}
@@ -88,21 +83,22 @@ namespace Meanscript
 			output.Close();
 		}
 
-		private ByteCode Compile(MSInputStream input)
+		private MSOutput Compile(MSInput input)
 		{
 			TokenTree tree = Parser.Parse(input);
 			Semantics semantics = new Semantics(tree);
 			semantics.Analyze();
-			ByteCode bc = Generator.Generate(tree, semantics);
+			var output = new MSOutputArray();
+			nodes = Generator.Generate(tree, semantics, output);
 			initialized = true;
-			return bc;
+			return output;
 		}
 
-		private void Run()
-		{
-			MS.Assertion(mm != null, MC.EC_INTERNAL, "not initialized");
-			mm.CallFunction(0);
-		}
+		//private void Run()
+		//{
+		//	MS.Assertion(mm != null, MC.EC_INTERNAL, "not initialized");
+		//	mm.CallFunction(0);
+		//}
 
 		public void Step()
 		{
@@ -112,11 +108,9 @@ namespace Meanscript
 		private void CompileAndRun(string s)
 		{
 			MSInputArray ia = new MSInputArray(s);
-			ByteCode bc = Compile(ia);
-			mm = new MeanMachine(bc);
+			var output = Compile(ia);
+			mm = new MeanMachine(new MSInputArray((MSOutputArray)output), nodes);
 			global = new MSStruct(mm, MC.GLOBALS_TYPE_ID, 1 ,0);
-
-			Run();
 		}
 	}
 }

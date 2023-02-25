@@ -11,9 +11,9 @@ namespace Meanscript.Core
 		internal int argsSize; // number of arguments in the beginning of 'variables' struct
 		internal MNode codeNode; // code block node where the function code is
 
-		public Context(Semantics sem, int _nameID, int _functionID, TypeDef _returnType)
+		public Context(int _functionID, TypeDef _returnType, StructDef _variables)
 		{
-			variables = new StructDef(sem, _nameID);
+			variables = _variables;
 			functionID = _functionID;
 			returnType = _returnType;
 			tagAddress = -1;

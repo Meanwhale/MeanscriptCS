@@ -16,8 +16,13 @@ namespace Meanscript.Core
 			tree.texts = null; // from now on, use texts in Types
 			maxContexts = MS.globalConfig.maxFunctions;
 			contexts = new Context[maxContexts];
+			
+			// create globals struct and context
 
-			contexts[0] = new Context(this, -1, 0, null); // global context
+			var sd = new StructDef(this, 0);
+			AddTypeDef(new StructDefType(MC.GLOBALS_TYPE_ID, null, sd));
+			contexts[0] = new Context(0, null, sd);
+
 			globalContext = contexts[0];
 			currentContext = globalContext;
 			for (int i = 1; i < maxContexts; i++)
@@ -51,12 +56,6 @@ namespace Meanscript.Core
 		
 		public bool IsNameValidAndAvailable(MSText name)
 		{
-			// TODO: REMOVE?! eikös funktion nimi ole jo typesissä?
-			if (FindContext(name) != null)
-			{
-				MS.errorOut.Print("unexpected function name: " + name);
-				return false;
-			}
 			return IsNameValidAndAvailable(name, globalContext.variables, currentContext.variables);
 		}
 		public void Analyze()
@@ -161,7 +160,7 @@ namespace Meanscript.Core
 
 					// create new context
 					int functionNameID = texts.AddText(functionName);
-					Context funcContext = new Context(this, functionNameID, numContexts, returnType);
+					Context funcContext = new Context(numContexts, returnType, new StructDef(this, functionNameID));
 					contexts[numContexts++] = funcContext;
 					
 					AddTypeDef(new ScriptedFunctionNameType(GetNewTypeID(), functionName, funcContext));
@@ -217,16 +216,6 @@ namespace Meanscript.Core
 					// eg. "int foo" pr "person p"
 					
 					var dataType = GetDataType(it.Data());
-					int typeID = dataType.ID;
-					MS.Assertion( // TODO: clean up?
-						typeID == MC.BASIC_TYPE_INT ||
-						typeID == MC.BASIC_TYPE_INT64 ||
-						typeID == MC.BASIC_TYPE_FLOAT ||
-						typeID == MC.BASIC_TYPE_FLOAT64 ||
-						typeID == MC.BASIC_TYPE_BOOL ||
-						typeID == MC.BASIC_TYPE_TEXT ||
-						typeID >= MC.FIRST_CUSTOM_TYPE_ID,
-						MC.EC_INTERNAL, "semantics: unknown type: " + typeID);
 
 					it.ToNext();
 
@@ -383,35 +372,6 @@ namespace Meanscript.Core
 				it.ToParent();
 			}
 			while (it.ToNextOrFalse());
-		}
-
-		public static void WriteTypesAndGlobals(ByteCode bc, CodeTypes codeTypes, StructDef globals)
-		{
-			// encode globals and StructDefs
-			
-			foreach(var tv in codeTypes.types)
-			{
-				if (tv.Value is ObjectType ot)
-				{
-					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_OBJECT);
-					factory.Encode(bc, ot);
-				}
-				if (tv.Value is StructDefType sdt)
-				{
-					sdt.SD.Encode(bc, tv.Key);
-				}
-				if (tv.Value is GenericArrayType at)
-				{
-					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_ARRAY);
-					factory.Encode(bc, at);
-				}
-				if (tv.Value is GenericCharsType ct)
-				{
-					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_CHARS);
-					factory.Encode(bc, ct);
-				}
-			}
-			globals.Encode(bc, MC.GLOBALS_TYPE_ID);
 		}
 	}
 }

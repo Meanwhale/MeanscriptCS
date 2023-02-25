@@ -16,7 +16,6 @@ namespace Meanscript
 		public readonly int codeSize = 65536; // 2^16
 		public readonly int stackSize = 65536;
 		public readonly int builderValuesSize = 65536;
-		public readonly int outputArraySize = 65536;
 		public readonly int maxCallbacks = 256;
 	}
 }

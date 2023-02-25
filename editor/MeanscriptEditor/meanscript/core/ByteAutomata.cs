@@ -172,7 +172,7 @@ namespace Meanscript.Core
 			return System.Text.Encoding.UTF8.GetString(tmp, 0, length);
 		}
 
-		public void Run(MSInputStream input)
+		public void Run(MSInput input)
 		{
 			inputByte = -1;
 			index = 0;

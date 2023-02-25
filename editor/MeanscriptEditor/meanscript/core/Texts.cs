@@ -34,10 +34,16 @@
 		{
 			texts[data] = id;
 		}
-
 		public MSText GetText(int id)
 		{
 			return GetTextByID(id);
+		}
+		public string FindTextStringByID(int id, bool nullIfNotFound = false)
+		{
+			var t = GetTextByID(id);
+			if (t != null) return t.ToString();
+			if (nullIfNotFound) return null;
+			return "?";
 		}
 		public int GetTextID(MSText data)
 		{

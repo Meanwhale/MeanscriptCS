@@ -142,22 +142,22 @@ namespace Meanscript.Core
 		}
 		private static void IfCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose(MS.Title("IF"));
+			//MS.Verbose(MS.Title("IF"));
 
-			if (mm.stack[args.baseIndex] != 0)
-			{
-				MS.Verbose("do it!");
-				mm.Gosub(mm.stack[args.baseIndex + 1]);
-			}
-			else MS.Verbose("don't do!");
+			//if (mm.stack[args.baseIndex] != 0)
+			//{
+			//	MS.Verbose("do it!");
+			//	mm.Gosub(mm.stack[args.baseIndex + 1]);
+			//}
+			//else MS.Verbose("don't do!");
 		}
 		private static void SubCallback(MeanMachine mm, MArgs args)
 		{
-			MS.Verbose(MS.Title("SUBTRACTION"));
-			int a = mm.stack[args.baseIndex];
-			int b = mm.stack[args.baseIndex + 1];
-			MS.Verbose("calculate " + a + " - " + b + " = " + (a - b));
-			mm.CallbackReturn(MC.BASIC_TYPE_INT, a - b);
+			//MS.Verbose(MS.Title("SUBTRACTION"));
+			//int a = mm.stack[args.baseIndex];
+			//int b = mm.stack[args.baseIndex + 1];
+			//MS.Verbose("calculate " + a + " - " + b + " = " + (a - b));
+			//mm.CallbackReturn(MC.BASIC_TYPE_INT, a - b);
 		}
 
 		private static void PrintIntCallback(MeanMachine mm, MArgs args)
