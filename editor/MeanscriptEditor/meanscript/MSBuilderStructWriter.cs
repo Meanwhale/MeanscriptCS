@@ -4,19 +4,48 @@
 namespace Meanscript
 {
 	using Core;
+	using System;
 
 	public class MSBuilderStructWriter : MSBuilderWriter
-	{	
-		public MSBuilderStructWriter(MSBuilder _builder, int nameID) : 
+	{
+		private bool locked = false;
+		public int TypeID;
+
+		public MSBuilderStructWriter(MSBuilder _builder, int nameID, int typeID = -1) : 
 			base(_builder, new StructDef(_builder.types, nameID))
 		{
+			// TODO: muutkin kuin global
+			MS.Assertion(builder.types.texts.HasTextID(nameID));
+			if (typeID < 0) typeID = builder.types.GetNewTypeID();
+			builder.types.AddTypeDef(new StructDefType(typeID, null, SD));
+			TypeID = typeID;
 		}
 
-		public void AddInt(string name, int value = 0)
+		public StructDef.Member AddInt(string name, int value = 0)
 		{
+			CheckLock(); // Check that this is not lock
 			// value: default value for normal structs, initial value for global
 			var member = SD.AddMember(builder.types.texts.AddText(name), new ArgType(Arg.DATA, builder.types.GetTypeDef(MC.BASIC_TYPE_INT)));
-			WriteInt(member, value);
+			values.Add(0); // default value
+			WriteInt(member, value); // set initial value
+			return member;
+		}
+
+		internal MSBuilderWriter Add(MSBuilderStructWriter sw, string name)
+		{
+			CheckLock(); // Check that this is not lock
+			sw.Lock(); //  Lock member's type 
+			SD.AddMember(builder.types.texts.AddText(name), new ArgType(Arg.DATA, builder.types.GetDataType(sw.TypeID)));
+			values.Expand(sw.SD.StructSize());
+			return new MSBuilderWriter(builder, sw.SD);
+		}
+		public void CheckLock()
+		{
+			MS.Assertion(!locked, MC.EC_DATA, "MSBuilderStructWriter locked");
+		}
+		private void Lock()
+		{
+			locked = true;
 		}
 
 		/*public void setInt(string name, int value)

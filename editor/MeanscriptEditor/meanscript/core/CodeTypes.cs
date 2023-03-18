@@ -81,7 +81,7 @@ namespace Meanscript.Core
 		
 		public bool HasType(MSText name)
 		{
-			return GetType(name) != null;
+			return GetTypeDef(name) != null;
 		}
 		public bool HasDataType(MSText name)
 		{
@@ -107,7 +107,7 @@ namespace Meanscript.Core
 			if (types.ContainsKey(id)) return types[id];
 			return null;
 		}
-		public TypeDef GetType(MSText name, NodeIterator it = null)
+		public TypeDef GetTypeDef(MSText name, NodeIterator it = null)
 		{
 			var bt = MC.basics.GetBasicType(name, it);
 			if (bt != null) return bt;
@@ -129,7 +129,7 @@ namespace Meanscript.Core
 		}
 		public DataTypeDef GetDataType(MSText name, NodeIterator it = null)
 		{
-			var t = GetType(name,it);
+			var t = GetTypeDef(name,it);
 			if (t != null && t is DataTypeDef d) return d;
 			return null;
 		}
@@ -176,7 +176,7 @@ namespace Meanscript.Core
 			}
 
 			int nameID = texts.GetTextID(name);
-			if (nameID >= 0)
+			if (nameID >= 0 && globals != null)
 			{
 				// name is saved: check if it's used in contexts
 
@@ -232,6 +232,11 @@ namespace Meanscript.Core
 					var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_CHARS);
 					factory.Encode(output, ct);
 				}
+				//if (tv.Value is GenericMapType mt)
+				//{
+				//	var factory = GenericFactory.Get(MC.BASIC_TYPE_GENERIC_MAP);
+				//	factory.Encode(output, mt);
+				//}
 			}
 			if (gl != null) gl.SD.Encode(output, MC.GLOBALS_TYPE_ID);
 		}

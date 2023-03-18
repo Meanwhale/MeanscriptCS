@@ -24,10 +24,10 @@ namespace Meanscript.Core
 		private static ByteAutomata automata;
 		private static bool goBackwards, running, assignment;
 		private static int index, lastStart, lineNumber, characterNumber, quoteIndex;
-		private static MNode root;
-		private static MNode currentBlock;
-		private static MNode currentExpr;
-		private static MNode currentToken;
+		private static MCNode root;
+		private static MCNode currentBlock;
+		private static MCNode currentExpr;
+		private static MCNode currentToken;
 		private static TokenTree tokenTree;
 
 		public static readonly string[] nodeTypeName = new string[] { "root", "expr", "sub-call", "struct", "block", "token" };
@@ -77,7 +77,7 @@ namespace Meanscript.Core
 
 		private static void AddExpr()
 		{
-			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR);
+			MCNode expr = new MCNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR);
 			currentExpr.next = expr;
 			currentExpr = expr;
 			currentToken = null;
@@ -88,18 +88,18 @@ namespace Meanscript.Core
 		{
 			if (tokenType == NodeType.REFERENCE_TOKEN) lastStart++; // skip '#'
 			
-			MNode token;
+			MCNode token;
 			if (tokenType == NodeType.TEXT)
 			{
 				MSText data = GetQuoteText();
 				tokenTree.texts.AddText(data);
-				token = new MNode(lineNumber, characterNumber, currentExpr, NodeType.TEXT, data);
+				token = new MCNode(lineNumber, characterNumber, currentExpr, NodeType.TEXT, data);
 			}
 			else
 			{
 				MSText data = GetNewName();
 				{ if (MS._debug) { MS.Verbose("TOKEN: " + data); } };
-				token = new MNode(lineNumber, characterNumber, currentExpr, tokenType, data);
+				token = new MCNode(lineNumber, characterNumber, currentExpr, tokenType, data);
 			}
 
 			if (currentToken == null) currentExpr.child = token;
@@ -110,7 +110,7 @@ namespace Meanscript.Core
 		}
 		private static void AddOperator(NodeType tokenType, MSText name)
 		{
-			MNode token = new MNode(lineNumber, characterNumber, currentExpr, tokenType, name);
+			MCNode token = new MCNode(lineNumber, characterNumber, currentExpr, tokenType, name);
 			if (currentToken == null) currentExpr.child = token;
 			else currentToken.next = token;
 			currentExpr.numChildren++;
@@ -120,8 +120,13 @@ namespace Meanscript.Core
 
 		private static void EndBlock(NodeType blockType)
 		{
+			//if (assignment && currentBlock.type != blockType)
+			//{
+			//	ExprBreak();
+			//}
+
 			// check that block-end character is the right one
-			MS.Assertion((currentBlock != null && currentBlock.type == blockType), MC.EC_PARSE, "invalid block end");
+			//MS.Assertion((currentBlock != null && currentBlock.type == blockType), MC.EC_PARSE, "invalid block end");
 
 			lastStart = -1;
 			currentToken = currentBlock;
@@ -170,16 +175,17 @@ namespace Meanscript.Core
 
 			if (blockType == NodeType.ASSIGNMENT_BLOCK)
 			{
+				MS.Assertion(!assignment, MC.EC_PARSE, "unexpected assignment in assignment");
 				currentExpr.type = NodeType.EXPR_ASSIGN; 
 				assignment = true;
 			}
 
-			{ if (MS._debug) { MS.Verbose("add block: " + blockType); } };
+			if (MS._debug) MS.Verbose("add block: " + blockType);
 
 			lastStart = -1;
 
 
-			MNode block = new MNode(lineNumber, characterNumber, currentExpr, blockType, null);
+			MCNode block = new MCNode(lineNumber, characterNumber, currentExpr, blockType, null);
 
 			if (currentToken == null)
 			{
@@ -195,7 +201,7 @@ namespace Meanscript.Core
 
 			currentBlock = block;
 
-			MNode expr = new MNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR);
+			MCNode expr = new MCNode(lineNumber, characterNumber, currentBlock, NodeType.EXPR);
 			currentBlock.child = expr;
 			currentExpr = expr;
 			currentToken = null;
@@ -435,7 +441,7 @@ namespace Meanscript.Core
 
 			ba.Next((byte)1);
 
-			root = new MNode(1, 1, null, NodeType.EXPR, new MSText("<ROOT>"));
+			root = new MCNode(1, 1, null, NodeType.EXPR, new MSText("<ROOT>"));
 			currentExpr = root;
 			currentBlock = null;
 			currentToken = null;
@@ -506,7 +512,7 @@ namespace Meanscript.Core
 				automata = null;
 				root = null;
 				tokenTree = null;
-				MS.Assertion(false, MC.EC_PARSE, null);
+				MS.Assertion(false, MC.EC_PARSE, "parse error");
 			}
 
 			if (MS._verboseOn)

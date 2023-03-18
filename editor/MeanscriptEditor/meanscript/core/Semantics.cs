@@ -209,7 +209,7 @@ namespace Meanscript.Core
 				else if (HasGenericType(it.Data()))
 				{
 					//  eg. "array [person,5] players"
-					AddGeneric(it, currentContext.variables);
+					AddGeneric(it.Copy(), currentContext.variables);
 				}
 				else if (HasDataType(it.Data()))
 				{
@@ -225,7 +225,13 @@ namespace Meanscript.Core
 					currentContext.variables.AddMember(texts.AddText(it.Data()), dataType, Arg.DATA);
 
 					// check if there's an assignment or extra tokens
-					if (it.HasNext())
+					
+					if(dataType.ID == MC.BASIC_TYPE_MAP)
+					{
+						MS.SyntaxAssertion(it.GetNext().type == NodeType.CODE_BLOCK, it, "map content {} expected");
+						SetParentExpr(it, NodeType.EXPR_MAP_INIT_AND_ASSIGN);
+					}
+					else if (it.HasNext())
 					{
 						MS.SyntaxAssertion(it.NextType() == NodeType.ASSIGNMENT_BLOCK, it, "unexpected token");
 						SetParentExpr(it, NodeType.EXPR_INIT_AND_ASSIGN);
@@ -256,16 +262,19 @@ namespace Meanscript.Core
 			//	[a]
 			it.ToNext(NodeType.SQUARE_BRACKETS);
 			it.ToChild();
-			MS.Assertion(it.NumChildren() == 1, MC.EC_SYNTAX, "arguments expected");
-			var genArgs = new MList<MNode>();
-			while(true)
+			var genArgs = new MList<MCNode>();
+			if (it.NumChildren() > 0) // else empty []
 			{
-				// read argument nodes
-				it.ToChild();
-				genArgs.AddLast(it.node);
-				it.ToParent();
-				if (!it.HasNext()) break;
-				it.ToNext();
+				MS.Assertion(it.NumChildren() == 1, MC.EC_SYNTAX, "arguments expected");
+				while(true)
+				{
+					// read argument nodes
+					it.ToChild();
+					genArgs.AddLast(it.node);
+					it.ToParent();
+					if (!it.HasNext()) break;
+					it.ToNext();
+				}
 			}
 			it.ToParent();
 			it.ToNext(NodeType.NAME_TOKEN);
@@ -277,8 +286,22 @@ namespace Meanscript.Core
 			
 			if (it.HasNext())
 			{
-				MS.Assertion(it.GetNext().type == NodeType.ASSIGNMENT_BLOCK, MC.EC_SYNTAX, "generic type: extra tokens after name");
-				SetParentExpr(it, NodeType.EXPR_INIT_AND_ASSIGN);
+				/*if (genArgType.Def.ID == MC.BASIC_TYPE_MAP)
+				{
+					MS.SyntaxAssertion(it.GetNext().type == NodeType.CODE_BLOCK, it, "map content {} expected");
+					SetParentExpr(it, NodeType.EXPR_MAP_INIT_AND_ASSIGN);
+					//it.ToNext();
+					//MS.SyntaxAssertion(!it.HasNext(), it, "unexpected tokens after map content");
+					//it.ToChild();
+					//AnalyzeNode(it.Copy());
+				}
+				else*/
+				{
+					MS.Assertion(it.GetNext().type == NodeType.ASSIGNMENT_BLOCK, MC.EC_SYNTAX, "generic type: extra tokens after name");
+					SetParentExpr(it, NodeType.EXPR_INIT_AND_ASSIGN);
+					it.ToNext();
+					MS.Assertion(!it.HasNext(), MC.EC_SYNTAX, "generic type: extra tokens after name");
+				}
 			}
 			else
 			{
@@ -286,7 +309,7 @@ namespace Meanscript.Core
 			}
 		}
 
-		private ArgType CreateGenericVariable(MSText genTypeName, MList<MNode> genArgs, NodeIterator it)
+		private ArgType CreateGenericVariable(MSText genTypeName, MList<MCNode> genArgs, NodeIterator it)
 		{
 
 			var factory = GetGenericFactory(genTypeName);			
@@ -331,7 +354,7 @@ namespace Meanscript.Core
 			
 			AddStructDef(nameID, sd);
 
-			sd.Info(MS.printOut);
+			if (MS._verboseOn) sd.Info(MS.printOut);
 			
 		}
 

@@ -16,7 +16,7 @@ namespace Meanscript
 		}
 
 		private MeanMachine mm = null;
-		private Dictionary<int, MNode> nodes;
+		private Dictionary<int, MCNode> nodes;
 		private bool initialized = false;
 
 		public MSStruct global;

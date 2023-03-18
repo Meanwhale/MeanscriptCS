@@ -25,7 +25,7 @@ namespace Meanscript
 		public MSOutputPrint Print(MSText text)
 		{
 			if (text == null) return Print("null");
-			return PrintIntsToChars(text.GetData(), 1, text.NumBytes(), false);
+			return PrintIntsToChars(text.GetData().Data(), 1, text.NumBytes(), false);
 		}
 
 		public MSOutputPrint Print(int x)
@@ -145,7 +145,7 @@ namespace Meanscript
 			return this;
 		}
 
-		public MSOutputPrint PrintIntsToChars(IntArray ints, int start, int numChars, bool quote)
+		public MSOutputPrint PrintIntsToChars(int[] ints, int start, int numChars, bool quote)
 		{
 
 			int shift = 0;

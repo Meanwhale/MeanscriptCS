@@ -7,7 +7,7 @@ namespace Meanscript
 	public class MException : System.Exception
 	{
 		public readonly MSError error;
-		private readonly string info;
+		public readonly string info;
 		public MException() {
 			error = null; info = "Meanscript exception";
 		}
@@ -99,7 +99,17 @@ namespace Meanscript
 				throw new MException(err, "assertion failed: " + msg);
 			}
 		}
-
+		
+		public static void Assertion(bool b, MSError err, Func<string> f)
+		{
+			if (b) return;
+			Assertion(false, err, f()); // assertion that has some code to produce error message
+		}
+		internal static void SyntaxAssertion(bool b, NodeIterator it, Func<string> f)
+		{
+			if (b) return;
+			SyntaxAssertion(false, it, f()); 
+		}
 		internal static void SyntaxAssertion(bool b, NodeIterator it, string s)
 		{
 			// printtaa node. Javasta mallia.

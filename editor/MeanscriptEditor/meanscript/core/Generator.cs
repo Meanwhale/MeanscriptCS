@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Meanscript.Core
@@ -10,7 +11,7 @@ namespace Meanscript.Core
 		//readonly ByteCode bc;
 		readonly MSOutput output;
 		
-		public readonly Dictionary<int, MNode> nodes = new Dictionary<int, MNode>();
+		public readonly Dictionary<int, MCNode> nodes = new Dictionary<int, MCNode>();
 
 		public Generator(TokenTree _tree, Semantics _sem, MSOutput _output)
 		{
@@ -20,7 +21,7 @@ namespace Meanscript.Core
 			currentContext = null;
 		}
 
-		public static Dictionary<int, MNode> Generate(TokenTree _tree, Semantics _sem, MSOutput _output)
+		public static Dictionary<int, MCNode> Generate(TokenTree _tree, Semantics _sem, MSOutput _output)
 		{
 			Generator gen = new Generator(_tree, _sem, _output);
 			gen.Generate();
@@ -129,6 +130,9 @@ namespace Meanscript.Core
 				case NodeType.EXPR_FUNCTION:
 					MS.Verbose("skip " + it.Type());
 				break;
+				case NodeType.EXPR_MAP_INIT_AND_ASSIGN:
+					GenerateMap(it.Copy());
+				break;
 				default:
 					MS.SyntaxAssertion(false, it, "unhandled token");
 				break;
@@ -137,6 +141,122 @@ namespace Meanscript.Core
 				if (!it.HasNext()) return;
 				it.ToNext();
 			}
+		}
+
+		private void GenerateMap(NodeIterator it)
+		{
+			MS.Verbose(MS.Title("GenerateMap"));
+			it.ToChild();
+			MS.SyntaxAssertion(it.Data().Equals("map"), it, "map expected");
+			it.ToNext();
+			
+			// create a map and assign it's tag to the map variable
+
+			// push map variable's address
+			var assignTarget = ResolveAndPushVariableAddress(it);
+			// create the map and push it's tag
+			output.WriteOp(MC.OP_PUSH_NEW_MAP_TAG_AND_BEGIN, 0, MC.BASIC_TYPE_VOID);
+			// push map variable's size (tag)
+			output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, 1);
+			// stack: ... [target: heap ID + offset][data][size] top
+			// assign tag to the map variable
+			output.WriteOp(MC.OP_POP_STACK_TO_OBJECT, 0, MC.BASIC_TYPE_VOID);
+
+			// read the assignment expressions
+			if (it.HasNext())
+			{
+				it.ToNext();
+				GenerateMapContent(it);
+			}
+			output.WriteOp(MC.OP_END_MAP, 0, MC.BASIC_TYPE_VOID);
+		}
+
+		private void GenerateMapContent(NodeIterator it)
+		{
+			MS.SyntaxAssertion(it.Type() == NodeType.CODE_BLOCK, it, "map content block {...} expected");
+			if (!it.HasChild()) return; // empty { }
+			it.ToChild();
+			while(true)
+			{
+				// read a child map or key-value pair
+				if (it.Type() == NodeType.EXPR)
+				{
+					if (it.HasChild())
+					{
+						// expect child map, eg. "child { k: v }"
+						GenerateChildMap(it.Copy());
+					}
+					// else an empty expression
+				}
+				else
+				{
+					// read map key-value pair
+					MS.SyntaxAssertion(it.Type() == NodeType.EXPR_ASSIGN, it, "map key-value expeceted");
+					GenerateMapKeyValue(it.Copy());
+				}
+				if (it.HasNext()) it.ToNext();
+				else break;
+			}
+		}
+
+		private void GenerateChildMap(NodeIterator it)
+		{				
+			it.ToChild();
+							
+			var key = it.Data();
+			MS.SyntaxAssertion(sem.IsNameValidAndAvailable(key), it, "invalid key name: " + key);
+						
+			MS.Verbose("child map key: " + key);
+
+			// push value
+			it.ToNext();
+			MS.SyntaxAssertion(it.Type() == NodeType.CODE_BLOCK, it, "map content expected");
+			MS.SyntaxAssertion(!it.HasNext(), it, () => {it.ToNext(); return "unexpected tokens after map content";});
+						
+			// CHILD MAP CREATION BEGINS
+			// create the map and push it's tag
+			output.WriteOp(MC.OP_PUSH_NEW_MAP_TAG_AND_BEGIN, 0, MC.BASIC_TYPE_VOID);
+			GenerateMapContent(it);
+			output.WriteOp(MC.OP_END_MAP, 0, MC.BASIC_TYPE_VOID);
+			// CHILD MAP CREATION ENDS
+
+			// now the map tag should be on top of stack
+						
+			// make a string key
+			output.WriteOp(MC.OP_MAP_KEY, key.DataSize(), 0);
+			key.Write(output);
+
+			// value is on stack. write key-value to map
+			output.WriteOp(MC.OP_POP_MAP_VALUE, 0, MC.BASIC_TYPE_MAP);
+
+		}
+
+		private void GenerateMapKeyValue(NodeIterator it)
+		{
+			// generate ops that saves the key string,
+			// push value in the assignment expression "key: expression",
+			// then pops the value and save the key-value pair to map.
+
+			it.ToChild();
+			var key = it.Data();
+			MS.SyntaxAssertion(sem.IsNameValidAndAvailable(key), it, "invalid map key name: " + key);
+			MS.Verbose("map key: " + key);
+
+			// make a string key
+			output.WriteOp(MC.OP_MAP_KEY, key.DataSize(), 0);
+			key.Write(output);
+
+			// push value
+			it.ToNext();
+			MS.SyntaxAssertion(it.Type() == NodeType.ASSIGNMENT_BLOCK, it, "value expected");
+			it.ToChild();
+			MS.SyntaxAssertion(!it.HasNext(), it, "single map value expected");
+			var retVal = GenerateExpression(it, false);
+			MS.SyntaxAssertion(retVal.Size() == 1, it, "single map value expected");
+			var val = retVal.First();
+
+			// value is on stack. write key-value to map
+			output.WriteOp(MC.OP_POP_MAP_VALUE, 0, val.Def.ID);
 		}
 
 		private MList<ArgType> GenerateExpression(NodeIterator it, bool call)
@@ -403,7 +523,7 @@ namespace Meanscript.Core
 
 			if (it.node.type == NodeType.NAME_TOKEN)
 			{
-				var typeArg = sem.GetType(it.Data());
+				var typeArg = sem.GetTypeDef(it.Data());
 				if (typeArg != null)
 				{
 					if (typeArg is CallNameType cn)
@@ -471,6 +591,10 @@ namespace Meanscript.Core
 						output.WriteOp(MC.OP_SET_DYNAMIC_OBJECT, 0, 0);
 						varType = obj.itemType;
 					}
+					/*else if (varType.ID is GenericMapType)
+					{
+						// map tag variable
+					}*/
 					else
 					{
 						MS.Assertion(false);

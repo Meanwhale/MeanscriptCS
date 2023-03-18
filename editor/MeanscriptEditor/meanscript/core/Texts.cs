@@ -1,4 +1,6 @@
-﻿namespace Meanscript.Core
+﻿using System;
+
+namespace Meanscript.Core
 {
 	public class Texts
 	{
@@ -14,10 +16,16 @@
 		{
 			return textCounter;
 		}
+
+		internal bool HasTextID(int nameID)
+		{
+			return GetTextByID(nameID) != null;
+		}
+
 		public int AddText(MSText data)
 		{
 			// text is already there
-			if ((texts.ContainsKey(data))) return texts[data];
+			if (texts.ContainsKey(data)) return texts[data];
 
 			// add a new text
 			int id = ++textCounter;

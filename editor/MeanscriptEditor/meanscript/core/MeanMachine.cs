@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Meanscript.Core
@@ -5,15 +6,9 @@ namespace Meanscript.Core
 
 	public class MeanMachine
 	{
-		internal class CallBase
-		{
-			public CallBase(DData heapObject) { HeapObject = heapObject; }
-			public DData HeapObject;
-		}
-
 		internal int stackTop;
 		internal int ipStackTop;
-		internal DData currentContextData;
+		internal MCStore currentContextData;
 		//internal int stackBase;
 		//internal int instructionPointer;
 		internal int registerType;
@@ -22,21 +17,21 @@ namespace Meanscript.Core
 		internal bool jumped;
 		public IntArray stack;
 		internal IntArray ipStack;
-		internal MList<CallBase> contextStack = new MList<CallBase>();
+		internal MList<IDynamicObject> contextStack = new MList<IDynamicObject>();
 		internal IntArray functions;
 		internal IntArray registerData;
 		private MSInput input;
 		public CodeTypes codeTypes;
 		private Texts texts;
 
-		internal MHeap Heap = new MHeap();
+		internal MCHeap Heap = new MCHeap();
+		private MSText keyText = null;
+		private StructDefType currentStructDef = null;
+		private Dictionary<int, MCNode> nodes;
 
-		private static StructDefType currentStructDef = null;
-		private Dictionary<int, MNode> nodes;
-
-		public MeanMachine(MSInput _input, Dictionary<int, MNode> _nodes = null)
+		public MeanMachine(MSInput _input, Dictionary<int, MCNode> _nodes = null)
 		{
-			if (_nodes == null) nodes = new Dictionary<int, MNode>();
+			if (_nodes == null) nodes = new Dictionary<int, MCNode>();
 			else nodes = _nodes;
 
 			input = _input;
@@ -73,11 +68,16 @@ namespace Meanscript.Core
 			return done;
 		}
 
+		private void Assertion(bool b, string msg="")
+		{
+			MS.Assertion(b, MC.EC_CODE, msg);
+		}
+
 		public void InitVMArrays()
 		{
 			// initialize arrays for code execution only if needed.
 
-			MS.Assertion(!initialized, MC.EC_INTERNAL, "VM arrays must be initialized before code initialization is finished.");
+			Assertion(!initialized, "VM arrays must be initialized before code initialization is finished.");
 
 			stack = new IntArray(MS.globalConfig.stackSize);
 			ipStack = new IntArray(MS.globalConfig.ipStackSize);
@@ -85,15 +85,10 @@ namespace Meanscript.Core
 			registerData = new IntArray(MS.globalConfig.registerSize);
 		}
 
-		internal string FindTextByID(int id)
-		{
-			return texts.FindTextStringByID(id);
-		}
-
 		//public void Gosub(int address)
 		//{
 		//	int instruction = byteCode.code[address];
-		//	MS.Assertion((instruction & MC.OPERATION_MASK) == MC.OP_NOOP, MC.EC_INTERNAL, "gosub: wrong address");
+		//	Assertion((instruction & MC.OPERATION_MASK) == MC.OP_NOOP, "gosub: wrong address");
 		//	PushIP(-instructionPointer); // gosub addresses (like when executing if's body) negative
 		//	instructionPointer = address;
 		//	jumped = true;
@@ -101,14 +96,14 @@ namespace Meanscript.Core
 
 		public void PushIP(int ip)
 		{
-			MS.Assertion(ipStackTop < MS.globalConfig.ipStackSize - 1, MC.EC_INTERNAL, "call stack overflow");
+			Assertion(ipStackTop < MS.globalConfig.ipStackSize - 1, "call stack overflow");
 			ipStack[ipStackTop] = ip;
 			ipStackTop++;
 		}
 
 		public int PopIP()
 		{
-			MS.Assertion(ipStackTop > 0, MC.EC_INTERNAL, "pop empty call stack");
+			Assertion(ipStackTop > 0, "pop empty call stack");
 			ipStackTop--;
 			int rv = ipStack[ipStackTop];
 			return rv < 0 ? -rv : rv; // return positive (gosub address is negative)
@@ -116,7 +111,7 @@ namespace Meanscript.Core
 
 		public int PopEndIP()
 		{
-			MS.Assertion(ipStackTop > 0, MC.EC_INTERNAL, "pop empty call stack");
+			Assertion(ipStackTop > 0, "pop empty call stack");
 			int rv = 0;
 			do
 			{
@@ -138,11 +133,11 @@ namespace Meanscript.Core
 
 		public void InitFunctionCall(int id)
 		{
-			MS.Assertion(false);
-			//MS.Assertion(initialized, MC.EC_CODE, "Code not initialized.");
+			Assertion(false);
+			//Assertion(initialized, "Code not initialized.");
 			//MS.Verbose("initialize a user's function call");
 			//int tagAddress = functions[id];
-			//MS.Assertion(tagAddress != 0, MC.EC_CODE, "no function with ID " + id);
+			//Assertion(tagAddress != 0, "no function with ID " + id);
 			//instructionPointer = bc.code[tagAddress + 2];
 			////stackBase = globalsSize;
 			//done = false;
@@ -159,7 +154,7 @@ namespace Meanscript.Core
 
 		public void Run()
 		{
-			MS.Assertion(!initialized, MC.EC_CODE, "Code is already initialized.");
+			Assertion(!initialized, "Code is already initialized.");
 
 			stackTop = 0;
 			currentStructDef = null;
@@ -208,9 +203,9 @@ namespace Meanscript.Core
 
 			if (op == MC.OP_START_DEFINE)
 			{
-				//MS.Assertion(op == MC.OP_START_DEFINE, MC.EC_CODE, "bytecode starting tag missing");
+				//Assertion(op == MC.OP_START_DEFINE, "bytecode starting tag missing");
 				//numTexts = bc.code[instructionPointer + 1];
-				MS.Verbose("start init!");
+				MS.Verbose("define types and texts");
 				//texts = new IntArray(numTexts + 1);
 			}
 			else if (op == MC.OP_ADD_TEXT)
@@ -224,7 +219,7 @@ namespace Meanscript.Core
 			}
 			else if (op == MC.OP_FUNCTION)
 			{
-				MS.Assertion(false); // functiot muuttuu
+				Assertion(false); // functiot muuttuu
 				//// FORMAT: | MC.OP_FUNCTION | type | code address |
 				//int id = bc.code[instructionPointer + 1];
 				//functions[id] = instructionPointer; // save address to this tag 
@@ -235,7 +230,7 @@ namespace Meanscript.Core
 				int structID = (int)(instruction & MC.VALUE_TYPE_MASK);
 				//int nameID = bc.code[instructionPointer + 1];
 				int nameID = input.ReadInt();
-				MS.Verbose("new struct def., id: " + structID + " " + FindTextByID(nameID));
+				MS.Verbose("new struct def., id: " + structID + " " + texts.FindTextStringByID(nameID));
 				var sd = new StructDef(codeTypes, nameID);
 				currentStructDef = new StructDefType(structID, codeTypes.texts.GetText(nameID), sd);
 				codeTypes.AddTypeDef(currentStructDef);
@@ -243,7 +238,7 @@ namespace Meanscript.Core
 			else if (op == MC.OP_STRUCT_MEMBER)
 			{
 				int structID = (int)(instruction & MC.VALUE_TYPE_MASK);
-				MS.Assertion(structID == currentStructDef.ID);
+				Assertion(structID == currentStructDef.ID);
 				
 				int nameID   = input.ReadInt();	// + 1
 				int typeID   = input.ReadInt();	// + 2
@@ -253,7 +248,7 @@ namespace Meanscript.Core
 				int index    = input.ReadInt();	// + 6
 				
 				MS.Verbose("new struct member. struct: " + structID +
-					"\n    name:  " + (nameID < 1 ? nameID.ToString() : FindTextByID(nameID)) +
+					"\n    name:  " + (nameID < 1 ? nameID.ToString() : texts.FindTextStringByID(nameID)) +
 					"\n    type:  " + typeID +
 					"\n    ref:   " + refID +
 					"\n    addr:  " + address +
@@ -261,7 +256,7 @@ namespace Meanscript.Core
 					"\n    index: " + index);
 
 				var td = codeTypes.GetTypeDef(typeID);
-				MS.Assertion(td != null, MC.EC_CODE, "type not found by ID " + typeID);
+				Assertion(td != null, "type not found by ID " + typeID);
 				currentStructDef.SD.AddMember(nameID, td, refID, address, datasize, index);
 			}
 			else if (op == MC.OP_GENERIC_TYPE)
@@ -293,7 +288,7 @@ namespace Meanscript.Core
 				// copy data from instruction's bytecode to heap
 
 				Heap.ReadFromInput(
-					heapID == 1 ? DData.Role.GLOBAL : DData.Role.OBJECT,
+					heapID == 1 ? MCStore.Role.GLOBAL : MCStore.Role.OBJECT,
 					heapID,
 					typeID,
 					input,
@@ -302,6 +297,12 @@ namespace Meanscript.Core
 			else if (op == MC.OP_END_INIT)
 			{
 				MS.Verbose("INIT DONE!");
+				Assertion(contextStack.Size() == 0);
+				if (MS._verboseOn)
+				{
+					Heap.Print();
+					PrintStack();
+				}
 				done = true;
 			}
 			else if (op == MC.OP_START_INIT)
@@ -314,7 +315,7 @@ namespace Meanscript.Core
 					var gl = codeTypes.GetTypeDef(MC.GLOBALS_TYPE_ID);
 					Heap.AllocGlobal(gl.SizeOf());
 				}
-				currentContextData = Heap.GetDDataByIndex(1);
+				currentContextData = Heap.GetStoreByIndex(1);
 			}
 
 			//////////////////////////////// OLD RUN STEP OPS ////////////////////////////////
@@ -339,7 +340,7 @@ namespace Meanscript.Core
 			{
 				int size = PopStack();
 				int address = PopStack();
-				PushData(Heap.GetDataArray(MC.AddressHeapID(address)), MC.AddressOffset(address), size);
+				PushData(Heap.GetStoreData(MC.AddressHeapID(address)), MC.AddressOffset(address), size);
 			}
 			else if (op == MC.OP_ADD_STACK_TOP_ADDRESS_OFFSET)
 			{
@@ -362,10 +363,10 @@ namespace Meanscript.Core
 					// get text data from the texts
 
 					var t = texts.GetTextByID(textID);
-					MS.Assertion(t != null, MC.EC_CODE, "wrong text ID: " + textID);
+					Assertion(t != null, "wrong text ID: " + textID);
 					textDataSize = t.DataSize();
-					MS.Assertion(t.NumBytes() <= maxBytes, MC.EC_CODE, "text too long");
-					MS.Assertion(textDataSize  <= structSize, MC.EC_CODE, "text data too long");
+					Assertion(t.NumBytes() <= maxBytes, "text too long");
+					Assertion(textDataSize  <= structSize, "text data too long");
 					PushData(t.GetData(), 0, textDataSize);
 				}
 				// fill the rest
@@ -381,7 +382,7 @@ namespace Meanscript.Core
 				int address = stack[stackTop - size - 1];
 				int heapID = MC.AddressHeapID(address);
 				int offset = MC.AddressOffset(address);
-				MS.Assertion(Heap.HasObject(heapID), MC.EC_CODE, "address' heap ID error: " + heapID);
+				Assertion(Heap.HasObject(heapID), "address' heap ID error: " + heapID);
 				
 				if (op == MC.OP_POP_STACK_TO_OBJECT_TAG)
 				{
@@ -390,11 +391,11 @@ namespace Meanscript.Core
 					if (tag != 0) Heap.Free(tag, -1);
 				}
 
-				var targetArray = Heap.GetDataArray(heapID);
-				MS.Assertion(targetArray.Length >= offset + size, MC.EC_CODE, "writing over bounds. targetArray size: " + targetArray.Length + ", offset: " + offset + ", data size: " + size);
+				var targetArray = Heap.GetStoreData(heapID);
+				Assertion(targetArray.Length >= offset + size, "writing over bounds. targetArray size: " + targetArray.Length + ", offset: " + offset + ", data size: " + size);
 				PopStackToTarget(targetArray, size, offset);
 				// pop address and check everything went fine
-				MS.Assertion(address == PopStack(), MC.EC_CODE, "MC.OP_PMC.OP_STACK_TO_x failed");
+				Assertion(address == PopStack(), "MC.OP_PMC.OP_STACK_TO_x failed");
 			}
 			else if (op == MC.OP_SET_DYNAMIC_OBJECT)
 			{
@@ -406,19 +407,70 @@ namespace Meanscript.Core
 				int offset = MC.AddressOffset(address);
 
 				int tag = Heap.GetAt(heapID, offset);
-				int newHeapID = MHeap.TagIndex(tag);
-				MS.Assertion(Heap.HasObject(newHeapID), MC.EC_CODE, "address' heap ID error: " + newHeapID);
+				int newHeapID = MCHeap.TagIndex(tag);
+				Assertion(Heap.HasObject(newHeapID), "address' heap ID error: " + newHeapID);
 				Push(MC.MakeAddress(newHeapID, 0));
 
 				MS.Verbose("set dynamic object address, newHeapID: " + newHeapID + ", offset: " + offset);
+			}
+			else if (op == MC.OP_PUSH_NEW_MAP_TAG_AND_BEGIN)
+			{
+				// TODO: for generic maps use type parameters
+				var map = Heap.AllocMap(codeTypes);
+				PushContext(map);
+				Push(map.tag);
+			}
+			else if (op == MC.OP_BEGIN_MAP)
+			{
+				int tag = PopStack();
+				var map = Heap.CreateMap(MCHeap.TagIndex(tag), MC.InstrValueTypeID(instruction), codeTypes);
+				PushContext(map);
+			}
+			else if (op == MC.OP_END_MAP)
+			{
+				CurrentMap(); // check there was a map
+				PopContext();
+			}
+			else if (op == MC.OP_MAP_KEY)
+			{
+				// read string key
+				keyText = new MSText(input);
+			}
+			else if (op == MC.OP_POP_MAP_VALUE)
+			{
+				// read value
+				int valueTypeID = (int)(instruction & MC.VALUE_TYPE_MASK);
+				var valueType = codeTypes.GetDataType(valueTypeID);
+				int valueSize = valueType.SizeOf();
+
+				// value data: OP_SET_MAP_VALUE + data
+				var data = new IntArray(valueSize + 1);
+				data[0] = MC.MakeInstruction(MC.OP_SET_MAP_VALUE, valueSize, valueTypeID);
+				PopStackToTarget(data, valueSize, 1);
+
+				// add key-value pair to current map
+				CurrentMap().map.dict.Add(keyText.ToString(), data);
+
+				keyText = null;
+			}
+			else if (op == MC.OP_SET_MAP_VALUE)
+			{
+				int valueSize = MC.InstrSize(instruction);
+				// value data: OP_SET_MAP_VALUE + data
+				var data = new IntArray(valueSize + 1);
+				data[0] = instruction;
+				for (int i=0; i<valueSize; i++) data[i+1] = input.ReadInt();
+
+				// add key-value pair to current map
+				CurrentMap().map.dict.Add(keyText.ToString(), data);
 			}
 			else if (op == MC.OP_CALLBACK_CALL)
 			{
 				//public MeanMachine (ByteCode _byteCode, StructDef _structDef, int _base)
 				int callbackIndex = (int)(instruction & MC.VALUE_TYPE_MASK);
-				MS.Assertion(codeTypes.HasCallback(callbackIndex), MC.EC_CODE, "unknown callback, id: " + callbackIndex);
+				Assertion(codeTypes.HasCallback(callbackIndex), "unknown callback, id: " + callbackIndex);
 				CallbackType cb = codeTypes.GetCallback(callbackIndex); // bc.common.callbacks[callbackIndex];
-				MS.Assertion(cb != null, MC.EC_INTERNAL, "invalid callback");
+				Assertion(cb != null, "invalid callback");
 				//int argsSize = cb.argStruct.StructSize();
 
 				MArgs args = new MArgs(cb, stackTop - cb.argsSize);
@@ -433,7 +485,7 @@ namespace Meanscript.Core
 			}
 			else if (op == MC.OP_FUNCTION_CALL)
 			{
-				MS.Assertion(false); // refactor
+				Assertion(false); // refactor
 
 				/*int functionID = bc.code[instructionPointer + 1];
 				int tagAddress = functions[functionID];
@@ -459,14 +511,14 @@ namespace Meanscript.Core
 			}
 			else if (op == MC.OP_RETURN_FUNCTION)
 			{
-				MS.Assertion(false); // refactor
+				Assertion(false); // refactor
 
 				//if (ipStackTop == 0)
 				//{
 				//	MS.Verbose("DONE!");
 				//	if (MS._verboseOn) Heap.Print();
 				//	done = true;
-				//	//MS.Assertion(stackTop == 0); // TODO: pitäisikö olla?
+				//	//Assertion(stackTop == 0); // TODO: pitäisikö olla?
 				//}
 				//else
 				//{
@@ -515,7 +567,7 @@ namespace Meanscript.Core
 			}
 			else if (op == MC.OP_PUSH_REG_TO_STACK)
 			{
-				MS.Assertion(registerType != -1, MC.EC_INTERNAL, "register empty: return value was expected");
+				Assertion(registerType != -1, "register empty: return value was expected");
 				//int size = bc.code[instructionPointer + 1];
 				int size = input.ReadInt();
 				MS.Verbose("push register content to stack, size " + size);
@@ -538,6 +590,28 @@ namespace Meanscript.Core
 			//}
 		}
 
+		// dynamic data context
+
+		private void PushContext(IDynamicObject map)
+		{
+			contextStack.AddFirst(map);
+		}
+		private IDynamicObject PopContext()
+		{
+			var x = contextStack.First();
+			contextStack.RemoveFirst();
+			return x;
+		}
+
+		private MCMap CurrentMap()
+		{
+			Assertion(!contextStack.IsEmpty(), "context is not set; map operation failed");
+			if (contextStack.First() is MCMap map) return map;
+			else Assertion(false, "map is not set; map operation failed");
+			return null;
+		}
+
+		// stack
 
 		public void PushData(IntArray source, int address, int size)
 		{

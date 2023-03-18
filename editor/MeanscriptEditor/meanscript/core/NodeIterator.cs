@@ -3,9 +3,9 @@ namespace Meanscript.Core
 
 	public class NodeIterator
 	{
-		internal MNode node;
+		internal MCNode node;
 
-		public NodeIterator(MNode _node)
+		public NodeIterator(MCNode _node)
 		{
 			node = _node;
 		}
@@ -24,15 +24,15 @@ namespace Meanscript.Core
 		{
 			return node.data;
 		}
-		public MNode GetChild()
+		public MCNode GetChild()
 		{
 			return node.child;
 		}
-		public MNode GetNext()
+		public MCNode GetNext()
 		{
 			return node.next;
 		}
-		public MNode GetParent()
+		public MCNode GetParent()
 		{
 			return node.parent;
 		}

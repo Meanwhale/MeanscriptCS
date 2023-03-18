@@ -19,6 +19,7 @@ namespace Meanscript.Core
 		public TypeDef Float64Type	{ get; private set; }
 		public TypeDef TextType		{ get; private set; } 
 		public TypeDef BoolType		{ get; private set; }
+		public TypeDef MapType		{ get; private set; }
 		
 		public TypeDef PlusOperatorType		{ get; private set; }
 		public TypeDef MinusOperatorType	{ get; private set; }
@@ -39,6 +40,7 @@ namespace Meanscript.Core
 			Float64Type = AddElementaryType(MC.BASIC_TYPE_FLOAT64, 2, "float64");
 			TextType = AddElementaryType(MC.BASIC_TYPE_TEXT, 1, "text");
 			BoolType = AddElementaryType(MC.BASIC_TYPE_BOOL, 1, "bool");
+			MapType = AddElementaryType(MC.BASIC_TYPE_MAP, 1, "map");
 			
 			PlusOperatorType = AddOperatorType(MC.BASIC_TYPE_PLUS, new MSText("+"));
 			MinusOperatorType = AddOperatorType(MC.BASIC_TYPE_MINUS, new MSText("-"));
@@ -179,7 +181,7 @@ namespace Meanscript.Core
 		{
 			MS.Verbose(MS.Title("PRINT CHARS "));
 			int numChars = mm.stack[args.baseIndex];
-			MS.userOut.Print("").PrintIntsToChars(mm.stack, args.baseIndex + 1, numChars, false);
+			MS.userOut.Print("").PrintIntsToChars(mm.stack.Data(), args.baseIndex + 1, numChars, false);
 		}
 
 		private static void PrintFloatCallback(MeanMachine mm, MArgs args)

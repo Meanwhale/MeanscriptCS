@@ -35,7 +35,7 @@
 		public TypeDef(int id) { ID = id; }
 		public abstract int SizeOf(); // size in stack. can be 0.
 		public abstract MSText TypeName();
-		public virtual string TypeNameString() { return TypeName().ToString();}
+		public virtual string TypeNameString() { return TypeName() == null ? GetType().ToString() : TypeName().ToString();}
 		public virtual void Init(CodeTypes sem) {}
 	}
 	public class OperatorType : TypeDef

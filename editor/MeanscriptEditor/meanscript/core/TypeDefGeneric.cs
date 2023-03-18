@@ -39,7 +39,7 @@
 
 		public abstract int CodeID();
 		public abstract string TypeName();
-		public abstract GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it);
+		public abstract GenericType Create(int id, MList<MCNode> genArgs, CodeTypes types, NodeIterator it);
 		public abstract GenericType Decode(MeanMachine mm, int [] args);
 		public abstract void Encode(MSOutput output, GenericType t);
 		public abstract int NumArgs();
@@ -58,6 +58,7 @@
 			factories.Add(new ObjectType.Factory());
 			factories.Add(new GenericArrayType.Factory());
 			factories.Add(new GenericCharsType.Factory());
+			//factories.Add(new GenericMapType.Factory());
 		}
 	}
 
@@ -69,7 +70,7 @@
 			{
 				return MC.BASIC_TYPE_GENERIC_OBJECT;
 			}
-			public override GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it)
+			public override GenericType Create(int id, MList<MCNode> genArgs, CodeTypes types, NodeIterator it)
 			{
 				// create type on semantic construction
 				MS.SyntaxAssertion(genArgs.Size() == 1, it, "object: 1 argument expected");
@@ -123,21 +124,6 @@
 				Setter								// callback to call when executing the code
 			);
 		}
-
-		public override void Init(CodeTypes types)
-		{
-			// HUOM!
-			// obj:lle argStructin koko voi olla väärä jos obj tyyppi sama kuin parent structin...
-			// MUTTA ei ole tällä hetkellä mahdollista. viitteet structista itseen tarvii isomman remontin.
-			// lisätietoja TODO-docissa.
-
-			//var cb = common.callbacks[SetterID];
-			//cb.argStruct = new StructDef(types, -1);
-			//cb.argStruct.AddMember(-1, ArgType.Void(this));
-			//cb.argStruct.AddMember(-1, ArgType.Void(types.common.VoidType));
-			//cb.argStruct.AddMember(-1, ArgType.Data(itemType));
-		}
-
 		private void Setter(MeanMachine mm, MArgs args)
 		{
 			MS.Verbose("//////////////// object setter: base " + args.baseIndex);
@@ -149,7 +135,7 @@
 
 			var data = new IntArray(ItemSize);
 			IntArray.Copy(mm.stack, mm.stackTop - ItemSize, data, 0, itemType.SizeOf());
-			int tag = mm.Heap.AllocObject(itemType.ID, data);
+			int tag = mm.Heap.AllocStoreObject(itemType.ID, data);
 			//mm.stackTop -= ItemSize + 1; // args size is item size + address size (1)
 			mm.CallbackReturn(ID, tag);
 		}
@@ -174,6 +160,112 @@
 			return "obj [" + itemType + "]";
 		}
 	}
+	/*public class GenericMapType : DynamicType
+	{
+		public class Factory : GenericFactory
+		{
+			public override int CodeID()
+			{
+				return MC.BASIC_TYPE_GENERIC_MAP;
+			}
+			public override GenericType Create(int id, MList<MCNode> genArgs, CodeTypes types, NodeIterator it)
+			{
+				// create type on semantic construction
+				
+				MS.SyntaxAssertion(genArgs.Size() == 0, it, "map: 0 argument expected");
+
+				//var keyType = types.GetDataType(genArgs.GetAt(0).data);
+				//var valueType = types.GetDataType(genArgs.GetAt(1).data);
+				//MS.SyntaxAssertion(keyType != null, it, "key is of undefined type: " + genArgs.GetAt(0).data);
+				//MS.SyntaxAssertion(valueType != null, it, "value is of undefined type: " + genArgs.GetAt(1).data);
+				//return new GenericMapType(types, id, keyType, valueType, types.GetNewTypeID());
+
+				// TODO: typed map
+
+				return new GenericMapType(types, id, types.GetDataType(MC.BASIC_TYPE_INT), types.GetDataType(MC.BASIC_TYPE_INT), types.GetNewTypeID());
+			}
+			public override void Encode(MSOutput output, GenericType t)
+			{
+				// data for bytecode
+				var ot = (GenericMapType)t;
+				output.WriteOp(MC.OP_GENERIC_TYPE, 4, CodeID());
+				output.WriteInt(ot.ID);
+				output.WriteInt(ot.keyType.ID);
+				output.WriteInt(ot.valueType.ID);
+				output.WriteInt(ot.SetterID);
+			}
+			public override GenericType Decode(MeanMachine mm, int [] args)
+			{
+				var keyType = mm.codeTypes.GetDataType(args[1]);
+				var valueType = mm.codeTypes.GetDataType(args[2]);
+				return new GenericMapType(mm.codeTypes, args[0], keyType, valueType, args[2]);
+			}
+			public override string TypeName()
+			{
+				return "map";
+			}
+			public override int NumArgs()
+			{
+				return 3;
+			}
+		}
+
+		public readonly DataTypeDef keyType, valueType;
+		//public int ItemSize { get { return itemType.SizeOf(); } }
+		public int SetterID { get; private set; }
+		public GenericMapType(CodeTypes types, int id, DataTypeDef _keyType, DataTypeDef _valueType, int setterID) : base(id, null)
+		{
+			keyType = _keyType;
+			valueType = _valueType;
+			CreateSetter(setterID, types);
+		}
+
+		internal void CreateSetter(int id, CodeTypes types)
+		{	
+			// NOTE: generator handles the setter call. arg size must be right so that stack is popped for right amount after call
+
+			// create a callback that generator finds with certain arguments
+			types.CreateCallback(
+				id,
+				ArgType.Void(MC.basics.VoidType),	// return value. TODO: value of key-value pair
+				keyType.SizeOf(),					// (internal) arguments are address and index (int)
+				Accessor							// callback to call when executing the code
+			);
+		}
+
+		private void Accessor(MeanMachine mm, MArgs args)
+		{
+			MS.Assertion(false);
+
+			//MS.Verbose("called GenericArrayType.Accessor");
+			//// read args from stack and push item address
+			//int arrayAddress = mm.stack[mm.stackTop - 2];
+			//int index = mm.stack[mm.stackTop - 1];
+			//MS.Assertion(index >= 0 && index < itemCount, MC.EC_CODE, "index out of bounds: " + index + "/" + itemCount);
+			//// NOTE: heap ID on edelleen siellä mutta ei pitäisi muutta koska se on ylemmissä biteissä (0xffff0000)
+			//mm.CallbackReturn(itemType.ID, arrayAddress + (index * itemType.SizeOf()));
+		}
+
+		public override int SizeOf()
+		{
+			return 1; // pointer to the map object in heap
+		}
+
+		public override bool TypeMatch(MList<ArgType> args)
+		{
+			MS.Assertion(false);
+			return false;
+			//return args.Size() == 1 && args.First().Def.ID == ID;
+		}
+		public override string TypeNameString()
+		{
+			return "TODO";
+		}
+		public override string ToString()
+		{
+			return "TODO";
+		}
+	}*/
 
 	public class GenericArrayType : GenericType
 	{
@@ -183,7 +275,7 @@
 			{
 				return MC.BASIC_TYPE_GENERIC_ARRAY;
 			}
-			public override GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it)
+			public override GenericType Create(int id, MList<MCNode> genArgs, CodeTypes types, NodeIterator it)
 			{
 				MS.SyntaxAssertion(genArgs.Size() == 2, it, "array: 2 arguments expected");
 				var itemType = types.GetDataType(genArgs.First().data);
@@ -206,7 +298,7 @@
 			public override GenericType Decode(MeanMachine mm, int [] args)
 			{
 				var itemType = mm.codeTypes.GetDataType(args[1]);
-				MS.Assertion(itemType != null, MC.EC_CODE, "ObjectType Factory Decode: object's item type not found, type ID " + args[1]);
+				MS.Assertion(itemType != null, MC.EC_CODE, "GenericMapType Factory Decode: object's item type not found, type ID " + args[1]);
 				return new GenericArrayType(mm.codeTypes,
 					args[0],	// type ID
 					itemType,	// item's type
@@ -288,7 +380,7 @@
 				return MC.BASIC_TYPE_GENERIC_CHARS;
 			}
 
-			public override GenericType Create(int id, MList<MNode> genArgs, CodeTypes types, NodeIterator it)
+			public override GenericType Create(int id, MList<MCNode> genArgs, CodeTypes types, NodeIterator it)
 			{
 				MS.SyntaxAssertion(genArgs.Size() == 1, it, "chars: 1 arguments expected");
 				int maxChars = MS.ParseInt(genArgs.Last().data.GetString());

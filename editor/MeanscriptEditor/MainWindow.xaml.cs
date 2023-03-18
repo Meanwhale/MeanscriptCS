@@ -81,17 +81,15 @@ namespace MeanscriptEditor
 			Meanscript.MS.printOut = winOutput;
 			Meanscript.MS.errorOut = winOutput;
 			Meanscript.MS.userOut = winOutput;
-
 		
 			KeyDown += new KeyEventHandler(MainWindow_KeyDown);
 
-			
-			
-			
 			//TextBoxCode.Text = "bool a: true";
 			//TextBoxCode.Text = "int a: 3";
-			TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
-
+			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
+			//TextBoxCode.Text = "text t: \"A쎄\"";
+			TextBoxCode.Text = MCUnitTest.mapTestScript;
+			
 			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
 			//TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p\np: 5";
 
@@ -113,6 +111,16 @@ namespace MeanscriptEditor
 			//				  + "arr[1].boss: (\"j\", (123,234), null)\n";
 			//TextBoxCode.Text = MeanscriptUnitTest.simpleArrayScript;
 			//TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p: 5";
+
+			// add tests
+			
+			foreach(var t in MCUnitTest.tests)
+			{
+				var item = new MenuItem();
+				item.Header = t.TestName;
+				item.Click += (object sender, RoutedEventArgs e) => { t.Run(); };
+				TestListMenu.Items.Add(item);
+			}
 		}
 
 		void MainWindow_KeyDown(object sender, KeyEventArgs e)
@@ -123,12 +131,19 @@ namespace MeanscriptEditor
 			}
 			if (e.Key == Key.F8)
 			{
-				TextBoxCode.Text = MeanscriptUnitTest.simpleVariableScript;
+				TextBoxCode.Text = MCUnitTest.simpleVariableScript;
 				//MeanscriptUnitTest.SimpleVariable();
 			}
 			if (e.Key == Key.F9)
 			{
-				RunUnitTests();
+				try
+				{
+					RunUnitTests();
+				}
+				catch (Exception x)
+				{
+					winOutput.Print(x.ToString());
+				}
 			}
 		}
 		
@@ -139,18 +154,10 @@ namespace MeanscriptEditor
 		private void RunUnitTests()
 		{
 			winOutput.Clear();
-			//try
-			{
-				MeanscriptUnitTest.RunAll();
-				Status("MeanscriptUnitTest DONE!");
-				winOutput.Print("\nTEST DONE!");
-				winOutput.ScrollToEnd();
-			}
-			//catch (Exception e)
-			//{
-			//	Status("unit test failed");
-			//	TextBoxOutput.Text = e.ToString();
-			//}
+			MCUnitTest.RunAll();
+			Status("MeanscriptUnitTest DONE!");
+			winOutput.Print("\nTEST DONE!");
+			winOutput.ScrollToEnd();
 		}
 		public void Command_ComplileAndRun(object sender, RoutedEventArgs e)
 		{

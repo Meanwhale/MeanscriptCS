@@ -9,6 +9,7 @@ namespace Meanscript.Core
 		EXPR_ASSIGN,			// a:5
 		EXPR_INIT,				// int a
 		EXPR_INIT_AND_ASSIGN,	// int a:5
+		EXPR_MAP_INIT_AND_ASSIGN,	// map a { ... }
 		EXPR_FUNCTION,			// func int foo [int x] { return x }
 		EXPR_STRUCT,			// struct vec [int x, int y]
 		ARG,
@@ -42,7 +43,7 @@ namespace Meanscript.Core
 			MC.keywords.AddLast(this);
 		}
 	}
-
+	// MC = Meanscript Core
 	public sealed class MC
 	{
 		public static BasicTypes basics = new BasicTypes();
@@ -86,6 +87,13 @@ namespace Meanscript.Core
 		
 		public const int OP_SET_DYNAMIC_OBJECT = 0x20000000;
 		public const int OP_PUSH_CHARS = 0x25000000;
+		
+		public const int OP_PUSH_NEW_MAP_TAG_AND_BEGIN = 0x26000000;
+		public const int OP_MAP_KEY = 0x27000000;
+		public const int OP_POP_MAP_VALUE = 0x28000000;
+		public const int OP_BEGIN_MAP = 0x29000000;
+		public const int OP_SET_MAP_VALUE = 0x2a000000;
+		public const int OP_END_MAP = 0x2b000000;
 
 		public const int OP_MAX = 0x30000000;
 		public const int NUM_OP = 0x30;
@@ -100,10 +108,10 @@ namespace Meanscript.Core
 			"push context address", "push object data",     "pop to object",        "pop to object tag",
 			"pop to register",      "end init",             "write heap object",    "generic type",
 			"set dynamic object",   "---OLD---",            "---OLD---",            "---OLD---",
-			"---OLD---",            "push chars",           "---ERROR---",          "---ERROR---",
+			"---OLD---",            "push chars",           "push map tag and begin","map key",
+			"map value",            "begin map",            "set map value",        "end map",
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
-			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
-			};
+		};
 
 
 		public static readonly Keyword KEYWORD_FUNC		= new Keyword("func");
@@ -128,11 +136,12 @@ namespace Meanscript.Core
 		public const int BASIC_TYPE_NULL = 13;
 		public const int BASIC_TYPE_GET = 14;
 		public const int BASIC_TYPE_SET = 15;
-		
-		public const int BASIC_TYPE_VOID = 16;
-		public const int BASIC_TYPE_GENERIC_OBJECT = 17;
-		public const int BASIC_TYPE_GENERIC_ARRAY = 18;
-		public const int BASIC_TYPE_GENERIC_CHARS = 19;
+		public const int BASIC_TYPE_MAP = 16;
+		public const int BASIC_TYPE_VOID = 17;
+
+		public const int BASIC_TYPE_GENERIC_OBJECT = 18;
+		public const int BASIC_TYPE_GENERIC_ARRAY = 19;
+		public const int BASIC_TYPE_GENERIC_CHARS = 20;
 		
 		public const int FIRST_BASIC_CALLBACK = 32;
 		
@@ -248,24 +257,25 @@ namespace Meanscript.Core
 
 					if (i == tagIndex)
 					{
-						MS.printOut.Print(":    0x").PrintHex(data[i]).Print("      ").Print(GetOpName(data[i])).EndLine();
+						int op = (int)(data[i] & MC.OPERATION_MASK);
+						MS.printOut.Print(":    0x").PrintHex(data[i]).Print("      ").Print(GetOpName(data[i]));
+						if (op == OP_ADD_TEXT)
+						{
+							MS.printOut.Print(" \"").PrintIntsToChars(data, i+2, data[i+1], false).Print('\"');
+							// TODO: print with real characters, not codes.
+							// var t = new MSText(data, i+2, data[i+1]);
+						}
+						MS.printOut.EndLine();
 						tagIndex += InstrSize(data[i]) + 1;
 					}
-					else MS.Print(":    " + data[i]);
+					else MS.printOut.Print(":    ").PrintHex(data[i]).EndLine();
 				}
 				else
 				{
-					MS.Print("    " + i + ":    " + data[i]);
+					MS.printOut.Print("    " + i + ":    ").PrintHex(data[i]).EndLine();
 				}
 			}
 		}
-		//public static int StringToIntsWithSize(string text, IntArray code, int top, int maxSize)
-		//{
-		//	MSText t = new MSText(text);
-		//	int size32 = t.DataSize();
-		//	MS.Assertion(size32 <= maxSize, EC_CODE, "text is too long, max 32-bit size: " + maxSize + ", text: " + text);
-		//	return t.Write(code, top);
-		//}
 
 		public static int CompareIntStringsWithSizeEquals(IntArray a, IntArray b)
 		{

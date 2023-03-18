@@ -41,7 +41,7 @@ namespace Meanscript
 			return true;
 		}
 
-		internal static void Read(MSInput input, int[] trg, int dataLength)
+		public static void Read(MSInput input, int[] trg, int dataLength)
 		{
 			MS.Assertion(dataLength <= trg.Length);
 			for(int i = 0; i < dataLength; i++) trg[i] = input.ReadInt();
@@ -54,6 +54,18 @@ namespace Meanscript
 		public static void Copy(int [] src, int srcIndex, int [] trg, int trgIndex, int length)
 		{
 			System.Array.Copy(src, srcIndex, trg, trgIndex, length);
+		}
+
+		internal void Write(MSOutput output)
+		{
+			Write(output, data);
+		}
+		public static void Write(MSOutput output, int [] data)
+		{
+			for (int i = 0; i < data.Length; i++)
+			{
+				output.WriteInt(data[i]);
+			}
 		}
 		public static void Copy(IntArray src, IntArray trg, int length)
 		{
@@ -80,6 +92,13 @@ namespace Meanscript
 			capacity = _capacity;
 			data = new int[capacity];
 			count = 0;
+		}
+		
+		public void Expand(int size)
+		{
+			// TODO optimize
+			MS.Assertion(size > 0);
+			while (size-- > 0) Add(0);
 		}
 
 		public void Add(int item)

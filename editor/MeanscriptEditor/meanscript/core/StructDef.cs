@@ -17,8 +17,9 @@ namespace Meanscript.Core
 			public readonly int DataSize; // sizeof
 			public readonly int Index; // 0, 1, 2, ...
 			public readonly int NameID; // 0, 1, 2, ...
+			public readonly int [] InitData;
 
-			public Member(TypeDef type, Arg r, int address, int dataSize, int index, int nameID)
+			public Member(TypeDef type, Arg r, int address, int dataSize, int index, int nameID, int[] initData)
 			{
 				Type = type;
 				Ref = r;
@@ -26,6 +27,7 @@ namespace Meanscript.Core
 				DataSize = dataSize;
 				Index = index;
 				NameID = nameID;
+				InitData = initData;
 			}
 		}
 
@@ -46,8 +48,8 @@ namespace Meanscript.Core
 			string s = "";
 			foreach(var m in members)
 			{
-				if (m.NameID > 0) s += "<" + m.Ref.ToString() + ":" + types.texts.GetText(m.NameID) + ":" + m.Type.TypeNameString() + ">";
-				else s += "<" + m.Ref.ToString() + ":" + m.Type.TypeNameString() + ">";
+				if (m.NameID > 0) s += " " + m.Ref.ToString() + "/" + m.Type.TypeNameString() + "/" + types.texts.GetText(m.NameID);
+				else s += " " + m.Ref.ToString() + "/" + m.Type.TypeNameString();
 			}
 			return s;
 		}
@@ -69,7 +71,7 @@ namespace Meanscript.Core
 		{
 			return AddMember(nameID, at.Def, at.Ref);
 		}
-		public Member AddMember(int nameID, TypeDef type, Arg arg)
+		public Member AddMember(int nameID, TypeDef type, Arg arg, int [] initData = null)
 		{
 			MS.Assertion(nameID < 0 || GetMemberByNameID(nameID) == null);
 			int size;
@@ -92,7 +94,8 @@ namespace Meanscript.Core
 				offset,				// address
 				size,				// "sizeof" the member
 				members.Size(),
-				nameID);
+				nameID,
+				initData);
 			members.AddLast(member);			// index (0, 1, 2, ...)
 			offset += size;
 			return member;
@@ -106,7 +109,8 @@ namespace Meanscript.Core
 				address,			// address
 				datasize,			// "sizeof" the member
 				index,
-				nameID));			// index (0, 1, 2, ...)
+				nameID,
+				null));			// index (0, 1, 2, ...)
 			offset += datasize;
 		}
 

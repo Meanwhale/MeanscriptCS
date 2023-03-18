@@ -44,10 +44,7 @@ namespace Meanscript
 		}
 		public void Write(MSOutput output)
 		{
-			for (int i = 0; i < data.Length; i++)
-			{
-				output.WriteInt(data[i]);
-			}
+			data.Write(output);
 		}
 		private void Init(byte[] src, int start, int length)
 		{
