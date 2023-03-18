@@ -15,7 +15,39 @@ Meanscript serializes data in human-readable script and compact bytecode.
 - Generate C# classes by using data structure (schema) described in Meanscript. That's how you could read and write
 data objects directly from your source, like in <a href=https://en.wikipedia.org/wiki/Protocol_Buffers>Protobuf</a>.
 - Command line tool
-- Functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are diabled for now due to recent refactorings. 
+- Functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are disabled for now due to recent refactorings. 
+
+# Examples
+
+Create a data structure and a variable in Meanscript. It has two integer members x and y:
+
+```
+struct vec [int x, int y]
+vec position: 3, 4
+```
+
+Create an identical data structure and variable using C#:
+
+```cs
+var vec = builder.CreateStruct(
+  "vec", 
+  builder.IntMember("x"),
+  builder.IntMember("y")
+);
+var position = builder.New(vec2);
+position["x"].SetInt(3);
+position["y"].SetInt(4);
+builder.CreateGlobal(
+    builder.StructMember("position", position)
+    // ...
+);
+```
+
+Read variable data from C#:
+
+```cs
+Print(dataCode.global["position"]["x"].Int()); // prints "3"
+```
 
 # Design philosophy
 
