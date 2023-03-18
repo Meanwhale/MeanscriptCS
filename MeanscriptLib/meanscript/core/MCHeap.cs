@@ -335,7 +335,7 @@ namespace Meanscript.Core
 			return null;
 		}
 
-		internal void Print()
+		public void Print()
 		{
 			MS.printOut.Print("HEAP. capacity: ").Print(capacity).Print(", objects:").EndLine();
 			for(int i=0; i<capacity; i++)

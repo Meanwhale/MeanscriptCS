@@ -42,7 +42,7 @@
 				if (enabled) testList.Add(this);
 			}
 
-			internal bool Run()
+			public bool Run()
 			{
 				if (!enabled) return true;
 				MS.printOut.Print("TEST ").Print(TestName).EndLine();

@@ -1,5 +1,4 @@
-﻿
-<Window x:Class="MeanscriptEditor.MainWindow"
+﻿<Window x:Class="MeanscriptEditor.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:MeanscriptEditor"
         Title="Meanscript" Height="1000" Width="1600">
@@ -14,7 +13,8 @@
     <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" ShowGridLines="False">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="50"/>
-            <ColumnDefinition Width="5"/> <!-- splitter -->
+            <ColumnDefinition Width="5"/>
+            <!-- splitter -->
             <ColumnDefinition Width="*" MinWidth="50"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>

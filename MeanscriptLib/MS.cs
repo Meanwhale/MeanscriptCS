@@ -41,7 +41,7 @@ namespace Meanscript
 	public class MS
 	{
 		internal static bool _debug = true;
-		internal static bool _verboseOn = true;
+		public static bool _verboseOn = true;
 
 		public delegate void MAction();
 		public delegate void MCallbackAction(MeanMachine mm, MArgs args);

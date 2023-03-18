@@ -24,7 +24,7 @@ namespace Meanscript.Core
 		public CodeTypes codeTypes;
 		private Texts texts;
 
-		internal MCHeap Heap = new MCHeap();
+		public MCHeap Heap = new MCHeap();
 		private MSText keyText = null;
 		private StructDefType currentStructDef = null;
 		private Dictionary<int, MCNode> nodes;
