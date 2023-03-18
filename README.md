@@ -1,20 +1,22 @@
 # MeanscriptCS
-Meanscript serializes data in human-readable script and compact bytecode.
+
+Meanscript serializes data in human-readable script and compact bytecode. It's still work-in-progress,
+but getting close to be practical tool, once I get some last fundamental pieces together.
 
 # Featuring
 
-- Scripting language
-- Bytecode format
+- Scripting language.
+- Bytecode format.
 - Basic data types, like integers, floats, and text. Strong typing.
 - Data structures, arrays, map (dictionary)
-- C# API to read and write data
-- GUI
+- C# API to read and write data.
+- GUI.
 
 <b>Upcoming features</b>
 
 - Generate C# classes by using data structure (schema) described in Meanscript. That's how you could read and write
 data objects directly from your source, like in <a href=https://en.wikipedia.org/wiki/Protocol_Buffers>Protobuf</a>.
-- Command line tool
+- Command line tool.
 - Functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are disabled for now due to recent refactorings. 
 
 # Examples
