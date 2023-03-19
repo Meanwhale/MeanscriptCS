@@ -145,7 +145,7 @@ namespace Meanscript.Core
 		internal MCStore AllocGlobal(int size)
 		{
 			MS.Assertion(array[1] == null);
-			var dd = new MCStore(MCStore.Role.GLOBAL, MakeTag(0, 1, 0), new IntArray(size));
+			var dd = new MCStore(MCStore.Role.GLOBAL, MakeTag(MC.GLOBALS_TYPE_ID, 1, 0), new IntArray(size));
 			array[1] = dd;
 			return dd;
 		}
@@ -168,6 +168,10 @@ namespace Meanscript.Core
 		{
 			// create a new object and return tag
 			int index = FindFreeSlot();
+			return SetStoreObject(index, type, data);
+		}
+		public int SetStoreObject(int index, int type, IntArray data)
+		{
 			int tag = MakeTag(type,index,1);
 			array[index] = new MCStore(MCStore.Role.OBJECT, tag, data);
 
@@ -187,10 +191,10 @@ namespace Meanscript.Core
 			array[index] = map;
 			return map;
 		}
-		public MCMap CreateMap(int index, int type, CodeTypes types)
+		public MCMap CreateMap(int index, CodeTypes types)
 		{
 			MS.Assertion(array[index] == null);
-			int tag = MakeTag(type,index,1);
+			int tag = MakeTag(MC.BASIC_TYPE_MAP,index,1);
 			var map = new MCMap(tag, types, this);
 			array[index] = map;
 			return map;

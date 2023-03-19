@@ -275,7 +275,7 @@
 				{
 					arr.At(arrSize).SetInt(arrSize * 10);
 				}
-				builder.CreateGlobal(
+				builder.CreateGlobalStruct(
 					// for SimpleVariableCheck()
 					builder.IntMember("a", 5, out _),
 					builder.Int64Member("long", 1234567891234L, out _),
@@ -312,6 +312,32 @@
 				Assertion(m.global["arr"][4].Int() == 40);
 				Assertion(m.global.GetData("m").GetMap() != null);
 				Assertion(m.global.GetData("m").GetMap().Get("i").Int() == 123);
+			
+			}),
+
+			new UnitTest("VarBuilder", () =>
+			{
+				// build data that has other than global struct as main object.	
+
+				MSBuilder builder = new MSBuilder("test");
+				
+				// TODO: MSMap myös.
+				//MSMap map = builder.NewMap();
+				//var mapInt = builder.New(MC.basics.IntType);
+				//mapInt.SetInt(123);
+				//map.Set("i", mapInt);
+
+				var i = builder.New(builder.types.GetTypeDef(MC.BASIC_TYPE_INT));
+				i.SetInt(123);
+				builder.CreateGlobal(i);
+
+				MSOutputArray output = new MSOutputArray();
+				builder.Generate(output);
+				MSInputArray input = new MSInputArray(output);
+				var m = new MSCode(input, MSCode.StreamType.BYTECODE);
+				
+				Assertion(m.main.typeID == MC.BASIC_TYPE_INT);
+				Assertion(m.main.Int() == 123);
 			}),
 
 			new UnitTest("SaveAndLoadBytecode", () =>

@@ -10,7 +10,7 @@
 		public DataTypeDef MemberType;
 		public string MemberName;
 		public int [] InitialValue;
-		public StructDef.Member SDMember;
+		public StructDef.Member? SDMember = null;
 		
 		public MSBuilderMember(DataTypeDef memberType, string memberName, int[] initialValue)
 		{
@@ -33,6 +33,8 @@
 		private string packageName;
 		internal CodeTypes types; // types and texts
 		private MCHeap heap = new MCHeap();
+		private MSData main;
+		private bool globalSet = false;
 
 		public MSBuilder(string _packageName)
 		{
@@ -41,9 +43,18 @@
 			//globals = new MSBuilderStructWriter(this, types.texts.AddText("global"), MC.GLOBALS_TYPE_ID);
 		}
 
-		public void CreateGlobal(params MSBuilderMember [] members)
+		public void CreateGlobal(MSData data)
 		{
+			MS.Assertion(!globalSet);
+			main = data;
+			globalSet = true;
+		}
+
+		public void CreateGlobalStruct(params MSBuilderMember [] members)
+		{
+			MS.Assertion(!globalSet);
 			CreateStruct(null, MC.GLOBALS_TYPE_ID, members);
+			globalSet = true;
 		}
 
 		public StructDefType CreateStruct(string name, params MSBuilderMember [] members)
@@ -224,37 +235,42 @@
 		
 			// write globals
 
-			var globals = types.GetDataType(MC.GLOBALS_TYPE_ID);
-			MS.Assertion(globals != null, MC.EC_DATA, "globals not set");
-			MS.Assertion(globals is StructDefType);
-			var sd = ((StructDefType)globals).SD;
-
-			int [] tmp = new int [sd.StructSize()];
-			int index = 0;
-
-			// write global values to temp. array
-			foreach(var m in sd.members)
+			if (main != null)
 			{
-				if (m.Type is GenericCharsType)
-				{
-					MS.Assertion(m.InitData != null && m.InitData.Length <= m.DataSize);
-				}
-				else
-				{
-					MS.Assertion(m.InitData != null && m.InitData.Length == m.DataSize);
-				}
-				IntArray.Copy(m.InitData, 0, tmp, index, m.InitData.Length);
-				index += m.DataSize;
+				MS.Assertion(!heap.HasObject(1));
+				heap.SetStoreObject(1, main.typeID, main.dataCode);
 			}
+			else
+			{
+				var globals = types.GetDataType(MC.GLOBALS_TYPE_ID);
+				MS.Assertion(globals != null, MC.EC_DATA, "globals not set");
+				MS.Assertion(globals is StructDefType);
+				var sd = ((StructDefType)globals).SD;
 
-			heap.ReadFromArray(MCStore.Role.GLOBAL, 1, MC.GLOBALS_TYPE_ID, tmp, tmp.Length);
+				int [] tmp = new int [sd.StructSize()];
+				int index = 0;
+
+				// write global values to temp. array
+				foreach(var m in sd.members)
+				{
+					if (m.Type is GenericCharsType)
+					{
+						MS.Assertion(m.InitData != null && m.InitData.Length <= m.DataSize);
+					}
+					else
+					{
+						MS.Assertion(m.InitData != null && m.InitData.Length == m.DataSize);
+					}
+					IntArray.Copy(m.InitData, 0, tmp, index, m.InitData.Length);
+					index += m.DataSize;
+				}
+
+				heap.ReadFromArray(MCStore.Role.GLOBAL, 1, MC.GLOBALS_TYPE_ID, tmp, tmp.Length);
+			}
 
 			heap.WriteHeap(output);
 			
 			output.WriteOp(MC.OP_START_INIT, 0, 0);
-
-			// TODO: initialize global
-
 			output.WriteOp(MC.OP_END_INIT, 0, 0);
 		}
 	}

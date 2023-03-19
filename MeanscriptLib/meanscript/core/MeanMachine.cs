@@ -423,7 +423,7 @@ namespace Meanscript.Core
 			else if (op == MC.OP_BEGIN_MAP)
 			{
 				int tag = PopStack();
-				var map = Heap.CreateMap(MCHeap.TagIndex(tag), MC.InstrValueTypeID(instruction), codeTypes);
+				var map = Heap.CreateMap(MCHeap.TagIndex(tag), codeTypes);
 				PushContext(map);
 			}
 			else if (op == MC.OP_END_MAP)

@@ -13,7 +13,6 @@ namespace Meanscript.Core
 		public Semantics(TokenTree _tree) : base (_tree.texts)
 		{
 			tree = _tree;
-			tree.texts = null; // from now on, use texts in Types
 			maxContexts = MS.globalConfig.maxFunctions;
 			contexts = new Context[maxContexts];
 			

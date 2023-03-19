@@ -14,7 +14,6 @@ namespace Meanscript
 		public readonly int typeID,
 			heapID,
 			offset;  // address of the data
-		//readonly IntArray structCode;    // where struct info is
 		public readonly IntArray dataCode;  // where actual data is
 		
 		protected IMSData(CodeTypes types, MCHeap heap, int typeID, int heapID, int offset)
@@ -159,7 +158,7 @@ namespace Meanscript
 		{
 			TypeDef memberType = types.GetTypeDef(typeID);
 			MS.Assertion(memberType is StructDefType, MC.EC_DATA, "data not a struct");
-			return new MSStruct(types, memberType.ID, dataCode, offset, heap);
+			return new MSStruct(types, heap, memberType.ID, heapID, offset);
 		}
 
 		internal bool Match(MSData x)
@@ -382,9 +381,8 @@ namespace Meanscript
 		}
 		internal MSData GetData(StructDef.Member member)
 		{
-			//MS.Assertion(!(member.Type is StructDefType), MC.EC_DATA, "member is a struct: " + types.texts.FindTextStringByID(member.NameID));
-			//return new MSData(types, heap, member.Type.ID, heapID, member.Address + offset);
-			return new MSData(types, member.Type.ID, dataCode, offset + member.Address, heap);
+			//return new MSData(types, member.Type.ID, dataCode, offset + member.Address, heap);
+			return new MSData(types, heap, member.Type.ID, heapID, offset + member.Address);
 		}
 		internal MSData GetRef(string name)
 		{
@@ -429,12 +427,12 @@ namespace Meanscript
 		{
 			var data = GetData(name);
 			var type = types.GetTypeDef(data.typeID);
-			if (type is ObjectType o)
+			if (type is ObjectType)
 			{
 				// get object tag and the heap object it points to
 				int tag = dataCode[data.offset + offset];
 				var ddata = heap.GetStoreByIndex(MCHeap.TagIndex(tag));
-				return new MSData(types, ddata.DataTypeID(), ddata.data, 0, heap);
+				return new MSData(types, heap, ddata.DataTypeID(), MCHeap.TagIndex(tag), 0);
 			}
 			MS.Assertion(false, MC.EC_DATA, "not an object type: " + name);
 			return null;

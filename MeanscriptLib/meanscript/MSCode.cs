@@ -1,6 +1,7 @@
 namespace Meanscript
 {
 	using Core;
+	using System;
 	using System.Collections.Generic;
 
 	public class MSCode
@@ -15,11 +16,15 @@ namespace Meanscript
 			BYTECODE
 		}
 
-		private MeanMachine mm = null;
-		private Dictionary<int, MCNode> nodes;
-		private bool initialized = false;
+		private MeanMachine? mm;
+		private Dictionary<int, MCNode>? nodes;
+		public MSStruct? global;
 
-		public MSStruct global;
+		// root level data. for script it's MSStruct with global value.
+		// for code generated data it can be any data type.
+		public MSData? main;
+
+		private bool initialized = false;
 
 		public MSCode(string s)
 		{
@@ -47,10 +52,8 @@ namespace Meanscript
 		private void InitBytecode(MSInput input)
 		{
 			MS.Assertion(!initialized);	
-			
 			mm = new MeanMachine(input);
-			global = new MSStruct(mm, MC.GLOBALS_TYPE_ID, 1 ,0);
-
+			InitMainObject();
 			initialized = true;
 		}
 
@@ -110,7 +113,21 @@ namespace Meanscript
 			MSInputArray ia = new MSInputArray(s);
 			var output = Compile(ia);
 			mm = new MeanMachine(new MSInputArray((MSOutputArray)output), nodes);
-			global = new MSStruct(mm, MC.GLOBALS_TYPE_ID, 1 ,0);
+			
+			InitMainObject();
+		}
+
+		private void InitMainObject()
+		{
+			var ddata = mm.Heap.GetStoreByIndex(1);
+			//main = new MSData(mm.codeTypes, ddata.DataTypeID(), ddata.data, 0, mm.Heap);
+			main = new MSData(mm, ddata.DataTypeID(), 1, 0);
+			
+			// main data can be of any data type.
+			// if it's struct, like for scripts, assign global.
+
+			var mainType = mm.codeTypes.GetTypeDef(main.typeID);
+			if (mainType is StructDefType) global = main.Struct();
 		}
 	}
 }
