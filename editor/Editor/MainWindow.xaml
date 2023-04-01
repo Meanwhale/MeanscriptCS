@@ -50,7 +50,7 @@
                     <MenuItem Header="_Save" Click="Command_Save" InputGestureText="Ctrl+S" />
                     <MenuItem Header="_Save As..." Click="Command_SaveAs" />
                     <!--<MenuItem Header="_Run_script_file" Click="Command_RunScriptFile" />-->
-                    <MenuItem Header="_Run bytecode file" Click="Command_RunBytecodeFile" />
+                    <MenuItem Header="_Run bytecode file..." Click="Command_RunBytecodeFile" />
                     <MenuItem Header="_Verbose" IsCheckable="True" IsChecked="true" 
                           Checked="Verbose_Checked"
                           Unchecked="Verbose_Unchecked"/>
@@ -71,7 +71,7 @@
                 <MenuItem Name="BytecodeMenu" Header="_Bytecode">
                     <MenuItem Header="_Print data" Click="Command_BytecodeData" />
                     <MenuItem Header="_Print instructions" Click="Command_BytecodeInstructions" />
-                    <MenuItem Header="_Export..." Click="Command_SaveBytecode" />
+                    <MenuItem Header="_Export data..." Click="Command_SaveBytecode" />
                 </MenuItem>
             </Menu>
             <TextBox AcceptsReturn="True" />
