@@ -300,8 +300,6 @@
 				MSInputArray input = new MSInputArray(output);
 				var m = new MSCode(input, MSCode.StreamType.BYTECODE);
 
-				if (MS._verboseOn) m.PrintData();
-
 				SimpleVariableCheck(m);
 
 				Assertion(m.global["p"]["x"].Int() == 3);
@@ -321,23 +319,25 @@
 
 				MSBuilder builder = new MSBuilder("test");
 				
-				// TODO: MSMap myös.
-				//MSMap map = builder.NewMap();
-				//var mapInt = builder.New(MC.basics.IntType);
-				//mapInt.SetInt(123);
-				//map.Set("i", mapInt);
+				// map
+				MSMap map = builder.NewMap();
+				var mapInt = builder.New(MC.basics.IntType);
+				mapInt.SetInt(123);
+				map.Set("i", mapInt);
+				builder.CreateGlobal(map);
 
-				var i = builder.New(builder.types.GetTypeDef(MC.BASIC_TYPE_INT));
-				i.SetInt(123);
-				builder.CreateGlobal(i);
+				//var i = builder.New(builder.types.GetTypeDef(MC.BASIC_TYPE_INT));
+				//i.SetInt(123);
+				//builder.CreateGlobal(i);
 
 				MSOutputArray output = new MSOutputArray();
 				builder.Generate(output);
 				MSInputArray input = new MSInputArray(output);
 				var m = new MSCode(input, MSCode.StreamType.BYTECODE);
 				
-				Assertion(m.main.typeID == MC.BASIC_TYPE_INT);
-				Assertion(m.main.Int() == 123);
+				Assertion(m.main.DataTypeID() == MC.BASIC_TYPE_MAP);
+				//Assertion(m.main.typeID == MC.BASIC_TYPE_INT);
+				//Assertion(m.main.Int() == 123);
 			}),
 
 			new UnitTest("SaveAndLoadBytecode", () =>

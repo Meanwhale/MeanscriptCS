@@ -2,77 +2,19 @@
 using Meanscript.Core;
 using System;
 using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace MeanscriptEditor
 {
-	public class WinOutputPrinter : MSOutputPrint
-	{
-		private TextBlock tb;
-		private ScrollViewer sw;
-		StringBuilder sb = new StringBuilder();
-		
-		const int MAX_SIZE = 40000;
-		const int MIN_SIZE = 20000;
-
-		// TODO: test more (printtaa vähän kerrallaan ja testaa toimiiko oikein)
-
-		public WinOutputPrinter(TextBlock textBoxOutput, ScrollViewer textBoxOutputScrollViewer)
-		{
-			tb = textBoxOutput;
-			sw = textBoxOutputScrollViewer;
-		}
-
-		public override MSOutputPrint Print(char x)
-		{
-			// print both console (for debug) and window
-			Console.Write(x);
-			PrintTB(x.ToString());
-			return this;
-		}
-
-		private void PrintTB(string x)
-		{
-			sb.Append(x);
-			if (sb.Length > MAX_SIZE)
-			{
-				// estä tekstiä kasvamasta liian isoksi: kopioi vanhasta loppupuoli uuden alkuun
-				var newSB = new StringBuilder(sb.ToString(), MIN_SIZE, sb.Length-MIN_SIZE, 2*MAX_SIZE);
-				sb = newSB;
-			}
-			tb.Text = sb.ToString();
-			sw.ScrollToBottom();
-		}
-
-		public override MSOutputPrint Print(string x)
-		{
-			// print both console (for debug) and window
-			Console.Write(x);
-			PrintTB(x);
-			return this;
-		}
-
-		public override void WriteByte(byte b)
-		{
-			Print(b.ToString());
-		}
-		public void ScrollToEnd()
-		{
-			sw.ScrollToBottom();
-		}
-		public void Clear()
-		{
-			sb.Clear();
-			tb.Text = "";
-		}
-	}
 
 	public partial class MainWindow : Window
 	{
 		private WinOutputPrinter winOutput;
+		private bool textModified = false;
+		
+		private MSCode? code; // currently loaded code
 
 		public MainWindow()
 		{
@@ -85,10 +27,10 @@ namespace MeanscriptEditor
 			KeyDown += new KeyEventHandler(MainWindow_KeyDown);
 
 			//TextBoxCode.Text = "bool a: true";
-			//TextBoxCode.Text = "int a: 3";
+			TextBoxCode.Text = "int a: 3";
 			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
 			//TextBoxCode.Text = "text t: \"A쎄\"";
-			TextBoxCode.Text = MCUnitTest.mapTestScript;
+			//TextBoxCode.Text = MCUnitTest.mapTestScript;
 			
 			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
 			//TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p\np: 5";
@@ -121,6 +63,8 @@ namespace MeanscriptEditor
 				item.Click += (object sender, RoutedEventArgs e) => { t.Run(); };
 				TestListMenu.Items.Add(item);
 			}
+			textModified = false;
+			BytecodeMenu.IsEnabled = false;
 		}
 
 		void MainWindow_KeyDown(object sender, KeyEventArgs e)
@@ -147,9 +91,18 @@ namespace MeanscriptEditor
 			}
 		}
 		
+		public void Command_BytecodeData(object sender, RoutedEventArgs e)
+		{
+			code?.MM.PrintData();
+		}
+		public void Command_BytecodeInstructions(object sender, RoutedEventArgs e)
+		{
+			code?.MM.PrintCode();
+		}
+		
 		public void Command_RunUnitTests(object sender, RoutedEventArgs e)
 		{
-			RunUnitTests();//Implementation of run
+			RunUnitTests();
 		}
 		private void RunUnitTests()
 		{
@@ -166,25 +119,36 @@ namespace MeanscriptEditor
 		private void ComplileAndRun()
 		{
 			winOutput.Clear();
-			MeanMachine mm = null;
 			try
 			{
-				MSCode code = new MSCode(TextBoxCode.Text);
+				code = new MSCode(TextBoxCode.Text);
 			}
 			catch (MException e)
 			{
-				winOutput.Print(e.ToString());
-				if (mm != null)
+				PrintError(e, code);
+				code = null;
+			}
+			BytecodeMenu.IsEnabled = code != null;
+		}
+
+		private void PrintError(Exception e, MSCode? code)
+		{
+			try
+			{
+				winOutput.Print("\n\n" + e.ToString() + "\n\n");
+				if (code != null)
 				{
-					mm.PrintStack();
-					mm.Heap.Print();
+					code.MM.PrintStack();
+					code.MM.Heap.Print();
+					code = null;
 				}
 			}
-			//catch (Exception e)
-			//{
-			//	winOutput.Print("\n" + e.ToString());
-			//}
+			catch (Exception)
+			{
+				winOutput.Print("\n\nerror in PrintError");
+			}
 		}
+
 		private void Verbose_Checked(object sender, RoutedEventArgs e)
 		{
 			Meanscript.MS._verboseOn = true;
@@ -200,19 +164,133 @@ namespace MeanscriptEditor
 		{
 			TextBoxStatus.Text = s;
 		}
+		private const string SCRIPT_EXTENSION = ".ms";
+		private const string SCRIPT_FILTER = "Meanscript (.ms)|*.ms" ;
+		private const string BYTECODE_EXTENSION = ".mb";
+		private const string BYTECODE_FILTER = "Meanbits (.mb)|*.mb" ;
+
+		private void textChangedEventHandler(object sender, TextChangedEventArgs args)
+		{
+			if (args.UndoAction == UndoAction.Create // true if text is changed by the user
+				&& !textModified)
+			{
+				textModified = true;
+				UpdateTitle();
+			}
+		}
+		protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+		{
+			// save modifications?
+			if (textModified)
+			{
+				var result = MessageBox.Show("Save modifications?", "Save file", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+				switch (result)
+				{
+					case MessageBoxResult.Yes:
+						OpenSaveFileDialog(SaveScriptAction, MSCode.StreamType.SCRIPT);
+						break;
+					case MessageBoxResult.No:
+						break;
+					default:
+						e.Cancel = true;
+						break;
+				}
+			}
+		}
+		public void QuitCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+		{
+			Close();
+		}
+		public void Command_TryQuit(object sender, RoutedEventArgs e)
+		{
+			Close();
+		}
+		
+		// save bytecode
+
+		public void Command_SaveBytecode(object sender, RoutedEventArgs e)
+		{
+			if (code != null)
+			{
+				OpenSaveFileDialog(ExportBytecode, MSCode.StreamType.BYTECODE);
+			}
+		}
+
+		private void ExportBytecode(string fileName)
+		{
+			try
+			{
+				var sw = new MSBytecodeFileOutput(fileName);
+				code?.MM.GenerateDataCode(sw);
+				Status("bytecode exported: " + fileName);
+			}
+			catch (Exception e)
+			{
+				Status("Can't save " + fileName);
+				PrintError(e, code);
+			}
+		}
+
+		// run bytecode
+
+		public void Command_RunBytecodeFile(object sender, RoutedEventArgs e)
+		{
+			Command_Open(RunBytecodeFile, BYTECODE_EXTENSION, BYTECODE_FILTER);
+		}
+
+		private void RunBytecodeFile(string filename)
+		{
+			try
+			{
+				var input = new MSBytecodeFileInput(filename);
+				winOutput.PrintLine("run bytecode: " + filename);
+				code = new MSCode(input, MSCode.StreamType.BYTECODE);
+			}
+			catch (Exception e)
+			{
+				PrintError(e, code);
+				code = null;
+			}
+			BytecodeMenu.IsEnabled = code != null;
+		}
+		
+		// run script (CURRENTLY NOT IN USE)
+		
+		public void Command_RunScriptFile(object sender, RoutedEventArgs e)
+		{
+			Command_Open(RunScriptFile, SCRIPT_EXTENSION, SCRIPT_FILTER);
+		}
+
+		private void RunScriptFile(string filename)
+		{
+			try
+			{
+				var input = new MSScriptFileInput(filename);
+				winOutput.PrintLine("run script file: " + filename);
+				code = new MSCode(input, MSCode.StreamType.SCRIPT);
+			}
+			catch (Exception e)
+			{
+				PrintError(e, code);
+				code = null;
+			}
+		}
+
+		// open file
+
 		public void Command_Open(object sender, RoutedEventArgs e)
 		{
-			Command_Open();
+			Command_Open(OpenFile, SCRIPT_EXTENSION, SCRIPT_FILTER);
 		}
-		public void Command_Open()
+		private void Command_Open(Action<string> openFileAction, string extension, string filter)
 		{
 			Status("Open file");
 
 			// Configure open file dialog box
 			var dialog = new Microsoft.Win32.OpenFileDialog();
-			dialog.DefaultExt = ".ms"; // Default file extension
-			dialog.Filter = "Meanscript (.ms)|*.ms"; // Filter files by extension
-			dialog.InitialDirectory = "C:\\Projects\\Meanscript";
+			dialog.DefaultExt = extension; // Default file extension
+			dialog.Filter = filter; // Filter files by extension
+			dialog.InitialDirectory = currentDirectory;
 
 			// Show open file dialog box
 			bool? result = dialog.ShowDialog();
@@ -220,12 +298,12 @@ namespace MeanscriptEditor
 			// Process open file dialog box results
 			if (result == true)
 			{
-				OpenFile(dialog.FileName);
+				openFileAction(dialog.FileName);
 			}
 		}
 		public void OpenCommandExecuted(object sender, ExecutedRoutedEventArgs e)
 		{
-			Command_Open();//Implementation of open file
+			Command_Open(OpenFile, SCRIPT_EXTENSION, SCRIPT_FILTER);
 		}
 		public async void OpenFile(string filename)
 		{
@@ -234,6 +312,8 @@ namespace MeanscriptEditor
 				using (var sr = new StreamReader(filename))
 				{
 					TextBoxCode.Text = await sr.ReadToEndAsync();
+					textModified = false;
+					SetCurrentScript(filename);
 				}
 			}
 			catch (FileNotFoundException)
@@ -242,6 +322,101 @@ namespace MeanscriptEditor
 				Status("File not found: " + filename);
 			}
 		}
-		
+
+		// save
+
+		private void Command_Save(object sender, RoutedEventArgs e)
+		{
+			Command_Save();
+		}
+		private void Command_SaveAs(object sender, RoutedEventArgs e)
+		{
+			OpenSaveFileDialog(SaveScriptAction, MSCode.StreamType.SCRIPT);
+		}
+		public void SaveCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+		{
+			Command_Save();
+		}
+		private void Command_Save()
+		{
+			if (string.IsNullOrEmpty(currentScript))
+			{
+				OpenSaveFileDialog(SaveScriptAction, MSCode.StreamType.SCRIPT);
+				Status("save");
+			}
+			else if (textModified)
+			{
+				SaveScriptAction(currentScript);
+				Status("save " + currentScript);
+			}
+		}
+		private void OpenSaveFileDialog(Action<string> saveFileAction, MSCode.StreamType type)
+		{
+			Status("Save file");
+			// Configure open file dialog box
+			var dialog = new Microsoft.Win32.SaveFileDialog();
+			
+			if (type == MSCode.StreamType.BYTECODE)
+			{
+
+				dialog.DefaultExt = BYTECODE_EXTENSION; // Default file extension
+				dialog.Filter = BYTECODE_FILTER; // Filter files by extension
+			}
+			else
+			{
+				dialog.DefaultExt = SCRIPT_EXTENSION; // Default file extension
+				dialog.Filter = SCRIPT_FILTER; // Filter files by extension
+			}
+			dialog.InitialDirectory = currentDirectory;
+
+			// Show open file dialog box
+			bool? result = dialog.ShowDialog();
+
+			// Process open file dialog box results
+			if (result == true)
+			{
+				saveFileAction(dialog.FileName);
+			}
+		}
+
+		private async void SaveScriptAction(string fileName)
+		{
+			try
+			{
+				using(var sw = new StreamWriter(fileName))
+				{
+					await sw.WriteAsync(TextBoxCode.Text);
+					textModified = false;
+					UpdateTitle();
+				}
+			}
+			catch
+			{
+				Status("Can't save " + fileName);
+			}
+		}
+
+		// status
+
+		string currentScript = "";
+		private string currentDirectory = "C:\\Projects\\MeanscriptCS\\tmp";
+
+		private void SetCurrentScript(string filename)
+		{
+			currentScript = filename;
+			UpdateTitle();
+		}
+
+		private void UpdateTitle()
+		{
+			string s = "Meanscript";
+			if (!string.IsNullOrEmpty(currentScript))
+			{
+				s += " " + currentScript;
+			}
+			if (textModified) s += " [x]";
+			Title = s;
+		}
+
 	}
 }

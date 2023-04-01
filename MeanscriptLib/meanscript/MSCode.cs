@@ -16,15 +16,15 @@ namespace Meanscript
 			BYTECODE
 		}
 
-		private MeanMachine? mm;
+		private MeanMachine mm;
 		private Dictionary<int, MCNode>? nodes;
 		public MSStruct? global;
 
 		// root level data. for script it's MSStruct with global value.
 		// for code generated data it can be any data type.
-		public MSData? main;
+		public IDynamicObject? main;
 
-		private bool initialized = false;
+		public MeanMachine MM { get { return mm; } }
 
 		public MSCode(string s)
 		{
@@ -39,45 +39,23 @@ namespace Meanscript
 					mm = new MeanMachine(new MSInputArray((MSOutputArray)result));
 					break;
 				case StreamType.BYTECODE:
-					InitBytecode(input);
+					mm = InitBytecode(input);
 					break;
+				default:
+					throw new MException();
 			}
 		}
 
-		public MeanMachine GetMM()
+		private MeanMachine InitBytecode(MSInput input)
 		{
-			return mm;
-		}
-
-		private void InitBytecode(MSInput input)
-		{
-			MS.Assertion(!initialized);	
 			mm = new MeanMachine(input);
 			InitMainObject();
-			initialized = true;
+			return mm;
 		}
 
 		public void GenerateDataCode(MSOutput output)
 		{
 			mm.GenerateDataCode(output);
-		}
-
-		public void PrintCode()
-		{
-			if (initialized) mm.PrintCode();
-			else MS.Print("printCode: MSCode is not initialized");
-		}
-
-		public void PrintDetails()
-		{
-			if (initialized) mm.PrintDetails();
-			else MS.Print("printDetails: MSCode is not initialized");
-		}
-
-		public void PrintData()
-		{
-			if (initialized) mm.PrintCurrentContext();
-			else MS.Print("printDetails: MSCode is not initialized");
 		}
 
 		public void DataOutputPrint(MSOutputPrint output)
@@ -93,15 +71,8 @@ namespace Meanscript
 			semantics.Analyze();
 			var output = new MSOutputArray();
 			nodes = Generator.Generate(tree, semantics, output);
-			initialized = true;
 			return output;
 		}
-
-		//private void Run()
-		//{
-		//	MS.Assertion(mm != null, MC.EC_INTERNAL, "not initialized");
-		//	mm.CallFunction(0);
-		//}
 
 		public void Step()
 		{
@@ -119,15 +90,24 @@ namespace Meanscript
 
 		private void InitMainObject()
 		{
-			var ddata = mm.Heap.GetStoreByIndex(1);
-			//main = new MSData(mm.codeTypes, ddata.DataTypeID(), ddata.data, 0, mm.Heap);
-			main = new MSData(mm, ddata.DataTypeID(), 1, 0);
+			main = mm.Heap.GetDynamicObjectAt(1);
 			
 			// main data can be of any data type.
 			// if it's struct, like for scripts, assign global.
-
-			var mainType = mm.codeTypes.GetTypeDef(main.typeID);
-			if (mainType is StructDefType) global = main.Struct();
+			int typeID = MCHeap.TagType(main.tag);
+			var mainType = mm.codeTypes.GetTypeDef(typeID);
+			if (mainType is StructDefType)
+			{
+				if (main is MCStore store)
+				{
+					//public MSStruct(CodeTypes types, int typeID, IntArray dataCode, int offset, MCHeap heap)
+					global = new MSStruct(mm, typeID, 1, 0);
+				}
+				else
+				{
+					MS.Assertion(false);
+				}
+			}
 		}
 	}
 }

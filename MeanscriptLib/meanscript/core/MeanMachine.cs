@@ -8,7 +8,7 @@ namespace Meanscript.Core
 	{
 		internal int stackTop;
 		internal int ipStackTop;
-		internal MCStore currentContextData;
+		internal IDynamicObject currentContext;
 		//internal int stackBase;
 		//internal int instructionPointer;
 		internal int registerType;
@@ -163,7 +163,6 @@ namespace Meanscript.Core
 			if (MS._verboseOn)
 			{
 				MS.Print(MS.Title("START INITIALIZING"));
-				MS.Print(MS.Title("TODO PrintBytecode"));
 				PrintCode();
 			}
 
@@ -315,7 +314,7 @@ namespace Meanscript.Core
 					var gl = codeTypes.GetTypeDef(MC.GLOBALS_TYPE_ID);
 					Heap.AllocGlobal(gl.SizeOf());
 				}
-				currentContextData = Heap.GetStoreByIndex(1);
+				currentContext = Heap.GetDynamicObjectAt(1); // GetStoreByIndex(1);
 			}
 
 			//////////////////////////////// OLD RUN STEP OPS ////////////////////////////////
@@ -332,9 +331,9 @@ namespace Meanscript.Core
 			}
 			else if (op == MC.OP_PUSH_CONTEXT_ADDRESS)
 			{
-				//int offset = bc.code[instructionPointer + 1];
+				Assertion(currentContext is MCStore);
 				int offset = input.ReadInt();
-				Push(MC.MakeAddress(currentContextData.HeapID(), offset));
+				Push(MC.MakeAddress(currentContext.HeapID(), offset));
 			}
 			else if (op == MC.OP_PUSH_OBJECT_DATA)
 			{
@@ -407,7 +406,7 @@ namespace Meanscript.Core
 				int offset = MC.AddressOffset(address);
 
 				int tag = Heap.GetAt(heapID, offset);
-				int newHeapID = MCHeap.TagIndex(tag);
+				int newHeapID = MCHeap.TagHeapIndex(tag);
 				Assertion(Heap.HasObject(newHeapID), "address' heap ID error: " + newHeapID);
 				Push(MC.MakeAddress(newHeapID, 0));
 
@@ -423,7 +422,7 @@ namespace Meanscript.Core
 			else if (op == MC.OP_BEGIN_MAP)
 			{
 				int tag = PopStack();
-				var map = Heap.CreateMap(MCHeap.TagIndex(tag), codeTypes);
+				var map = Heap.CreateMap(MCHeap.TagHeapIndex(tag), codeTypes);
 				PushContext(map);
 			}
 			else if (op == MC.OP_END_MAP)
@@ -706,24 +705,32 @@ namespace Meanscript.Core
 
 			output.WriteOp(MC.OP_END_INIT, 0, 0);
 			
-			// TODO: write special type data, eg. 'map'
+			output.Close();
 		}
 
 		public void PrintCurrentContext()
 		{
 			MS.Print("currentContext: ");
-			for (int i = 0; i < currentContextData.data.Length; i++)
+			if (currentContext is MCStore store)
 			{
-				MS.Print("    " + i + ":    " + currentContextData.data[i]);
+				for (int i = 0; i < store.data.Length; i++)
+				{
+					MS.Print("    " + i + ":    " + store.data[i]);
+				}
 			}
+			else currentContext.Print(MS.printOut);
+		}
+
+		public void PrintData()
+		{
+			MS.Print(MS.Title("CODE DATA"));
+			Heap.Print();
 		}
 
 		public void PrintDetails()
 		{
 			MS.Print(MS.Title("DETAILS"));
 			MS.Print("stack top:    " + stackTop);
-			//MS.Print("instruction pointer: " + instructionPointer);
-
 			MS.Print("\nSTACK");
 			MC.PrintBytecode(stack.Data(), stackTop, -1, false);
 		}
@@ -732,7 +739,7 @@ namespace Meanscript.Core
 		{
 			if (input is MSInputArray a)
 			{
-				MS.Print(MS.Title("BYTECODE CONTENTS"));
+				MS.Print(MS.Title("BYTECODE INSTRUCTIONS"));
 				MS.Print("index     code/data (32 bits)");
 				MC.PrintBytecode(a.Data(), a.Data().Length, -1, true);
 			}

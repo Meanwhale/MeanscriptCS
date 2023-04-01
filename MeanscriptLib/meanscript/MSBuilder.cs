@@ -33,7 +33,7 @@
 		private string packageName;
 		internal CodeTypes types; // types and texts
 		private MCHeap heap = new MCHeap();
-		private MSData main;
+		private IMSVar main;
 		private bool globalSet = false;
 
 		public MSBuilder(string _packageName)
@@ -43,7 +43,7 @@
 			//globals = new MSBuilderStructWriter(this, types.texts.AddText("global"), MC.GLOBALS_TYPE_ID);
 		}
 
-		public void CreateGlobal(MSData data)
+		public void CreateGlobal(IMSVar data)
 		{
 			MS.Assertion(!globalSet);
 			main = data;
@@ -238,7 +238,15 @@
 			if (main != null)
 			{
 				MS.Assertion(!heap.HasObject(1));
-				heap.SetStoreObject(1, main.typeID, main.dataCode);
+				if (main is MSData d)
+				{
+					heap.SetStoreObject(1, d.typeID, d.dataCode);
+				}
+				else if (main is MSMap m)
+				{
+					heap.SetMapObject(1, m);
+				}
+				else MS.Assertion(false, MC.EC_DATA, "unhandle main data type: " + main);
 			}
 			else
 			{

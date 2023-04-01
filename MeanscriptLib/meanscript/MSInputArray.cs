@@ -39,7 +39,7 @@ namespace Meanscript
 			index = 0;
 		}
 
-		override public int GetByteCount()
+		override public long GetByteCount()
 		{
 			return size;
 		}

@@ -5,6 +5,8 @@
 
     <Window.CommandBindings>
         <CommandBinding Command="ApplicationCommands.Open" Executed="OpenCommandExecuted" />
+        <CommandBinding Command="ApplicationCommands.Save" Executed="SaveCommandExecuted" />
+        <CommandBinding Command="ApplicationCommands.Close" Executed="QuitCommandExecuted" />
     </Window.CommandBindings>
     <!--<Window.InputBindings>
         <KeyBinding Key="H" Modifiers="Control" Command="HelloWorldCommand"/>
@@ -23,7 +25,7 @@
             <RowDefinition Height="20" />
         </Grid.RowDefinitions>
         <TextBox Grid.Column="0" Grid.Row="1" Name="TextBoxCode" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Visible"
-                 FontFamily="Cascadia Code" FontSize="12">
+                 FontFamily="Cascadia Code" FontSize="12" TextChanged="textChangedEventHandler">
             Meanscript code
         </TextBox>
         <!--<TextBox Grid.Column="2" Grid.Row="1" Name="TextBoxOutput" TextWrapping="Wrap" VerticalScrollBarVisibility="Visible"
@@ -42,22 +44,34 @@
         <DockPanel Grid.ColumnSpan="3" Grid.Row="0">
 
             <Menu DockPanel.Dock="Top">
-                <MenuItem Header="_menu">
+                <MenuItem Header="_File">
                     <!-- <MenuItem Header="_New" /> -->
-                    <MenuItem Header="_open" Click="Command_Open" InputGestureText="Ctrl+O" />
-                    <MenuItem Header="_run" Click="Command_ComplileAndRun" InputGestureText="F5" />
-                    <MenuItem Header="_toggle verbose" IsCheckable="True" IsChecked="true" 
+                    <MenuItem Header="_Open" Click="Command_Open" InputGestureText="Ctrl+O" />
+                    <MenuItem Header="_Save" Click="Command_Save" InputGestureText="Ctrl+S" />
+                    <MenuItem Header="_Save As..." Click="Command_SaveAs" />
+                    <!--<MenuItem Header="_Run_script_file" Click="Command_RunScriptFile" />-->
+                    <MenuItem Header="_Run bytecode file" Click="Command_RunBytecodeFile" />
+                    <MenuItem Header="_Verbose" IsCheckable="True" IsChecked="true" 
                           Checked="Verbose_Checked"
                           Unchecked="Verbose_Unchecked"/>
+                    <MenuItem Header="_Quit" Click="Command_TryQuit" InputGestureText="Ctrl+Q" />
                     <!--
                     <MenuItem Header="_Save" />
                     <Separator />
                     <MenuItem Header="_Exit" />
                     -->
                 </MenuItem>
-                <MenuItem Name="TestListMenu" Header="_test">
-                    <MenuItem Header="_run all" Click="Command_RunUnitTests" InputGestureText="F9" />
+                <MenuItem Header="_Script">
+                    <MenuItem Header="_Run" Click="Command_ComplileAndRun" InputGestureText="F5" />
+                </MenuItem>
+                <MenuItem Name="TestListMenu" Header="_Test">
+                    <MenuItem Header="_Run all tests" Click="Command_RunUnitTests" InputGestureText="F9" />
                     <Separator />
+                </MenuItem>
+                <MenuItem Name="BytecodeMenu" Header="_Bytecode">
+                    <MenuItem Header="_Print data" Click="Command_BytecodeData" />
+                    <MenuItem Header="_Print instructions" Click="Command_BytecodeInstructions" />
+                    <MenuItem Header="_Export..." Click="Command_SaveBytecode" />
                 </MenuItem>
             </Menu>
             <TextBox AcceptsReturn="True" />

@@ -3,47 +3,48 @@ namespace Meanscript
 	using Core;
 	using System;
 	using System.Collections.Generic;
-
-	public abstract class IMSData
+	
+	public abstract class IMSVar
 	{
-		// code common for MSData and MSStruct
-		// TODO: accessor for arrays, etc.
-
-		protected readonly CodeTypes types;
-		protected MCHeap heap;
-		public readonly int typeID,
-			heapID,
-			offset;  // address of the data
-		public readonly IntArray dataCode;  // where actual data is
+		// super class for data (IMSData) and heap objects (like MSMap)
 		
-		protected IMSData(CodeTypes types, MCHeap heap, int typeID, int heapID, int offset)
+		protected readonly CodeTypes types;
+		protected MCHeap? heap;
+		public readonly int typeID, heapID;
+
+		protected IMSVar(CodeTypes types, MCHeap? heap, int typeID, int heapID)
 		{
 			this.types = types;
 			this.heap = heap;
 			this.typeID = typeID;
 			this.heapID = heapID;
+		}
+	}
+	public abstract class IMSData : IMSVar
+	{
+		// code common for MSData and MSStruct
+		// TODO: accessor for arrays, etc.
+
+		public readonly int  offset;  // address of the data
+		public readonly IntArray dataCode;  // where actual data is
+		
+		protected IMSData(CodeTypes types, MCHeap heap, int typeID, int heapID, int offset) :
+			base(types, heap, typeID, heapID)
+		{
 			this.offset = offset;
 			dataCode = heap.GetStoreData(heapID);
 		}
-		protected IMSData(CodeTypes types, int typeID, IntArray dataCode, int offset, MCHeap heap)
+		protected IMSData(CodeTypes types, int typeID, IntArray dataCode, int offset, MCHeap? heap) :
+			base(types, heap, typeID, -1)
 		{
-			this.heap = heap;
-			heapID = -1;
-
-			this.types = types;
-			this.typeID = typeID;
 			this.offset = offset;
 			this.dataCode = dataCode;
 		}
-		protected IMSData(CodeTypes types, int typeID)
+		protected IMSData(CodeTypes types, int typeID) :
+			base(types, null, typeID, -1)
 		{
 			// data object that owns its storage (dataCode)
-			heap = null;
-			heapID = -1;
 			offset = 0;
-
-			this.types = types;
-			this.typeID = typeID;
 			dataCode = new IntArray(types.GetDataType(typeID).SizeOf());
 		}
 		public bool IsBuilderData()
@@ -94,7 +95,7 @@ namespace Meanscript
 		public MSData(CodeTypes codeTypes, int typeID) : base(codeTypes, typeID)
 		{			
 		}
-		public MSData(CodeTypes types, int typeID, IntArray dataCode, int offset, MCHeap heap) : base(types, typeID, dataCode, offset, heap)
+		public MSData(CodeTypes types, int typeID, IntArray dataCode, int offset, MCHeap? heap) : base(types, typeID, dataCode, offset, heap)
 		{
 		}
 		public MSData(MeanMachine mm, int typeID, int heapID, int offset) : base (mm.codeTypes, mm.Heap, typeID, heapID, offset)
@@ -183,7 +184,7 @@ namespace Meanscript
 			MS.Assertion(heap != null);
 
 			int tag = dataCode[offset];
-			int heapID = MCHeap.TagIndex(tag);
+			int heapID = MCHeap.TagHeapIndex(tag);
 			return heap.GetMapAt(heapID).map;
 		}
 
@@ -217,17 +218,14 @@ namespace Meanscript
 		}
 	}
 
-	public class MSMap
+	public class MSMap : IMSVar
 	{
-		private CodeTypes types;
-		private MCHeap heap;
 		public Dictionary<string,IntArray> dict = new Dictionary<string, IntArray>();
 		internal int tag = 0;
 
-		public MSMap(CodeTypes types, MCHeap heap, int tag)
+		public MSMap(CodeTypes types, MCHeap heap, int tag) :
+			base(types, heap, MCHeap.TagType(tag), MCHeap.TagHeapIndex(tag))
 		{
-			this.types = types;
-			this.heap = heap;
 			this.tag = tag;
 		}
 		public MSData Get(string key)
@@ -394,7 +392,7 @@ namespace Meanscript
 			MS.Assertion(member != null, MC.EC_DATA, "member not found: " + name);
 			MS.Assertion(member.Type is ObjectType, MC.EC_DATA, "not an object reference: " + name);
 			int tag = dataCode[member.Address + offset];
-			int heapID = MCHeap.TagIndex(tag);
+			int heapID = MCHeap.TagHeapIndex(tag);
 			int typeID = MCHeap.TagType(tag);
 			MS.Assertion(heap.HasObject(heapID), MC.EC_DATA, "invalid reference: " + tag + ", heap ID " + heapID);
 			return new MSData(types, heap, typeID, heapID, 0);
@@ -431,8 +429,8 @@ namespace Meanscript
 			{
 				// get object tag and the heap object it points to
 				int tag = dataCode[data.offset + offset];
-				var ddata = heap.GetStoreByIndex(MCHeap.TagIndex(tag));
-				return new MSData(types, heap, ddata.DataTypeID(), MCHeap.TagIndex(tag), 0);
+				var ddata = heap.GetStoreByIndex(MCHeap.TagHeapIndex(tag));
+				return new MSData(types, heap, ddata.DataTypeID(), MCHeap.TagHeapIndex(tag), 0);
 			}
 			MS.Assertion(false, MC.EC_DATA, "not an object type: " + name);
 			return null;

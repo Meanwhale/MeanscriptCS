@@ -16,7 +16,7 @@ namespace Meanscript.Core
 		}
 		public int HeapID()
 		{
-			return MCHeap.TagIndex(tag);
+			return MCHeap.TagHeapIndex(tag);
 		}
 		public int DataTypeID()
 		{
@@ -80,6 +80,10 @@ namespace Meanscript.Core
 	{
 		public MSMap map;
 
+		public MCMap(MSMap map, int tag) : base(tag)
+		{
+			this.map = map;
+		}
 		public MCMap(int tag, CodeTypes types, MCHeap heap) : base(tag)
 		{
 			map = new MSMap(types, heap, tag);
@@ -170,19 +174,6 @@ namespace Meanscript.Core
 			int index = FindFreeSlot();
 			return SetStoreObject(index, type, data);
 		}
-		public int SetStoreObject(int index, int type, IntArray data)
-		{
-			int tag = MakeTag(type,index,1);
-			array[index] = new MCStore(MCStore.Role.OBJECT, tag, data);
-
-			if (MS._verboseOn)
-			{
-				MS.printOut.Print("HEAP alloc [").Print(index).Print("] tag: ").PrintHex(tag).Print(" data:");
-				data.Print(MS.printOut); MS.printOut.EndLine();
-			}
-
-			return tag;
-		}
 		public MCMap AllocMap(CodeTypes types)
 		{
 			int index = FindFreeSlot();
@@ -198,6 +189,25 @@ namespace Meanscript.Core
 			var map = new MCMap(tag, types, this);
 			array[index] = map;
 			return map;
+		}
+		public void SetMapObject(int index, MSMap map)
+		{
+			MS.Assertion(array[index] == null);
+			int tag = MakeTag(MC.BASIC_TYPE_MAP,index,1);
+			array[index] = new MCMap(map, tag);
+		}
+		public int SetStoreObject(int index, int type, IntArray data)
+		{
+			int tag = MakeTag(type,index,1);
+			array[index] = new MCStore(MCStore.Role.OBJECT, tag, data);
+
+			if (MS._verboseOn)
+			{
+				MS.printOut.Print("HEAP alloc [").Print(index).Print("] tag: ").PrintHex(tag).Print(" data:");
+				data.Print(MS.printOut); MS.printOut.EndLine();
+			}
+
+			return tag;
 		}
 		internal void WriteHeap(MSOutput output)
 		{
@@ -246,7 +256,7 @@ namespace Meanscript.Core
 			if (tag == 0) return;
 
 			int type = TagType(tag);
-			int index = TagIndex(tag);
+			int index = TagHeapIndex(tag);
 
 			MS.Assertion(datatype < 0 || type == datatype);
 			if (array[index] == null)
@@ -286,7 +296,7 @@ namespace Meanscript.Core
 		{
 			return (tag >> DDATA_TYPE_SHIFT) & 0xfff;
 		}
-		public static int TagIndex(int tag)
+		public static int TagHeapIndex(int tag)
 		{
 			return (tag >> DDATA_INDEX_SHIFT) & 0xfff;
 		}
@@ -328,6 +338,13 @@ namespace Meanscript.Core
 			MS.Assertion(false, MC.EC_DATA, "no a store, ID: " + heapID);
 			return null;
 		}
+
+		internal IDynamicObject GetDynamicObjectAt(int heapID)
+		{
+			MS.Assertion(HasObject(heapID), MC.EC_CODE, "no heap object by ID: " + heapID);
+			return array[heapID];
+		}
+
 		internal MCMap GetMapAt(int heapID)
 		{
 			MS.Assertion(HasObject(heapID), MC.EC_CODE, "no heap object by ID: " + heapID);

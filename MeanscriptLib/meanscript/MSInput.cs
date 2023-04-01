@@ -8,7 +8,7 @@ namespace Meanscript
 		{
 		}
 
-		public abstract int GetByteCount();
+		public abstract long GetByteCount();
 		public abstract byte ReadByte();
 		public abstract bool End();
 		public abstract void Close();
