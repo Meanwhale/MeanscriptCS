@@ -21,6 +21,20 @@ data objects directly from your source, like in <a href=https://en.wikipedia.org
 
 # Examples
 
+Assigning basic data data type values:
+
+<i>data_type variable_name : value</i>
+
+For example
+
+```
+int a: 5
+float f: 123.456
+text name: "Jack"
+chars [12] ch: "Jill"
+bool b: true
+```
+
 Create a data structure and a variable in Meanscript. It has two integer members x and y:
 
 ```
