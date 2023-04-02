@@ -38,7 +38,7 @@ team[0].name: "Jane"     // modify the first 'person'
 func int increase [int foo] { return (sum foo 1) }
 -->
 // map contains key-value pairs, where key is a string and
-// value can be any numberic or text type or another map.
+// value can be any numeric, boolean, or text type or another map.
 map m {
   key1: "value";
   key2: 123
