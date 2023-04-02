@@ -1,7 +1,7 @@
 # MeanscriptCS
 
 Meanscript serializes data in human-readable script and compact bytecode. It's still work-in-progress,
-but getting close to be practical tool, once I get some last pieces together.
+but getting close to being useful, once I get some last pieces together.
 
 # Featuring
 
@@ -17,7 +17,7 @@ but getting close to be practical tool, once I get some last pieces together.
 - Generate C# classes by using data structure (schema) described in Meanscript. That's how you could read and write
 data objects directly from your source, like in <a href=https://en.wikipedia.org/wiki/Protocol_Buffers>Protobuf</a>.
 - Command line tool.
-- Functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are disabled for now due to recent refactorings. 
+- Math operations (+-/*), functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are disabled for now due to recent refactorings. 
 
 # Examples
 
