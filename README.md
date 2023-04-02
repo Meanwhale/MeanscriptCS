@@ -45,6 +45,8 @@ builder.CreateGlobal(             // add the variable to global variables
 );
 ```
 
+See [reference](https://github.com/Meanwhale/MeanscriptCS/blob/main/docs/reference.md) for mode information.
+
 Read variable data from C#:
 
 ```cs
