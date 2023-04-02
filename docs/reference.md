@@ -11,6 +11,8 @@ text name: "Jack"           // define an immutable string
 chars [12] ch: "Jill"       // define a mutable, fixed-sized string (max. 12 bytes)
 bool b: true                // define a boolean ('true' or 'false')
 
+// basic functions: coming soon...
+<!--
 // Function calls can be of two formats:
 // 1. Argument list separated with spaces, like on command line:
 //        function arg1 arg2 ...
@@ -19,9 +21,6 @@ bool b: true                // define a boolean ('true' or 'false')
 // If an argument is a function call (return value), it's in brackets:
 //        1. function_a arg_a1 (function_b arg_b1 arg_b2 ...) arg_a3 ...
 //        2. function_a (arg_a1, ( function_b ( arg_b1, arg_b2, ... ) ) , arg_a3 , ... )
-
-// basic functions: coming soon...
-<!--
 a + b                   // return a+b
 print a                 // prints an integer 
 -->
@@ -38,6 +37,17 @@ team[0].name: "Jane"     // modify the first 'person'
 // define a function that returns a value
 func int increase [int foo] { return (sum foo 1) }
 -->
+// map contains key-value pairs, where key is a string and
+// value can be any numberic or text type or another map.
+map m {
+  key1: "value";
+  key2: 123
+  key3: true
+
+  childMap {
+    key: "value"
+  }
+}
 </pre>
 
 ### String format
@@ -64,15 +74,15 @@ Other supported escape sequences:
 
 ## Bytecode format
 
-Meanscript bytecode is a list of 32-bit words. One bytecode word can be an operation or data.
+Meanscript bytecode is a list of 32-bit words. One bytecode word can be an instruction or data.
 
-32-bit operation content:
+32-bit instruction content:
 
 bits  | mask         | description
 ------|--------------|------------
-0-7   | `0xff000000` | Operation code. See list of operations below.
-8-15  | `0x00ff0000` | Operation size, i.e. offset to the next operation.
-16-31 | `0x0000ffff` | Data type of the operation target.
+0-7   | `0xff000000` | Instruction ID.
+8-15  | `0x00ff0000` | Instruction size.
+16-31 | `0x0000ffff` | Additional info, e.g. data type of the instruction target.
 
 For example, here's an instruction to define a text "Meanscript" constant:
 
@@ -82,9 +92,9 @@ For example, here's an instruction to define a text "Meanscript" constant:
 3:   1769104243
 4:   29808</pre>
 
-The operation code above is `0x10` for adding a constant text.
-The operation size is `0x04` i.e. four 32-bit words (excluding the operation).
+The instruction code above is `0x10` for adding a constant text.
+The instruction size is `0x04` i.e. four 32-bit words (excluding the instruction).
 The data type is `0x0004`, a constant text.
-After the operation word comes data for the operation.
+After the instruction word comes data for the instruction.
 The first word (int) tells the text length,
 and the following words contain text characters in ASCII codes.
