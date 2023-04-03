@@ -1,7 +1,7 @@
 # MeanscriptCS
 
 Meanscript serializes data in human-readable script and compact bytecode. It's still work-in-progress,
-but getting close to be practical tool, once I get some last pieces together.
+but getting close to being useful, once I get some last pieces together.
 
 # Featuring
 
@@ -17,9 +17,32 @@ but getting close to be practical tool, once I get some last pieces together.
 - Generate C# classes by using data structure (schema) described in Meanscript. That's how you could read and write
 data objects directly from your source, like in <a href=https://en.wikipedia.org/wiki/Protocol_Buffers>Protobuf</a>.
 - Command line tool.
-- Functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are disabled for now due to recent refactorings. 
+- Math operations (+-/*), functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are disabled for now due to recent refactorings. 
 
 # Examples
+
+Assigning basic data data type values:
+
+<i>data_type variable_name : value</i>
+
+For example
+
+```
+int a: 5
+float f: 123.456
+text name: "Jack"
+chars [12] ch: "Jill"
+bool b: true
+```
+
+Here's a simple c# example how to compile a string script and read a value:
+
+```cs
+var code = new MSCode("int a: 5");			// create a code object to parse, compile, and run a script
+Console.WriteLine("a = " + code.global["a"].Int());	// read a value from the code object
+```
+
+Use the TestApp project in the editor project (MeanscriptCS/editor/MeanscriptEditor.sln) to try it out.
 
 Create a data structure and a variable in Meanscript. It has two integer members x and y:
 
@@ -45,10 +68,12 @@ builder.CreateGlobal(             // add the variable to global variables
 );
 ```
 
+See [reference](https://github.com/Meanwhale/MeanscriptCS/blob/main/docs/reference.md) for mode information.
+
 Read variable data from C#:
 
 ```cs
-Print(dataCode.global["position"]["x"].Int()); // prints "3"
+Console.WriteLine(dataCode.global["position"]["x"].Int()); // prints "3"
 ```
 
 # How to run it
@@ -56,7 +81,7 @@ Print(dataCode.global["position"]["x"].Int()); // prints "3"
 - Prerequisites: Visual Studio with .NET 6.0.
 - Clone this project.
 - Go to folder MeanscriptCS/editor.
-- Open the MeanscriptEditor.sln fileand run the Editor project. It has two text areas: left for Meanscript code and right for output.
+- Open the MeanscriptEditor.sln file and run the Editor project. It has two text areas: left for Meanscript code and right for output.
 - Write some code:
 ```
 	int a: 3
@@ -70,6 +95,7 @@ Print(dataCode.global["position"]["x"].Int()); // prints "3"
 - You can run the bytecode file from File > Run bytecode file... It runs the data-defining instructions in the bytecode file. The instructions are executed on the fly, while file stream is read, and not saved to memory. That's why you can print data, but not instructions, after running a bytecode file from File menu.
 - Save and open script files from File menu.
 - Run unit tests from Test menu.
+- Use the TestApp project in the same solution to try Meanscript c# API.
 
 
 # Design philosophy
