@@ -279,9 +279,9 @@
 			{
 				MS.SyntaxAssertion(genArgs.Size() == 2, it, "array: 2 arguments expected");
 				var itemType = types.GetDataType(genArgs.First().data);
-				MS.Assertion(itemType != null, MC.EC_SCRIPT, "generic array: type expected");
+				MS.SyntaxAssertion(itemType != null, it, "generic array: type expected");
 				var itemCount = MS.ParseInt(genArgs.Last().data.GetString());
-				MS.Assertion(itemCount > 0 && itemCount < 64000, MC.EC_SCRIPT, "generic array: unacceptable item count: " + itemCount);
+				MS.SyntaxAssertion(itemCount > 0 && itemCount < 64000, it, "generic array: unacceptable item count: " + itemCount);
 
 				return new GenericArrayType(types, id, itemType, itemCount, types.GetNewTypeID());
 			}

@@ -14,7 +14,7 @@ namespace Meanscript
 		public MException(MSError err, string s) {
 			error = err; info = s;
 		}
-		new public string ToString() {
+		override public string ToString() {
 			return "\n---------------- EXCEPTION ----------------\n"
 			     + info
 				 + "\n-------------------------------------------\n"; }
