@@ -14,16 +14,15 @@ but getting close to being useful, once I get some last pieces together.
 
 <b>Upcoming features</b>
 
-- Generate C# classes by using data structure (schema) described in Meanscript. That's how you could read and write
-data objects directly from your source, like in <a href=https://en.wikipedia.org/wiki/Protocol_Buffers>Protobuf</a>.
+- Generate C# classes by using data structure (schema) described in Meanscript. Generated C# classes can then be used for serialization with Meanscript API, like in <a href=https://en.wikipedia.org/wiki/Protocol_Buffers>Protobuf</a>.
 - Command line tool.
 - Math operations (+-/*), functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are disabled for now due to recent refactorings. 
 
 # Examples
 
-Assigning basic data data type values:
+Syntax for signing basic data data type values:
 
-<i>data_type variable_name : value</i>
+<i><b>type name : value</b></i>
 
 For example
 
@@ -47,20 +46,21 @@ Use the TestApp project in the editor project (MeanscriptCS/editor/MeanscriptEdi
 Create a data structure and a variable in Meanscript. It has two integer members x and y:
 
 ```
-struct vec [int x, int y]         // create a struct (class) named 'vec'
-vec position: 3, 4                // implement the struct in a variable named 'position' with initial values (3, 4)
+struct vec [int x, int y]  // create a struct (class) named 'vec'
+vec position: 3, 4         // implement the struct in a variable named 'position' with initial values (3, 4)
 ```
 
 Create an identical data structure and variable using C#:
 
 ```cs
-var vec = builder.CreateStruct(   // create a struct (class) named 'vec'
+MSBuilder builder = new MSBuilder();
+StructDefType vec = builder.CreateStruct(   // create a struct (class) named 'vec'
   "vec",                          // give struct name
   builder.IntMember("x"),         // define int members
   builder.IntMember("y")
 );
-var position = builder.New(vec);  // implement the struct in a variable named 'position'
-position["x"].SetInt(3);          // initial values (3, 4)
+var position = builder.New(vec);  // create a 'vec' struct variable
+position["x"].SetInt(3);          // set initial values (3, 4)
 position["y"].SetInt(4);
 builder.CreateGlobal(             // add the variable to global variables
     builder.StructMember("position", position)
@@ -95,7 +95,7 @@ Console.WriteLine(dataCode.global["position"]["x"].Int()); // prints "3"
 - You can run the bytecode file from File > Run bytecode file... It runs the data-defining instructions in the bytecode file. The instructions are executed on the fly, while file stream is read, and not saved to memory. That's why you can print data, but not instructions, after running a bytecode file from File menu.
 - Save and open script files from File menu.
 - Run unit tests from Test menu.
-- Use the TestApp project in the same solution to try Meanscript c# API.
+- Use the TestApp project in the same solution to try Meanscript C# API.
 
 
 # Design philosophy
