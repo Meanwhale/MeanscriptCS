@@ -30,7 +30,7 @@ namespace MeanscriptEditor
 			//TextBoxCode.Text = "int a: 3";
 			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
 			//TextBoxCode.Text = "text t: \"A쎄\"";
-			TextBoxCode.Text = MCUnitTest.mapTestScript;
+			TextBoxCode.Text = MCUnitTest.quiteComplexStructs;
 			
 			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
 			//TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p\np: 5";

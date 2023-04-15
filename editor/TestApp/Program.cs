@@ -20,8 +20,8 @@
 
 			// save bytecode
 
-			var sw = new MSBytecodeFileOutput(fileName);
-			code.MM.GenerateDataCode(sw);
+			var output = new MSBytecodeFileOutput(fileName);
+			code.MM.GenerateDataCode(output);
 
 			// read bytecode
 
