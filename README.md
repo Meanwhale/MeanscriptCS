@@ -1,7 +1,6 @@
 # MeanscriptCS
 
-Meanscript serializes data in human-readable script and compact bytecode. It's still work-in-progress,
-but getting close to being useful, once I get some last pieces together.
+<b>Work-in-progress...</b> Meanscript serializes data in human-readable script and compact bytecode.
 
 # Featuring
 
@@ -67,16 +66,31 @@ builder.CreateGlobal(             // add the variable to global variables
     // ...
 );
 ```
-
-See [reference](https://github.com/Meanwhale/MeanscriptCS/blob/main/docs/reference.md) for mode information.
-
 Read variable data from C#:
 
 ```cs
 Console.WriteLine(dataCode.global["position"]["x"].Int()); // prints "3"
 ```
 
-# How to run it
+Write data to a bytecode file:
+
+```cs
+var code = new MSCode("int a: 5");
+var output = new MSBytecodeFileOutput("meanscript.mb");
+code.MM.GenerateDataCode(output);
+```
+
+Read data from a bytecode file:
+
+```cs
+var input = new MSBytecodeFileInput("meanscript.mb");
+var code = new MSCode(input);
+Console.WriteLine("bytecode: a = " + code.Global["a"].Int());
+```
+
+See [reference](https://github.com/Meanwhale/MeanscriptCS/blob/main/docs/reference.md) for mode information.
+
+# How to run the editor
 
 - Prerequisites: Visual Studio with .NET 6.0.
 - Clone this project.
