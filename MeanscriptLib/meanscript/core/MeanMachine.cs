@@ -160,7 +160,7 @@ namespace Meanscript.Core
 			currentStructDef = null;
 			done = false;
 
-			if (MS._verboseOn)
+			if (MS.IsVerbose)
 			{
 				MS.Print(MS.Title("START INITIALIZING"));
 				PrintCode();
@@ -184,7 +184,7 @@ namespace Meanscript.Core
 		{
 			// read instruction
 
-			if (MS._verboseOn && nodes != null && input is MSInputArray ia)
+			if (MS.IsVerbose && nodes != null && input is MSInputArray ia)
 			{
 				if (nodes.ContainsKey(ia.IntIndex()))
 				{
@@ -297,7 +297,7 @@ namespace Meanscript.Core
 			{
 				MS.Verbose("INIT DONE!");
 				Assertion(contextStack.Size() == 0);
-				if (MS._verboseOn)
+				if (MS.IsVerbose)
 				{
 					Heap.Print();
 					PrintStack();
@@ -386,7 +386,7 @@ namespace Meanscript.Core
 				if (op == MC.OP_POP_STACK_TO_OBJECT_TAG)
 				{
 					int tag = Heap.GetAt(heapID, offset);
-					if (MS._verboseOn) MS.printOut.Print("object tag: ").PrintHex(tag).EndLine();
+					if (MS.IsVerbose) MS.printOut.Print("object tag: ").PrintHex(tag).EndLine();
 					if (tag != 0) Heap.Free(tag, -1);
 				}
 
@@ -648,7 +648,7 @@ namespace Meanscript.Core
 		public void PrintStack()
 		{
 			MS.Verbosen("STACK:\n    ");
-			if (MS._verboseOn)
+			if (MS.IsVerbose)
 			{
 				if (stackTop == 0)
 				{

@@ -14,17 +14,14 @@ namespace Meanscript
 		{
 			reader.Close();
 		}
-
 		public override bool End()
 		{
 			return reader.BaseStream.Position != reader.BaseStream.Length;
 		}
-
 		public override long GetByteCount()
 		{
 			return reader.BaseStream.Length;
 		}
-		
 		public override byte ReadByte()
 		{
 			return reader.ReadByte();

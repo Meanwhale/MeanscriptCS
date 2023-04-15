@@ -98,7 +98,7 @@ namespace Meanscript.Core
 			else
 			{
 				MSText data = GetNewName();
-				{ if (MS._debug) { MS.Verbose("TOKEN: " + data); } };
+				{ if (MS.IsDebug) { MS.Verbose("TOKEN: " + data); } };
 				token = new MCNode(lineNumber, characterNumber, currentExpr, tokenType, data);
 			}
 
@@ -180,7 +180,7 @@ namespace Meanscript.Core
 				assignment = true;
 			}
 
-			if (MS._debug) MS.Verbose("add block: " + blockType);
+			if (MS.IsDebug) MS.Verbose("add block: " + blockType);
 
 			lastStart = -1;
 
@@ -453,7 +453,7 @@ namespace Meanscript.Core
 
 			lineNumber = 1;
 			characterNumber = 1;
-			int inputByte = 0;
+			byte inputByte = 0;
 			index = 0;
 
 			while ((!input.End() || goBackwards) && running && ba.ok)
@@ -462,7 +462,7 @@ namespace Meanscript.Core
 				{
 					index++;
 					inputByte = input.ReadByte();
-					buffer[index % 512] = (byte)inputByte;
+					buffer[index % 512] = inputByte;
 					if (inputByte == 10) // line break
 					{
 						lineNumber++;
@@ -477,7 +477,7 @@ namespace Meanscript.Core
 				{
 					goBackwards = false;
 				}
-				if (MS._verboseOn)
+				if (MS.IsVerbose)
 				{
 					MS.printOut.Print(" [").PrintCharSymbol(inputByte).Print("]\n");
 				}
@@ -509,19 +509,15 @@ namespace Meanscript.Core
 				}
 				MS.errorOut.Print("\n");
 
-				automata = null;
-				root = null;
-				tokenTree = null;
 				MS.Assertion(false, MC.EC_PARSE, "parse error");
 			}
 
-			if (MS._verboseOn)
+			if (MS.IsVerbose)
 			{
 				MS.Print(MS.Title("TOKEN TREE:"));
 				root.PrintTree(true);
 				MS.Print(MS.Title("END PARSING"));
 			}
-			automata = null;
 
 			tokenTree.root = root;
 			return tokenTree;

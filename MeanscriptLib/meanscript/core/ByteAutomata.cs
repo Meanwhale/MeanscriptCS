@@ -112,7 +112,7 @@ namespace Meanscript.Core
 		{
 			currentState = nextState;
 
-			{ if (MS._debug) { MS.Verbose("next state: " + stateNames[(int)currentState]); } };
+			{ if (MS.IsDebug) { MS.Verbose("next state: " + stateNames[(int)currentState]); } };
 		}
 
 		// NOTE: don't use exceptions. On error, use error print and set ok = false

@@ -176,9 +176,9 @@
 			{
 
 				MSCode m = new MSCode("int a:5\nchars[12] c: \"Moi!\"\nint b:6");
-				Assertion(m.global.GetInt("a") == 5);
-				Assertion(m.global.GetChars("c").Equals("Moi!"));
-				Assertion(m.global.GetInt("b") == 6);
+				Assertion(m.Global.GetInt("a") == 5);
+				Assertion(m.Global.GetChars("c").Equals("Moi!"));
+				Assertion(m.Global.GetInt("b") == 6);
 
 			}),
 			new UnitTest("SimpleReference", () =>
@@ -186,7 +186,7 @@
 				var code = "int a: 3\nint b : a\nobj[int] p: 5";
 
 				MSCode m = new MSCode(code);
-				Assertion(m.global.GetRef("p").Int() == 5);
+				Assertion(m.Global.GetRef("p").Int() == 5);
 			}),
 			new UnitTest("SimpleStruct", () =>
 			{
@@ -194,12 +194,12 @@
 
 				var code = basicStructs + "\nint a:5\nperson p: (\"Jake\", (2,3))\n";
 				MSCode m = new MSCode(code);
-				Assertion(m.global.GetInt("a") == 5);
-				int x = m.global.GetStruct("p").GetStruct("point").GetInt("x");
+				Assertion(m.Global.GetInt("a") == 5);
+				int x = m.Global.GetStruct("p").GetStruct("point").GetInt("x");
 				Assertion(x == 2);
-				int y = m.global.GetStruct("p").GetStruct("point").GetInt("y");
+				int y = m.Global.GetStruct("p").GetStruct("point").GetInt("y");
 				Assertion(y == 3);
-				int dy = m.global.GetStruct("p").GetStruct("point").GetData("y").Int();
+				int dy = m.Global.GetStruct("p").GetStruct("point").GetData("y").Int();
 				Assertion(dy == 3);
 			}),
 			new UnitTest("CrossReferenceStruct", () =>
@@ -210,23 +210,23 @@
 				const string crossReferenceStructs = "struct vec2 [int x, int y]\nstruct company [int id, text name]\nstruct person [text name, obj [vec2] point, obj[company] workplace]\n";
 				var code = crossReferenceStructs + "\nint a:5\nperson p: (\"Jake\", (2,3), (123, \"MegaCopr\"))\n";
 				MSCode m = new MSCode(code);
-				Assertion(m.global.GetInt("a") == 5);
-				Assertion(m.global.GetStruct("p").GetRef("workplace").Struct().GetInt("id") == 123);
+				Assertion(m.Global.GetInt("a") == 5);
+				Assertion(m.Global.GetStruct("p").GetRef("workplace").Struct().GetInt("id") == 123);
 			}),
 			new UnitTest("SimpleFunction", () =>
 			{
 				string s = "func int f [int x, int y] {\n  int n: sum x y;\n  return n }\nfunc int g [int x, int y, int z] {\n  int n: f x y;\n  return n }\nint a: g 4 3 1000";
 				MSCode m = new MSCode(s);
-				Assertion(m.global.GetInt("a") == 7);
+				Assertion(m.Global.GetInt("a") == 7);
 			}, false),
 			new UnitTest("SimpleArray", () =>
 			{
 				//const string simpleArrayScript = "int a:123\narray [int, 5] arr: [10,456,12,13,14]\nint b:456\narr[1]:11";
 				const string simpleArrayScript = "int a:123\narray [int, 5] arr: [10,456,12,13,14]\nint b:arr[1]";
 				MSCode m = new MSCode(simpleArrayScript);
-				Assertion(m.global.GetInt("a") == 123);
-				Assertion(m.global.GetInt("b") == 456);
-				var array = m.global.GetArray("arr");
+				Assertion(m.Global.GetInt("a") == 123);
+				Assertion(m.Global.GetInt("b") == 456);
+				var array = m.Global.GetArray("arr");
 				Assertion(array.At(2).Int() == 12);
 			}),
 
@@ -302,14 +302,14 @@
 
 				SimpleVariableCheck(m);
 
-				Assertion(m.global["p"]["x"].Int() == 3);
-				Assertion(m.global.GetStruct("p").GetInt("y") == 4);
-				Assertion(m.global.GetObj("ptr").Struct().GetInt("x") == 3);
-				Assertion(m.global.GetObj("ptr").Struct().GetInt("y") == 4);
-				Assertion(m.global.GetArray("arr").At(4).Int() == 40);
-				Assertion(m.global["arr"][4].Int() == 40);
-				Assertion(m.global.GetData("m").GetMap() != null);
-				Assertion(m.global.GetData("m").GetMap().Get("i").Int() == 123);
+				Assertion(m.Global["p"]["x"].Int() == 3);
+				Assertion(m.Global.GetStruct("p").GetInt("y") == 4);
+				Assertion(m.Global.GetObj("ptr").Struct().GetInt("x") == 3);
+				Assertion(m.Global.GetObj("ptr").Struct().GetInt("y") == 4);
+				Assertion(m.Global.GetArray("arr").At(4).Int() == 40);
+				Assertion(m.Global["arr"][4].Int() == 40);
+				Assertion(m.Global.GetData("m").GetMap() != null);
+				Assertion(m.Global.GetData("m").GetMap().Get("i").Int() == 123);
 			
 			}),
 
@@ -343,15 +343,15 @@
 			new UnitTest("SaveAndLoadBytecode", () =>
 			{
 				MSCode m1 = new MSCode(simpleVariableScript);
-				Assertion(m1.global.GetInt("a") == 5);
+				Assertion(m1.Global.GetInt("a") == 5);
 
 				MSOutputArray output = new MSOutputArray();
 				m1.GenerateDataCode(output);
 
 				var input = new MSInputArray(output);
 				MSCode m2 = new MSCode(input, MSCode.StreamType.BYTECODE);
-				Assertion(m2.global.GetInt("a") == 5);
-				Assertion(m2.global.Match(m1.global));
+				Assertion(m2.Global.GetInt("a") == 5);
+				Assertion(m2.Global.Match(m1.Global));
 			})};
 
 		private static void CheckMap(MSCode m)
@@ -359,11 +359,11 @@
 			//Assertion(m.global.GetData("m").GetMap().Get("key1").GetText().Equals("value"));
 			//Assertion(m.global.GetData("m").GetMap().Get("key2").GetInt() == 123);
 			//Assertion(m.global.GetData("m").GetMap().Get("key3").GetBool());
-			Assertion(m.global["m"]["key1"].Text().Equals("value"));
-			Assertion(m.global["m"]["key2"].Int() == 123);
-			Assertion(m.global["m"]["key3"].Bool());
+			Assertion(m.Global["m"]["key1"].Text().Equals("value"));
+			Assertion(m.Global["m"]["key2"].Int() == 123);
+			Assertion(m.Global["m"]["key3"].Bool());
 
-			var childMap = m.global.GetData("m").GetMap().Get("childMap").GetMap();
+			var childMap = m.Global.GetData("m").GetMap().Get("childMap").GetMap();
 			Assertion(childMap.Get("key").Text().Equals("value"));
 		}
 
@@ -505,17 +505,17 @@
 		private static void SimpleVariableCheck(MSCode m)
 		{
 			//Assertion(m.global.HasData("a"));
-			Assertion(m.global.GetInt("a") == 5);
-			Assertion(m.global.GetInt64("long") == 1234567891234L);
-			Assertion(m.global.GetInt64("short") == -1L);
-			Assertion(m.global.GetText("b").Equals("x"));
-			Assertion(m.global.GetChars("ch").Equals("asds"));
-			Assertion(m.global.GetFloat("c") == -123.456f);
-			Assertion(m.global.GetBool("b1") == true);
-			Assertion(m.global.GetBool("b2") == false);
+			Assertion(m.Global.GetInt("a") == 5);
+			Assertion(m.Global.GetInt64("long") == 1234567891234L);
+			Assertion(m.Global.GetInt64("short") == -1L);
+			Assertion(m.Global.GetText("b").Equals("x"));
+			Assertion(m.Global.GetChars("ch").Equals("asds"));
+			Assertion(m.Global.GetFloat("c") == -123.456f);
+			Assertion(m.Global.GetBool("b1") == true);
+			Assertion(m.Global.GetBool("b2") == false);
 
-			Assertion(m.global.GetFloat64("d") == 12.123456789);
-			string utf = m.global.GetText("utf");
+			Assertion(m.Global.GetFloat64("d") == 12.123456789);
+			string utf = m.Global.GetText("utf");
 			Assertion(utf.Length == 2); // A쎄
 			MSText txt = new MSText(utf);
 			Assertion(txt.NumBytes() == 4);

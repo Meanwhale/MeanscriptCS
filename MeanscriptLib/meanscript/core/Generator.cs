@@ -264,7 +264,7 @@ namespace Meanscript.Core
 			MS.Assertion(it.Type() == NodeType.EXPR);
 			it.ToChild();
 			MS.Verbose(MS.Title("generateExpression"));
-			if (MS._verboseOn) it.PrintTree(false);
+			if (MS.IsVerbose) it.PrintTree(false);
 
 			if (output is MSOutputArray oa)
 			{
@@ -332,7 +332,7 @@ namespace Meanscript.Core
 				if (callback != null)
 				{
 					MS.Verbose("callback found: ");
-					if (MS._verboseOn) callback.Print(MS.printOut);
+					if (MS.IsVerbose) callback.Print(MS.printOut);
 					output.WriteOp(MC.OP_CALLBACK_CALL, 0, callback.ID);
 					if (callback.returnType.Def.SizeOf() > 0)
 					{
@@ -352,7 +352,7 @@ namespace Meanscript.Core
 		private void GenerateAssignWithInit(NodeIterator it)
 		{
 			MS.Verbose(MS.Title("generateInitAndAssign"));
-			if (MS._verboseOn) it.PrintTree(false);
+			if (MS.IsVerbose) it.PrintTree(false);
 
 			// eg. "int a: 5"
 
@@ -374,7 +374,7 @@ namespace Meanscript.Core
 		private void GenerateAssign(NodeIterator it, bool init)
 		{
 			MS.Verbose(MS.Title("generateAssign"));
-			if (MS._verboseOn) it.PrintTree(false);
+			if (MS.IsVerbose) it.PrintTree(false);
 			// eg. "a: 5"
 
 			if (it.Type() == NodeType.SQUARE_BRACKETS && it.GetParent().type == NodeType.EXPR_INIT_AND_ASSIGN)

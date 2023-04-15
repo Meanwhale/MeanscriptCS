@@ -17,8 +17,10 @@ namespace Meanscript
 		}
 
 		private MeanMachine mm;
-		private Dictionary<int, MCNode>? nodes;
-		public MSStruct? global;
+		private Dictionary<int, MCNode> nodes;
+		private MSStruct? _global;
+
+		public MSStruct Global { get { if (_global == null) throw new MException(MC.EC_DATA ,"global is not initialized"); return _global; }}
 
 		// root level data. for script it's MSStruct with global value.
 		// for code generated data it can be any data type.
@@ -28,17 +30,31 @@ namespace Meanscript
 
 		public MSCode(string s)
 		{
-			CompileAndRun(s);
+			MSInputArray ia = new MSInputArray(s);
+			var output = Compile(ia, out nodes);
+			mm = new MeanMachine(new MSInputArray((MSOutputArray)output), nodes);
+			
+			InitMainObject();
 		}
-		public MSCode(MSInput input, StreamType st)
+		public MSCode(MSScriptFileInput input)
+		{
+			var result = Compile(input, out nodes); // parse and compile script
+			mm = new MeanMachine(new MSInputArray((MSOutputArray)result));
+		}
+		public MSCode(MSBytecodeFileInput input)
+		{
+			mm = InitBytecode(input);
+		}
+		public MSCode(MSInputArray input, StreamType st)
 		{
 			switch (st)
 			{
 				case StreamType.SCRIPT:
-					var result = Compile(input);
+					var result = Compile(input, out nodes); // compi
 					mm = new MeanMachine(new MSInputArray((MSOutputArray)result));
 					break;
 				case StreamType.BYTECODE:
+					nodes = new ();
 					mm = InitBytecode(input);
 					break;
 				default:
@@ -50,6 +66,7 @@ namespace Meanscript
 		{
 			mm = new MeanMachine(input);
 			InitMainObject();
+			nodes = new ();
 			return mm;
 		}
 
@@ -64,7 +81,7 @@ namespace Meanscript
 			output.Close();
 		}
 
-		private MSOutput Compile(MSInput input)
+		private MSOutput Compile(MSInput input, out Dictionary<int, MCNode> nodes)
 		{
 			TokenTree tree = Parser.Parse(input);
 			Semantics semantics = new Semantics(tree);
@@ -77,15 +94,6 @@ namespace Meanscript
 		public void Step()
 		{
 			MS.Assertion(false, MC.EC_INTERNAL, "TODO");
-		}
-
-		private void CompileAndRun(string s)
-		{
-			MSInputArray ia = new MSInputArray(s);
-			var output = Compile(ia);
-			mm = new MeanMachine(new MSInputArray((MSOutputArray)output), nodes);
-			
-			InitMainObject();
 		}
 
 		private void InitMainObject()
@@ -101,7 +109,8 @@ namespace Meanscript
 				if (main is MCStore store)
 				{
 					//public MSStruct(CodeTypes types, int typeID, IntArray dataCode, int offset, MCHeap heap)
-					global = new MSStruct(mm, typeID, 1, 0);
+					_global = new MSStruct(mm, typeID, 1, 0);
+					return;
 				}
 				else
 				{

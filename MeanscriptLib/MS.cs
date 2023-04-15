@@ -40,8 +40,8 @@ namespace Meanscript
 
 	public class MS
 	{
-		internal static bool _debug = true;
-		public static bool _verboseOn = true;
+		internal static bool IsDebug = true;
+		public static bool IsVerbose = true;
 
 		public delegate void MAction();
 		public delegate void MCallbackAction(MeanMachine mm, MArgs args);
@@ -80,11 +80,11 @@ namespace Meanscript
 		}
 		public static void Verbose(string s)
 		{
-			if (_verboseOn) printOut.Print(s).EndLine();
+			if (IsVerbose) printOut.Print(s).EndLine();
 		}
 		public static void Verbosen(string s)
 		{
-			if (_verboseOn) printOut.Print(s);
+			if (IsVerbose) printOut.Print(s);
 		}
 
 		public static void Assertion(bool b)

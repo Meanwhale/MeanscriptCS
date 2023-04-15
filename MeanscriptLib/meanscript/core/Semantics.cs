@@ -41,7 +41,7 @@ namespace Meanscript.Core
 			return currentContext == contexts[0];
 		}
 
-		public Context FindContext(MSText name)
+		public Context? FindContext(MSText name)
 		{
 			int textID = texts.GetTextID(name);
 			if (textID < 0) return null;
@@ -78,11 +78,11 @@ namespace Meanscript.Core
 				if (contexts[i] != null)
 				{
 					MS.Verbose(MS.Title("context ID: " + i));
-					if (MS._verboseOn) contexts[i].variables.Info(MS.printOut);
+					if (MS.IsVerbose) contexts[i].variables.Info(MS.printOut);
 				}
 			}
 			MS.Verbose(MS.Title("TYPEDEFS"));
-			if (MS._verboseOn)
+			if (MS.IsVerbose)
 			{
 				foreach(var t in types.Values)
 				{
@@ -125,7 +125,7 @@ namespace Meanscript.Core
 
 		public void AnalyzeExpr(NodeIterator it)
 		{
-			if (MS._verboseOn) it.PrintTree(false);
+			if (MS.IsVerbose) it.PrintTree(false);
 
 			if (it.Type() == NodeType.NAME_TOKEN)
 			{
@@ -353,7 +353,7 @@ namespace Meanscript.Core
 			
 			AddStructDef(nameID, sd);
 
-			if (MS._verboseOn) sd.Info(MS.printOut);
+			if (MS.IsVerbose) sd.Info(MS.printOut);
 			
 		}
 

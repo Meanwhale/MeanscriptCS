@@ -151,13 +151,13 @@ namespace MeanscriptEditor
 
 		private void Verbose_Checked(object sender, RoutedEventArgs e)
 		{
-			Meanscript.MS._verboseOn = true;
+			Meanscript.MS.IsVerbose = true;
 			Status("Verbose: ON");
 		}
 
 		private void Verbose_Unchecked(object sender, RoutedEventArgs e)
 		{
-			Meanscript.MS._verboseOn = false;
+			Meanscript.MS.IsVerbose = false;
 			Status("Verbose: OFF");
 		}
 		public void Status(string s)
@@ -244,7 +244,7 @@ namespace MeanscriptEditor
 			{
 				var input = new MSBytecodeFileInput(filename);
 				winOutput.PrintLine("run bytecode: " + filename);
-				code = new MSCode(input, MSCode.StreamType.BYTECODE);
+				code = new MSCode(input);
 			}
 			catch (Exception e)
 			{
@@ -267,7 +267,7 @@ namespace MeanscriptEditor
 			{
 				var input = new MSScriptFileInput(filename);
 				winOutput.PrintLine("run script file: " + filename);
-				code = new MSCode(input, MSCode.StreamType.SCRIPT);
+				code = new MSCode(input);
 			}
 			catch (Exception e)
 			{

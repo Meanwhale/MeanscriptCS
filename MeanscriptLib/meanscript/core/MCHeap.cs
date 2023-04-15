@@ -201,7 +201,7 @@ namespace Meanscript.Core
 			int tag = MakeTag(type,index,1);
 			array[index] = new MCStore(MCStore.Role.OBJECT, tag, data);
 
-			if (MS._verboseOn)
+			if (MS.IsVerbose)
 			{
 				MS.printOut.Print("HEAP alloc [").Print(index).Print("] tag: ").PrintHex(tag).Print(" data:");
 				data.Print(MS.printOut); MS.printOut.EndLine();
@@ -229,7 +229,7 @@ namespace Meanscript.Core
 
 			array[heapID] = new MCStore(role, tag, input, dataLength);
 
-			if (MS._verboseOn)
+			if (MS.IsVerbose)
 			{
 				MS.printOut.Print("HEAP WriteObject [").Print(heapID).Print("] tag: ").PrintHex(tag).Print(" data:");
 				array[heapID].Print(MS.printOut); MS.printOut.EndLine();
@@ -244,7 +244,7 @@ namespace Meanscript.Core
 
 			array[heapID] = new MCStore(role, tag, src, 0, dataLength);
 
-			if (MS._verboseOn)
+			if (MS.IsVerbose)
 			{
 				MS.printOut.Print("HEAP WriteObject [").Print(heapID).Print("] tag: ").PrintHex(tag).Print(" data:");
 				array[heapID].Print(MS.printOut); MS.printOut.EndLine();

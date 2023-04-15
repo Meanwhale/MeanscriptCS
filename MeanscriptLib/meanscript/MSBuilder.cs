@@ -40,7 +40,6 @@
 		{
 			packageName = _packageName;
 			types = new CodeTypes(new Texts());
-			//globals = new MSBuilderStructWriter(this, types.texts.AddText("global"), MC.GLOBALS_TYPE_ID);
 		}
 
 		public void CreateGlobal(IMSVar data)
@@ -155,8 +154,6 @@
 			});
 			return member;
 		}
-
-
 		internal MSArray NewArray(int itemTypeID, int itemCount)
 		{
 			// make and add array type
@@ -214,13 +211,7 @@
 		}
 
 		public void Generate(MSOutputArray output)
-		{
-			// TODO: generate bytecode
-
-			// Semantics.WriteTypesAndGlobals(...)
-			// write heap data: ks. GenerateDataCode. tee funktio.
-			// myöhemmin specialit kuten mapin tall.
-			
+		{			
 			// START_INIT and texts
 			output.WriteInt(MC.MakeInstruction(MC.OP_START_DEFINE, 0, 0));
 

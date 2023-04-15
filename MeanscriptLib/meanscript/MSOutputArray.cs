@@ -37,7 +37,6 @@ namespace Meanscript
 		{
 			var ints = new int[buffer.Count];
 			IntArray.Copy(buffer.Data(), ints, buffer.Count);
-			buffer = null;
 			Close();
 			return ints;
 		}
