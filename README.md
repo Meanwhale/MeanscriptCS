@@ -17,6 +17,8 @@
 - Command line tool.
 - Math operations (+-/*), functions, conditions, loops, i.e. programming features that already are in the core of Meanscript but are disabled for now due to recent refactorings. 
 
+<img src=https://github.com/Meanwhale/MeanscriptCS/blob/main/rnd/editor_screenshot.png width=50%>
+
 # Examples
 
 Syntax for signing basic data data type values:
