@@ -50,6 +50,18 @@ map m {
 }
 </pre>
 
+### Parse, compile, read
+
+Give a script as a string to MSCode constructor. It parses the script, generates a bytecode of it, and executes the bytecode.
+After that MSCode object contains the data structure that's described in the script.
+You can read the data by MSCode's API, for example
+
+```
+var code = new MSCode("int a: 5");			// create a code object to parse, compile, and run a script
+Console.WriteLine("a = " + code.global["a"].Int());	// read a value from the code object
+```
+
+
 ### String format
 
 Text strings are in UTF-8 format. Text's byte values can be defined with `\xHH`, where `HH` is a two-digit hexadecimal value, eg.
