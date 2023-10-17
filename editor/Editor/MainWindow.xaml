@@ -1,6 +1,6 @@
 ﻿<Window x:Class="MeanscriptEditor.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:MeanscriptEditor"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Meanscript" Height="1000" Width="1600">
 
     <Window.CommandBindings>
@@ -8,38 +8,81 @@
         <CommandBinding Command="ApplicationCommands.Save" Executed="SaveCommandExecuted" />
         <CommandBinding Command="ApplicationCommands.Close" Executed="QuitCommandExecuted" />
     </Window.CommandBindings>
-    <!--<Window.InputBindings>
-        <KeyBinding Key="H" Modifiers="Control" Command="HelloWorldCommand"/>
-    </Window.InputBindings>-->
 
     <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" ShowGridLines="False">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="50"/>
-            <ColumnDefinition Width="5"/>
-            <!-- splitter -->
+            <ColumnDefinition Width="5"/> <!-- splitter -->
             <ColumnDefinition Width="*" MinWidth="50"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition  Height="20"/>
+            <RowDefinition  Height="42"/>
             <RowDefinition />
             <RowDefinition Height="20" />
         </Grid.RowDefinitions>
-        <TextBox Grid.Column="0" Grid.Row="1" Name="TextBoxCode" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Visible"
+        
+        <!-- top button panel -->
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Width="Auto" Margin="3" Grid.ColumnSpan="3" Grid.Column="2" Grid.Row="1" >
+            <Button Name="ConsoleRunButton" Click="Console_Run" HorizontalAlignment="Center" ToolTip="Compile and run script">
+                RUN
+            </Button>
+            <Button Name="ConsoleInfoButton" Click="Console_Info" HorizontalAlignment="Center" ToolTip="Print bytecode info">
+                INFO
+            </Button>
+            <Button Name="ConsoleExportButton" Click="Console_Export" HorizontalAlignment="Center" ToolTip="Export bytecode">
+                EXPORT
+            </Button>
+            <Button Name="ConsoleClearButton" Click="Console_Clear" HorizontalAlignment="Center" ToolTip="Clear bytecode">
+                CLEAR
+            </Button>
+            <TextBox Name="ConsoleBytecodeStatus" VerticalAlignment="Center" Background="Black" Foreground="White" Width="256" Height="24" FontFamily="Cascadia Code" FontSize="12" >
+                Bytecode status
+            </TextBox>
+        </StackPanel>
+        
+        <!-- TOP BAR UI EXPERIMENT: -->
+        <!--<StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Width="Auto" Margin="3" Grid.ColumnSpan="3" Grid.Row="1" >
+                <Button HorizontalAlignment="Center">
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                    <TextBlock HorizontalAlignment="Center">Run</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" FontWeight="Light" FontSize="10">F5</TextBlock>
+                </StackPanel>
+            </Button>
+            <Button HorizontalAlignment="Center">
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                    <TextBlock HorizontalAlignment="Center">Modify</TextBlock>
+                    <TextBlock HorizontalAlignment="Center" FontWeight="Light" FontSize="12" Foreground="#888">F8</TextBlock>
+                </StackPanel>
+            </Button>
+            <StackPanel Orientation="Vertical" Width="64">
+                <Button HorizontalAlignment="Center">Info</Button>
+            </StackPanel>
+            <StackPanel Orientation="Vertical" Width="64">
+                <Button HorizontalAlignment="Center">Clear</Button>
+            </StackPanel>
+            <TextBox VerticalAlignment="Center" Background="Black" Foreground="White" Width="256" Height="28">
+                Bytecode status
+            </TextBox>
+        </StackPanel>-->
+        
+        <TextBox Grid.Column="0" Grid.Row="1" Grid.RowSpan="2" Name="TextBoxCode" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Visible"
                  FontFamily="Cascadia Code" FontSize="12" TextChanged="textChangedEventHandler">
             Meanscript code
         </TextBox>
-        <!--<TextBox Grid.Column="2" Grid.Row="1" Name="TextBoxOutput" TextWrapping="Wrap" VerticalScrollBarVisibility="Visible"
-                 FontFamily="Cascadia Code" FontSize="12" Background="#f8f8f8" IsReadOnly="True" ScrollViewer.CanContentScroll="True">
-            Meanscript output
-        </TextBox>-->
-        <ScrollViewer Grid.Column="2" Grid.Row="1" Name="TextBoxOutputScrollViewer"  VerticalScrollBarVisibility="Visible"  HorizontalScrollBarVisibility="Visible">
-            <TextBlock  Name="TextBoxOutput" FontFamily="Cascadia Code" FontSize="12" Background="#f8f8f8" />
-        </ScrollViewer>
-        <TextBox Grid.ColumnSpan="3" Grid.Row="2" Name="TextBoxStatus" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Hidden"
+        <RichTextBox Name="TextBoxOutput" Grid.Column="2" Grid.Row="2" >
+            <FlowDocument FontFamily="Cascadia Code" FontSize="12" LineHeight="4" Background="#f8f8f8" >
+                <Paragraph>
+                    moi
+                </Paragraph>
+            </FlowDocument>
+        </RichTextBox>
+        <TextBox Grid.ColumnSpan="3" Grid.Row="3" Name="TextBoxStatus" VerticalScrollBarVisibility="Hidden"
                   FontSize="12" VerticalAlignment="Center">
             Meanscript status
         </TextBox>
-        <GridSplitter HorizontalAlignment="Stretch" Grid.Column="1" Grid.Row="1" Width="5" Background="White"/>
+        <GridSplitter HorizontalAlignment="Stretch" Grid.Column="1" Grid.Row="2" Width="5" Background="White"/>
 
         <DockPanel Grid.ColumnSpan="3" Grid.Row="0">
 
@@ -74,7 +117,6 @@
                     <MenuItem Header="_Export data..." Click="Command_SaveBytecode" />
                 </MenuItem>
             </Menu>
-            <TextBox AcceptsReturn="True" />
         </DockPanel>
     </Grid>
 

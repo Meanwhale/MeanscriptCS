@@ -75,7 +75,7 @@ namespace Meanscript.Core
 		public const int OP_PUSH_OBJECT_DATA = 0x19000000;
 		
 		public const int OP_POP_STACK_TO_OBJECT = 0x1a000000;
-		public const int OP_POP_STACK_TO_OBJECT_TAG = 0x1b000000;
+		public const int OP_POP_STACK_TO_OBJECT_REFERENCE = 0x1b000000;
 		//public const int OP_POP_STACK_TO_LOCAL = 0x1a000000;
 		//public const int OP_POP_STACK_TO_GLOBAL = 0x1b000000;
 		//public const int OP_POP_STACK_TO_DYNAMIC = 0x1d000000;
@@ -88,7 +88,7 @@ namespace Meanscript.Core
 		public const int OP_SET_DYNAMIC_OBJECT = 0x20000000;
 		public const int OP_PUSH_CHARS = 0x25000000;
 		
-		public const int OP_PUSH_NEW_MAP_TAG_AND_BEGIN = 0x26000000;
+		public const int OP_PUSH_NEW_MAP_REFERENCE_AND_BEGIN = 0x26000000;
 		public const int OP_MAP_KEY = 0x27000000;
 		public const int OP_POP_MAP_VALUE = 0x28000000;
 		public const int OP_BEGIN_MAP = 0x29000000;
@@ -105,10 +105,10 @@ namespace Meanscript.Core
 			"no operation",         "---OLD---",            "---OLD---",            "---OLD---",
 			"text",                 "push immediate",       "add top",	            "push from reg.",
 			"function data",        "start define",         "start init",           "function call",
-			"push context address", "push object data",     "pop to object",        "pop to object tag",
+			"push context address", "push object data",     "pop to object",        "pop to object ref",
 			"pop to register",      "end init",             "write heap object",    "generic type",
 			"set dynamic object",   "---OLD---",            "---OLD---",            "---OLD---",
-			"---OLD---",            "push chars",           "push map tag and begin","map key",
+			"---OLD---",            "push chars",           "push map ref and begin","map key",
 			"map value",            "begin map",            "set map value",        "end map",
 			"---ERROR---",          "---ERROR---",          "---ERROR---",          "---ERROR---",
 		};
@@ -193,19 +193,6 @@ namespace Meanscript.Core
 			MS.Assertion(index < NUM_OP, EC_CODE, "unknown operation code");
 			return opName[index];
 		}
-
-		public static bool IsArrayTag(int tag)
-		{
-			MS.Assertion(false);
-			return false;
-		}
-
-		public static bool IsCharsTag(int tag)
-		{
-			MS.Assertion(false);
-			return false;
-		}
-
 		public static int InstrSize(int instruction)
 		{
 			return (int)(instruction & SIZE_MASK) >> SIZE_SHIFT;
@@ -247,7 +234,7 @@ namespace Meanscript.Core
 
 		public static void PrintBytecode(int [] data, int top, int index, bool code)
 		{
-			int tagIndex = 0;
+			int instrIndex = 0;
 			for (int i = 0; i < top; i++)
 			{
 				if (code)
@@ -255,10 +242,10 @@ namespace Meanscript.Core
 					if (i == index) MS.Printn(">>> " + i);
 					else MS.Printn("    " + i);
 
-					if (i == tagIndex)
+					if (i == instrIndex)
 					{
 						int op = (int)(data[i] & MC.OPERATION_MASK);
-						MS.printOut.Print(":    0x").PrintHex(data[i]).Print("      ").Print(GetOpName(data[i]));
+						MS.printOut.Print(":    ").PrintHex(data[i]).Print("      ").Print(GetOpName(data[i]));
 						if (op == OP_ADD_TEXT)
 						{
 							MS.printOut.Print(" \"").PrintIntsToChars(data, i+2, data[i+1], false).Print('\"');
@@ -266,7 +253,7 @@ namespace Meanscript.Core
 							// var t = new MSText(data, i+2, data[i+1]);
 						}
 						MS.printOut.EndLine();
-						tagIndex += InstrSize(data[i]) + 1;
+						instrIndex += InstrSize(data[i]) + 1;
 					}
 					else MS.printOut.Print(":    ").PrintHex(data[i]).EndLine();
 				}

@@ -371,7 +371,7 @@ namespace Meanscript.Core
 				// fill the rest
 				for (int i = 0; i < (structSize - textDataSize); i++) Push(0);
 			}
-			else if (op == MC.OP_POP_STACK_TO_OBJECT || op == MC.OP_POP_STACK_TO_OBJECT_TAG)
+			else if (op == MC.OP_POP_STACK_TO_OBJECT || op == MC.OP_POP_STACK_TO_OBJECT_REFERENCE)
 			{
 				// stack: ... [target address][           data           ][size]
 
@@ -383,11 +383,11 @@ namespace Meanscript.Core
 				int offset = MC.AddressOffset(address);
 				Assertion(Heap.HasObject(heapID), "address' heap ID error: " + heapID);
 				
-				if (op == MC.OP_POP_STACK_TO_OBJECT_TAG)
+				if (op == MC.OP_POP_STACK_TO_OBJECT_REFERENCE)
 				{
-					int tag = Heap.GetAt(heapID, offset);
-					if (MS.IsVerbose) MS.printOut.Print("object tag: ").PrintHex(tag).EndLine();
-					if (tag != 0) Heap.Free(tag, -1);
+					int reference = Heap.GetAt(heapID, offset);
+					if (MS.IsVerbose) MS.printOut.Print("object reference: ").PrintHex(reference).EndLine();
+					if (reference != 0) Heap.Free(reference, -1);
 				}
 
 				var targetArray = Heap.GetStoreData(heapID);
@@ -405,24 +405,24 @@ namespace Meanscript.Core
 				int heapID = MC.AddressHeapID(address);
 				int offset = MC.AddressOffset(address);
 
-				int tag = Heap.GetAt(heapID, offset);
-				int newHeapID = MCHeap.TagHeapIndex(tag);
+				int reference = Heap.GetAt(heapID, offset);
+				int newHeapID = MCHeap.ReferenceHeapIndex(reference);
 				Assertion(Heap.HasObject(newHeapID), "address' heap ID error: " + newHeapID);
 				Push(MC.MakeAddress(newHeapID, 0));
 
 				MS.Verbose("set dynamic object address, newHeapID: " + newHeapID + ", offset: " + offset);
 			}
-			else if (op == MC.OP_PUSH_NEW_MAP_TAG_AND_BEGIN)
+			else if (op == MC.OP_PUSH_NEW_MAP_REFERENCE_AND_BEGIN)
 			{
 				// TODO: for generic maps use type parameters
 				var map = Heap.AllocMap(codeTypes);
 				PushContext(map);
-				Push(map.tag);
+				Push(map.reference);
 			}
 			else if (op == MC.OP_BEGIN_MAP)
 			{
-				int tag = PopStack();
-				var map = Heap.CreateMap(MCHeap.TagHeapIndex(tag), codeTypes);
+				int reference = PopStack();
+				var map = Heap.CreateMap(MCHeap.ReferenceHeapIndex(reference), codeTypes);
 				PushContext(map);
 			}
 			else if (op == MC.OP_END_MAP)

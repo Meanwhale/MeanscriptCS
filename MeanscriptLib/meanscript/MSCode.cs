@@ -102,7 +102,7 @@ namespace Meanscript
 			
 			// main data can be of any data type.
 			// if it's struct, like for scripts, assign global.
-			int typeID = MCHeap.TagType(main.tag);
+			int typeID = MCHeap.ReferenceType(main.reference);
 			var mainType = mm.codeTypes.GetTypeDef(typeID);
 			if (mainType is StructDefType)
 			{
@@ -117,6 +117,11 @@ namespace Meanscript
 					MS.Assertion(false);
 				}
 			}
+		}
+
+		public string StatusString()
+		{
+			return "data objects: " + mm.Heap.NumObjects();
 		}
 	}
 }

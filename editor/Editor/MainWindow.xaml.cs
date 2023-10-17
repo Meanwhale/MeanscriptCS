@@ -1,10 +1,12 @@
-﻿using Meanscript;
+﻿using Editor;
+using Meanscript;
 using Meanscript.Core;
 using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace MeanscriptEditor
 {
@@ -19,7 +21,7 @@ namespace MeanscriptEditor
 		public MainWindow()
 		{
 			InitializeComponent();
-			winOutput = new WinOutputPrinter(TextBoxOutput, TextBoxOutputScrollViewer);
+			winOutput = new WinOutputPrinter(TextBoxOutput);
 			Meanscript.MS.printOut = winOutput;
 			Meanscript.MS.errorOut = winOutput;
 			Meanscript.MS.userOut = winOutput;
@@ -30,7 +32,7 @@ namespace MeanscriptEditor
 			//TextBoxCode.Text = "int a: 3";
 			//TextBoxCode.Text = "array [int,5] a\nint b : 5\na[3]: 456\nprint a[3]";
 			//TextBoxCode.Text = "text t: \"A쎄\"";
-			TextBoxCode.Text = MCUnitTest.quiteComplexStructs;
+			TextBoxCode.Text = MCUnitTest.simpleReferenceCode;
 			
 			//TextBoxCode.Text = "struct vec [int x, int y]\nvec v: 678 876\nint a: 11\nsum a v.x\nsum 7 8 9";
 			//TextBoxCode.Text = "int a: 3\nint b : a\nobj[int] p\np: 5";
@@ -64,7 +66,10 @@ namespace MeanscriptEditor
 				TestListMenu.Items.Add(item);
 			}
 			textModified = false;
-			BytecodeMenu.IsEnabled = false;
+
+			RefreshUI();
+
+			winOutput.Print("welcome to the world of meanscript!!");
 		}
 
 		void MainWindow_KeyDown(object sender, KeyEventArgs e)
@@ -128,7 +133,57 @@ namespace MeanscriptEditor
 				PrintError(e, code);
 				code = null;
 			}
-			BytecodeMenu.IsEnabled = code != null;
+			RefreshUI();
+		}
+		private void ClearOutput()
+		{
+			winOutput.Clear();
+		}
+
+		// CONSOLE BUTTONS
+		
+		public void Console_Run(object sender, RoutedEventArgs e)
+		{
+			Command_ComplileAndRun(sender, e);
+		}
+		
+		public void Console_Info(object sender, RoutedEventArgs e)
+		{
+			if (code == null) return;
+			Command_BytecodeData(sender, e);
+		}
+		public void Console_Export(object sender, RoutedEventArgs e)
+		{
+			if (code == null) return;
+			Command_SaveBytecode(sender, e);
+		}
+		public void Console_Clear(object sender, RoutedEventArgs e)
+		{
+			// TODO confirm
+			code = null;
+			ClearOutput();
+			RefreshUI();
+		}
+
+		private void RefreshUI()
+		{
+			bool isCode = code != null;
+
+			BytecodeMenu.IsEnabled = isCode;
+			ConsoleInfoButton.IsEnabled = isCode;
+			ConsoleExportButton.IsEnabled = isCode;
+			ConsoleClearButton.IsEnabled = isCode;
+
+			if (code == null)
+			{
+				ConsoleBytecodeStatus.Text = "";
+				ConsoleBytecodeStatus.Background = Brushes.Gray;
+			}
+			else
+			{
+				ConsoleBytecodeStatus.Background = Brushes.Black;
+				ConsoleBytecodeStatus.Text = code.StatusString();
+			}
 		}
 
 		private void PrintError(Exception e, MSCode? code)
@@ -251,7 +306,7 @@ namespace MeanscriptEditor
 				PrintError(e, code);
 				code = null;
 			}
-			BytecodeMenu.IsEnabled = code != null;
+			RefreshUI();
 		}
 		
 		// run script (CURRENTLY NOT IN USE)

@@ -4,7 +4,7 @@ namespace Meanscript.Core
 	{
 		internal int functionID;
 		internal TypeDef returnType;
-		internal int tagAddress;
+		internal int instrAddress;
 		internal int codeStartAddress;
 		internal int codeEndAddress;
 		public StructDef variables;
@@ -16,7 +16,7 @@ namespace Meanscript.Core
 			variables = _variables;
 			functionID = _functionID;
 			returnType = _returnType;
-			tagAddress = -1;
+			instrAddress = -1;
 
 			codeNode = null;
 			codeStartAddress = -1;

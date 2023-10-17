@@ -4,6 +4,57 @@
              xmlns:local="clr-namespace:Editor"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <Style TargetType="Button">
+            <!--<Setter Property="FontFamily" Value="Cascadia Code" />-->
+            <Setter Property="Width" Value="80" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="4" />
+        </Style>
+        <!--<Style TargetType="Button">
+                <Setter Property="Background" Value="#ddd" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="Orange" TargetName="Border" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Width" Value="80" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="FontFamily" Value="Cascadia Code" />
+        </Style>-->
+        <!--<Style TargetType="Button">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="Orange" TargetName="Border" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Width" Value="63" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="BorderThickness" Value="0" />
+
+        </Style>-->
     </Application.Resources>
 </Application>

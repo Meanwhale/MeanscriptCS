@@ -196,16 +196,16 @@
 
 			// write _str_ to heap, create an object type the data, and make its tag a member
 
-			int tag = heap.AllocStoreObject(data.typeID, data.dataCode);
+			int reference = heap.AllocStoreObject(data.typeID, data.dataCode);
 			var objectType = new ObjectType(types, types.GetNewTypeID(), types.GetDataType(data.typeID), types.GetNewTypeID());
 			types.AddTypeDef(objectType);
-			member = new MSBuilderMember(objectType, name, new int [] { tag });
+			member = new MSBuilderMember(objectType, name, new int [] { reference });
 			return member;
 		}
 		internal MSBuilderMember MapMember(string name, MSMap map, out MSBuilderMember member)
 		{
 			member = new MSBuilderMember(types.GetDataType(MC.BASIC_TYPE_MAP), name, new int [] {
-				map.tag
+				map.reference
 			});
 			return member;
 		}

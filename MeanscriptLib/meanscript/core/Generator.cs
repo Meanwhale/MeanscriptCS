@@ -155,7 +155,7 @@ namespace Meanscript.Core
 			// push map variable's address
 			var assignTarget = ResolveAndPushVariableAddress(it);
 			// create the map and push it's tag
-			output.WriteOp(MC.OP_PUSH_NEW_MAP_TAG_AND_BEGIN, 0, MC.BASIC_TYPE_VOID);
+			output.WriteOp(MC.OP_PUSH_NEW_MAP_REFERENCE_AND_BEGIN, 0, MC.BASIC_TYPE_VOID);
 			// push map variable's size (tag)
 			output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_INT, 1);
 			// stack: ... [target: heap ID + offset][data][size] top
@@ -215,7 +215,7 @@ namespace Meanscript.Core
 						
 			// CHILD MAP CREATION BEGINS
 			// create the map and push it's tag
-			output.WriteOp(MC.OP_PUSH_NEW_MAP_TAG_AND_BEGIN, 0, MC.BASIC_TYPE_VOID);
+			output.WriteOp(MC.OP_PUSH_NEW_MAP_REFERENCE_AND_BEGIN, 0, MC.BASIC_TYPE_VOID);
 			GenerateMapContent(it);
 			output.WriteOp(MC.OP_END_MAP, 0, MC.BASIC_TYPE_VOID);
 			// CHILD MAP CREATION ENDS
@@ -399,7 +399,7 @@ namespace Meanscript.Core
 				if (assignTarget.Def is ObjectType)
 				{
 					// stack: ... [target: address to heap tag][           data           ][size] top
-					output.WriteOp(MC.OP_POP_STACK_TO_OBJECT_TAG, 0, MC.BASIC_TYPE_VOID);
+					output.WriteOp(MC.OP_POP_STACK_TO_OBJECT_REFERENCE, 0, MC.BASIC_TYPE_VOID);
 				}
 				else
 				{

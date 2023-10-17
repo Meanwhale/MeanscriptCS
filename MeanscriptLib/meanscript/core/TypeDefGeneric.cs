@@ -135,9 +135,9 @@
 
 			var data = new IntArray(ItemSize);
 			IntArray.Copy(mm.stack, mm.stackTop - ItemSize, data, 0, itemType.SizeOf());
-			int tag = mm.Heap.AllocStoreObject(itemType.ID, data);
+			int reference = mm.Heap.AllocStoreObject(itemType.ID, data);
 			//mm.stackTop -= ItemSize + 1; // args size is item size + address size (1)
-			mm.CallbackReturn(ID, tag);
+			mm.CallbackReturn(ID, reference);
 		}
 
 		public override int SizeOf()

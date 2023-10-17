@@ -20,6 +20,8 @@
 		public const string structAssign = "struct vec [int x, int y]\nstruct person [array[vec,4] corner, vec pos, float age]\nperson p: [(1,2),(1,2),(1,2),(1,2)],(1,100 + 11),12.34";
 
 		public const string mapTestScript = "map m {\n  key1: \"value\";\n  key2: 123\n  key3: true\n childMap { key: \"value\" } }";
+		
+		public const string simpleReferenceCode = "int a: 3\nint b : a\nobj[int] p: 5";
 
 		public static void Assertion(bool b)
 		{
@@ -183,9 +185,7 @@
 			}),
 			new UnitTest("SimpleReference", () =>
 			{
-				var code = "int a: 3\nint b : a\nobj[int] p: 5";
-
-				MSCode m = new MSCode(code);
+				MSCode m = new MSCode(simpleReferenceCode);
 				Assertion(m.Global.GetRef("p").Int() == 5);
 			}),
 			new UnitTest("SimpleStruct", () =>

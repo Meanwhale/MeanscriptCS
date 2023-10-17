@@ -8,19 +8,19 @@ namespace Meanscript.Core
 		// base class for dynamic data objects, like data array, map,
 		// and in the future list, etc.
 
-		public readonly int tag;
+		public readonly int reference;
 
-		protected IDynamicObject(int tag)
+		protected IDynamicObject(int _reference)
 		{
-			this.tag = tag;
+			this.reference = _reference;
 		}
 		public int HeapID()
 		{
-			return MCHeap.TagHeapIndex(tag);
+			return MCHeap.ReferenceHeapIndex(reference);
 		}
 		public int DataTypeID()
 		{
-			return MCHeap.TagType(tag);
+			return MCHeap.ReferenceType(reference);
 		}
 		public abstract void Print(MSOutputPrint o);
 		public abstract void Write(MSOutput output);
@@ -41,19 +41,19 @@ namespace Meanscript.Core
 		public Role role;
 		public IntArray data;
 		
-		public MCStore(Role role, int tag, IntArray data) : base(tag)
+		public MCStore(Role role, int reference, IntArray data) : base(reference)
 		{
 			this.role = role;
 			this.data = data;
 		}
 		
-		public MCStore(Role role, int tag, int[] src, int startIndex, int dataLength) :
-			this(role, tag, new IntArray(dataLength))
+		public MCStore(Role role, int reference, int[] src, int startIndex, int dataLength) :
+			this(role, reference, new IntArray(dataLength))
 		{
 			IntArray.Copy(src, startIndex, data.Data(), 0, dataLength);
 		}
-		public MCStore(Role role, int tag, MSInput input, int dataLength) :
-			this(role, tag, new IntArray(dataLength))
+		public MCStore(Role role, int reference, MSInput input, int dataLength) :
+			this(role, reference, new IntArray(dataLength))
 		{
 			IntArray.Read(input, data.Data(), dataLength);
 		}
@@ -67,7 +67,7 @@ namespace Meanscript.Core
 		}
 		override public void Print(MSOutputPrint o)
 		{
-			o.PrintHex(tag).Print(" ");
+			o.PrintHex(reference).Print(" ");
 			data.Print(o);
 		}
 		public bool InRange(int offset)
@@ -80,17 +80,17 @@ namespace Meanscript.Core
 	{
 		public MSMap map;
 
-		public MCMap(MSMap map, int tag) : base(tag)
+		public MCMap(MSMap map, int reference) : base(reference)
 		{
 			this.map = map;
 		}
-		public MCMap(int tag, CodeTypes types, MCHeap heap) : base(tag)
+		public MCMap(int reference, CodeTypes types, MCHeap heap) : base(reference)
 		{
-			map = new MSMap(types, heap, tag);
+			map = new MSMap(types, heap, reference);
 		}
 		public override void Print(MSOutputPrint o)
 		{
-			o.PrintHex(tag).Print(" map");
+			o.PrintHex(reference).Print(" map");
 			if(map.dict.Count <= 0) return;
 			o.EndLine();
 			foreach(var kv in map.dict)
@@ -103,10 +103,10 @@ namespace Meanscript.Core
 
 		public override void Write(MSOutput output)
 		{
-			output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_VOID, tag);
+			output.WriteOpWithData(MC.OP_PUSH_IMMEDIATE, 1, MC.BASIC_TYPE_VOID, reference);
 			output.WriteOp(MC.OP_BEGIN_MAP, 0, 0);
 
-			// NOTE: no need to save child maps separately as/if tags are right
+			// NOTE: no need to save child maps separately as/if references are right
 			// write key-value pairs
 			foreach(var kv in map.dict)
 			{
@@ -128,28 +128,27 @@ namespace Meanscript.Core
 		internal int capacity = 16;
 		internal IDynamicObject [] array;
 		
+		// define dynamic object reference data:
+
+		const uint
+			HEAP_REFERENCE_TYPE_MASK		= 0xfff00000,
+			HEAP_REFERENCE_INDEX_MASK		= 0x000fff00,
+			HEAP_REFERENCE_SIGNATURE_MASK	= 0x000000ff;
+		const int
+			HEAP_REFERENCE_TYPE_SHIFT		= 20,
+			HEAP_REFERENCE_INDEX_SHIFT		= 8,
+			HEAP_REFERENCE_SIGNATURE_SHIFT	= 0;
+
 		//private DData Target; // { private set; private get; }
 
 		public MCHeap ()
 		{
 			array = new IDynamicObject[capacity];
 		}
-		//public void SetTarget(int tag)
-		//{
-		//	MS.Assertion(tag != 0, MC.EC_CODE, "null pointer exception");
-		//	int index = TagIndex(tag);
-		//	Target = array[index];
-		//	MS.Assertion(tag == Target.tag, MC.EC_CODE, "pointer mismatch");
-		//	MS.Verbose("HEAP set target index: " + index);
-		//}
-		//public void ClearTarget()
-		//{
-		//	Target = null;
-		//}
 		internal MCStore AllocGlobal(int size)
 		{
 			MS.Assertion(array[1] == null);
-			var dd = new MCStore(MCStore.Role.GLOBAL, MakeTag(MC.GLOBALS_TYPE_ID, 1, 0), new IntArray(size));
+			var dd = new MCStore(MCStore.Role.GLOBAL, MakeReference(MC.GLOBALS_TYPE_ID, 1, 0), new IntArray(size));
 			array[1] = dd;
 			return dd;
 		}
@@ -163,51 +162,51 @@ namespace Meanscript.Core
 		public MCStore AllocContext(int size)
 		{
 			int index = FindFreeSlot();
-			int tag = MakeTag(0, index, 0);
-			var dd = new MCStore(MCStore.Role.CONTEXT, tag, new IntArray(size));
+			int reference = MakeReference(0, index, 0);
+			var dd = new MCStore(MCStore.Role.CONTEXT, reference, new IntArray(size));
 			array[index] = dd;
 			return dd;
 		}
 		public int AllocStoreObject(int type, IntArray data)
 		{
-			// create a new object and return tag
+			// create a new object and return reference
 			int index = FindFreeSlot();
 			return SetStoreObject(index, type, data);
 		}
 		public MCMap AllocMap(CodeTypes types)
 		{
 			int index = FindFreeSlot();
-			int tag = MakeTag(MC.BASIC_TYPE_MAP,index,1);
-			var map = new MCMap(tag, types, this);
+			int reference = MakeReference(MC.BASIC_TYPE_MAP,index,1);
+			var map = new MCMap(reference, types, this);
 			array[index] = map;
 			return map;
 		}
 		public MCMap CreateMap(int index, CodeTypes types)
 		{
 			MS.Assertion(array[index] == null);
-			int tag = MakeTag(MC.BASIC_TYPE_MAP,index,1);
-			var map = new MCMap(tag, types, this);
+			int reference = MakeReference(MC.BASIC_TYPE_MAP,index,1);
+			var map = new MCMap(reference, types, this);
 			array[index] = map;
 			return map;
 		}
 		public void SetMapObject(int index, MSMap map)
 		{
 			MS.Assertion(array[index] == null);
-			int tag = MakeTag(MC.BASIC_TYPE_MAP,index,1);
-			array[index] = new MCMap(map, tag);
+			int reference = MakeReference(MC.BASIC_TYPE_MAP,index,1);
+			array[index] = new MCMap(map, reference);
 		}
 		public int SetStoreObject(int index, int type, IntArray data)
 		{
-			int tag = MakeTag(type,index,1);
-			array[index] = new MCStore(MCStore.Role.OBJECT, tag, data);
+			int reference = MakeReference(type,index,1);
+			array[index] = new MCStore(MCStore.Role.OBJECT, reference, data);
 
 			if (MS.IsVerbose)
 			{
-				MS.printOut.Print("HEAP alloc [").Print(index).Print("] tag: ").PrintHex(tag).Print(" data:");
+				MS.printOut.Print("HEAP alloc [").Print(index).Print("] reference: ").PrintHex(reference).Print(" data:");
 				data.Print(MS.printOut); MS.printOut.EndLine();
 			}
 
-			return tag;
+			return reference;
 		}
 		internal void WriteHeap(MSOutput output)
 		{
@@ -223,47 +222,47 @@ namespace Meanscript.Core
 		}
 		internal void ReadFromInput(MCStore.Role role, int heapID, int typeID, MSInput input, int dataLength)
 		{	
-			int tag = MakeTag(typeID,heapID,1);
+			int reference = MakeReference(typeID,heapID,1);
 			
 			if (array[heapID] != null) MS.Verbose("HEAP overwrite ID " + heapID);
 
-			array[heapID] = new MCStore(role, tag, input, dataLength);
+			array[heapID] = new MCStore(role, reference, input, dataLength);
 
 			if (MS.IsVerbose)
 			{
-				MS.printOut.Print("HEAP WriteObject [").Print(heapID).Print("] tag: ").PrintHex(tag).Print(" data:");
+				MS.printOut.Print("HEAP WriteObject [").Print(heapID).Print("] reference: ").PrintHex(reference).Print(" data:");
 				array[heapID].Print(MS.printOut); MS.printOut.EndLine();
 			}
 		}
 
 		internal void ReadFromArray(MCStore.Role role, int heapID, int typeID, int[] src, int dataLength)
 		{	
-			int tag = MakeTag(typeID,heapID,1);
+			int reference = MakeReference(typeID,heapID,1);
 			
 			if (array[heapID] != null) MS.Verbose("HEAP overwrite ID " + heapID);
 
-			array[heapID] = new MCStore(role, tag, src, 0, dataLength);
+			array[heapID] = new MCStore(role, reference, src, 0, dataLength);
 
 			if (MS.IsVerbose)
 			{
-				MS.printOut.Print("HEAP WriteObject [").Print(heapID).Print("] tag: ").PrintHex(tag).Print(" data:");
+				MS.printOut.Print("HEAP WriteObject [").Print(heapID).Print("] reference: ").PrintHex(reference).Print(" data:");
 				array[heapID].Print(MS.printOut); MS.printOut.EndLine();
 			}
 		}
 
-		public void Free(int tag, int datatype)
+		public void Free(int reference, int datatype)
 		{
-			if (tag == 0) return;
+			if (reference == 0) return;
 
-			int type = TagType(tag);
-			int index = TagHeapIndex(tag);
+			int type = ReferenceType(reference);
+			int index = ReferenceHeapIndex(reference);
 
 			MS.Assertion(datatype < 0 || type == datatype);
 			if (array[index] == null)
 			{
 				MS.Verbose("heap free: was empty");
 			}
-			MS.Assertion(array[index].tag == tag);
+			MS.Assertion(array[index].reference == reference);
 			array[index] = null;
 			MS.Verbose("heap free @ " + index);
 		}
@@ -292,29 +291,20 @@ namespace Meanscript.Core
 		{
 			return heapIndex >= 0 && heapIndex < array.Length;
 		}
-		public static int TagType(int tag)
+		public static int ReferenceType(int reference)
 		{
-			return (tag >> DDATA_TYPE_SHIFT) & 0xfff;
+			return (reference >> HEAP_REFERENCE_TYPE_SHIFT) & 0xfff;
 		}
-		public static int TagHeapIndex(int tag)
+		public static int ReferenceHeapIndex(int reference)
 		{
-			return (tag >> DDATA_INDEX_SHIFT) & 0xfff;
+			return (reference >> HEAP_REFERENCE_INDEX_SHIFT) & 0xfff;
 		}
-		public static int TagSignature(int tag)
+		public static int RerenceSignature(int reference)
 		{
-			return (tag >> DDATA_SIGNATURE_SHIFT) & 0xff;
+			return (reference >> HEAP_REFERENCE_SIGNATURE_SHIFT) & 0xff;
 		}
 
-		const uint
-			DDATA_TYPE_MASK =	0xfff00000,
-			DDATA_INDEX_MASK =	0x000fff00,
-			DDATA_SIGNATURE_MASK =	0x000000ff;
-		const int
-			DDATA_TYPE_SHIFT =	20,
-			DDATA_INDEX_SHIFT =	8,
-			DDATA_SIGNATURE_SHIFT =	0;
-
-		public static int MakeTag(int type, int index, int sign)
+		public static int MakeReference(int type, int index, int sign)
 		{
 			// fits pointer information in one int
 
@@ -323,9 +313,9 @@ namespace Meanscript.Core
 			//      |---type---|---index---|-sign-|
 
 			return (int)(
-				((type << DDATA_TYPE_SHIFT) & DDATA_TYPE_MASK) |
-				((index << DDATA_INDEX_SHIFT) & DDATA_INDEX_MASK) |
-				((sign << DDATA_SIGNATURE_SHIFT) & DDATA_SIGNATURE_MASK));
+				((type << HEAP_REFERENCE_TYPE_SHIFT) & HEAP_REFERENCE_TYPE_MASK) |
+				((index << HEAP_REFERENCE_INDEX_SHIFT) & HEAP_REFERENCE_INDEX_MASK) |
+				((sign << HEAP_REFERENCE_SIGNATURE_SHIFT) & HEAP_REFERENCE_SIGNATURE_MASK));
 		}
 
 		public MCStore GetStoreByIndex(int heapID)
@@ -368,5 +358,11 @@ namespace Meanscript.Core
 			}
 		}
 
+		internal int NumObjects()
+		{
+			int num = 0;
+			foreach(var x in array) if (x != null) num++;
+			return num;
+		}
 	}
 }

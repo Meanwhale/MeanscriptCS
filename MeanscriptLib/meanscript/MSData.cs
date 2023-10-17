@@ -183,8 +183,8 @@ namespace Meanscript
 			MS.Assertion(type.ID == MC.BASIC_TYPE_MAP, MC.EC_DATA, "not a map");
 			MS.Assertion(heap != null);
 
-			int tag = dataCode[offset];
-			int heapID = MCHeap.TagHeapIndex(tag);
+			int reference = dataCode[offset];
+			int heapID = MCHeap.ReferenceHeapIndex(reference);
 			return heap.GetMapAt(heapID).map;
 		}
 
@@ -221,12 +221,12 @@ namespace Meanscript
 	public class MSMap : IMSVar
 	{
 		public Dictionary<string,IntArray> dict = new Dictionary<string, IntArray>();
-		internal int tag = 0;
+		internal int reference = 0;
 
-		public MSMap(CodeTypes types, MCHeap heap, int tag) :
-			base(types, heap, MCHeap.TagType(tag), MCHeap.TagHeapIndex(tag))
+		public MSMap(CodeTypes types, MCHeap heap, int reference) :
+			base(types, heap, MCHeap.ReferenceType(reference), MCHeap.ReferenceHeapIndex(reference))
 		{
-			this.tag = tag;
+			this.reference = reference;
 		}
 		public MSData Get(string key)
 		{
@@ -385,16 +385,16 @@ namespace Meanscript
 		internal MSData GetRef(string name)
 		{
 			// get data of ObjectType (obj[x])
-			// read the tag address (defined in MHeap) of the variable
+			// read the reference address (defined in MHeap) of the variable
 			// and get data object
 
 			var member = structType.SD.GetMember(new MSText(name));
 			MS.Assertion(member != null, MC.EC_DATA, "member not found: " + name);
 			MS.Assertion(member.Type is ObjectType, MC.EC_DATA, "not an object reference: " + name);
-			int tag = dataCode[member.Address + offset];
-			int heapID = MCHeap.TagHeapIndex(tag);
-			int typeID = MCHeap.TagType(tag);
-			MS.Assertion(heap.HasObject(heapID), MC.EC_DATA, "invalid reference: " + tag + ", heap ID " + heapID);
+			int reference = dataCode[member.Address + offset];
+			int heapID = MCHeap.ReferenceHeapIndex(reference);
+			int typeID = MCHeap.ReferenceType(reference);
+			MS.Assertion(heap.HasObject(heapID), MC.EC_DATA, "invalid reference: " + reference + ", heap ID " + heapID);
 			return new MSData(types, heap, typeID, heapID, 0);
 		}
 		internal bool Match(MSStruct x)
@@ -427,10 +427,10 @@ namespace Meanscript
 			var type = types.GetTypeDef(data.typeID);
 			if (type is ObjectType)
 			{
-				// get object tag and the heap object it points to
-				int tag = dataCode[data.offset + offset];
-				var ddata = heap.GetStoreByIndex(MCHeap.TagHeapIndex(tag));
-				return new MSData(types, heap, ddata.DataTypeID(), MCHeap.TagHeapIndex(tag), 0);
+				// get object reference and the heap object it points to
+				int reference = dataCode[data.offset + offset];
+				var ddata = heap.GetStoreByIndex(MCHeap.ReferenceHeapIndex(reference));
+				return new MSData(types, heap, ddata.DataTypeID(), MCHeap.ReferenceHeapIndex(reference), 0);
 			}
 			MS.Assertion(false, MC.EC_DATA, "not an object type: " + name);
 			return null;
